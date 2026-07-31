@@ -356,16 +356,31 @@ extern "C" void app_main()
     pati::kullanim_saat_ayarla();
     ESP_LOGI(ETIKET, "ag hazir (%s)", pati::ag_ip());
 
-    // ANAHTARI SIMDI SINA. Aga yeni baglandik; panel acilir acilmaz
-    // dogru durumu gostersin.
+    // 🔴 BURADA ANAHTAR SINAMASI VARDI, KALDIRILDI. Geri eklemeyin.
     //
-    // Bunu yapmasak panel "bilinmiyor" derdi ve anne sohbet
-    // baslamayinca sebebini hicbir yerden okuyamazdi. Istek belirtec
-    // harcamiyor (model listesi), yani her aciliste calistirmanin
-    // faturaya etkisi yok.
-    if (pati::anahtar_var()) {
-        pati::anahtar_dogrula();
-    }
+    // 31.07.2026, gercek kartta olculdu. Acilista `anahtar_dogrula()`
+    // cagriliyordu ve HER SEFERINDE basarisiz donuyordu:
+    //
+    //   E esp-tls-mbedtls: mbedtls_ssl_handshake returned -0x0050
+    //   W anahtar: dogrulama istegi gonderilemedi: ESP_ERR_HTTP_CONNECT
+    //
+    // -0x0050 = NET_CONN_RESET. Anahtar saglamdi: yirmi saniye sonra
+    // ayni anahtarla Gemini oturumu sorunsuz aciliyordu. Sebep ag da
+    // degildi, saat de degil (saat_hazir=true).
+    //
+    // Sebep BU FONKSIYONUN NEREDE KOSTUGU. app_main CPU 0'da ve gozler
+    // gorevi de CPU 0'da; o gorev cizim butcesini asinca IDLE0 hic
+    // calisamiyor ve bekci kopegi havliyor (ayni loglarda goruluyor,
+    // PLAN.md §"Cihazda ogrenilenler" 2). TLS el sikismasi o acligin
+    // ortasinda zaman asimina dusup karsi tarafca kapatiliyor.
+    //
+    // Panel de bunun uzerine "Google'a ulasilamiyor" yaziyordu — robot
+    // gayet konusurken. Tam olarak kacinmaya calistigimiz sey.
+    //
+    // Sinamaya GEREK DE YOK: acilan bir Gemini oturumu anahtarin
+    // calistiginin kanitidir ve `sohbet_baslat` bunu kendisi bildiriyor.
+    // Oturum acilamazsa sebebi zaten `anahtar_baglanti_hatasi()`
+    // soruyor. Yani bu istek hem yanlis cevap veriyordu hem fazlaydi.
 
     pati::kullanim_oturum_basladi();
 

@@ -9,7 +9,10 @@
 #include <esp_crt_bundle.h>
 #include <esp_http_client.h>
 #include <esp_log.h>
+#include <esp_partition.h>
 #include <esp_timer.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <nvs.h>
 #include <nvs_flash.h>
 
@@ -221,26 +224,50 @@ std::string json_kacisla(const std::string& ham)
 
 esp_err_t anahtar_baslat()
 {
-    const esp_err_t s = nvs_flash_init_partition(BOLUM);
-    if (s == ESP_ERR_NVS_NO_FREE_PAGES || s == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        // Bu bolumde tek bir deger var; bozulmussa silip yeniden kurmak
-        // anahtari kaybettiriyor ama baska caresi yok. Anne panelden
-        // yeniden yaziyor — ve durum "Yok" gorunecegi icin ne yapmasi
-        // gerektigini panel soyluyor.
-        ESP_LOGW(ETIKET, "anahtar bolumu bozuk, siliniyor");
+    // Bolum VAR MI? Once buna bakiyoruz cunku iki basarisizligin caresi
+    // bambaska: bolum yoksa kablo gerekiyor, varsa icerigi silmek yetiyor.
+    // Ayirmasak "anahtar bolumu kurulamadi" diye tek bir satir kalirdi ve
+    // hangisi oldugu anlasilmazdi.
+    if (esp_partition_find_first(ESP_PARTITION_TYPE_DATA,
+                                 ESP_PARTITION_SUBTYPE_DATA_NVS, BOLUM)
+        == nullptr) {
+        ESP_LOGE(ETIKET, "'%s' diye bir bolum YOK.", BOLUM);
+        ESP_LOGE(ETIKET, "  Kart eski bolum tablosuyla yuklenmis. Panelden");
+        ESP_LOGE(ETIKET, "  anahtar girilemez ve guncelleme calismaz.");
+        ESP_LOGE(ETIKET, "  Care KABLO: idf.py -p <PORT> flash");
+        ESP_LOGE(ETIKET, "  (app-flash YETMEZ — bolum tablosunu yazmiyor)");
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    esp_err_t s = nvs_flash_init_partition(BOLUM);
+    if (s != ESP_OK) {
+        // HANGI HATA OLURSA OLSUN SILIP YENIDEN KURUYORUZ.
+        //
+        // Baslangicta yalnizca NO_FREE_PAGES ve NEW_VERSION_FOUND
+        // yakalaniyordu — ESP-IDF orneklerindeki kaliP. Burada yetmiyor:
+        //
+        // 🔴 TEK UYGULAMADAN OTA'LI TABLOYA GECEN HER KART BURAYA DUSUYOR.
+        // Eski tabloda uygulama 0x10000'de basliyordu; yeni tabloda ayni
+        // yerde 'anahtar' var. `idf.py flash` o araligi YAZMIYOR (yalnizca
+        // onyukleyici, tablo, otadata ve uygulama yaziliyor), yani bolum
+        // eski uygulamanin kod baytlariyla dolu aciliyor. NVS oradan
+        // rastgele bir hata dondurebiliyor ve o hatalarin hepsini tek tek
+        // saymak, sayilmayan biri cikinca anahtarin HIC yazilamamasi
+        // demekti — panel "kaydedildi" der, hicbir sey kaydedilmezdi.
+        //
+        // Silmenin bedeli yok: bu bolumde tek bir sey var ve zaten
+        // okunamiyor. Anne panelden yeniden yaziyor, durum "yok"
+        // goruundugu icin panel ne yapmasi gerektigini soyluyor.
+        ESP_LOGW(ETIKET, "anahtar bolumu okunamadi (%s), siliniyor",
+                 esp_err_to_name(s));
         nvs_flash_erase_partition(BOLUM);
-        if (nvs_flash_init_partition(BOLUM) != ESP_OK) {
-            ESP_LOGE(ETIKET, "anahtar bolumu kurulamadi");
-            return ESP_FAIL;
+        s = nvs_flash_init_partition(BOLUM);
+        if (s != ESP_OK) {
+            ESP_LOGE(ETIKET, "anahtar bolumu kurulamadi: %s",
+                     esp_err_to_name(s));
+            return s;
         }
-    } else if (s != ESP_OK) {
-        // Neredeyse kesin sebep: kart ESKI bolum tablosuyla yuklenmis ve
-        // "anahtar" diye bir bolum yok. Cokmuyoruz — panel yine acilsin
-        // ki sebep gorulebilsin.
-        ESP_LOGE(ETIKET, "anahtar bolumu acilamadi: %s", esp_err_to_name(s));
-        ESP_LOGE(ETIKET, "  bolum tablosu eski olabilir. Kabloyla tam yukleme");
-        ESP_LOGE(ETIKET, "  gerekiyor: idf.py -p <PORT> flash");
-        return s;
+        ESP_LOGI(ETIKET, "anahtar bolumu yeniden kuruldu");
     }
 
     g_bolum_hazir = true;
@@ -440,6 +467,16 @@ void anahtar_kod_bildir(int http_kod)
     if (d == AnahtarDurumu::Gecerli) g_ayrinti.clear();
 }
 
+namespace {
+
+void sorma_gorevi(void*)
+{
+    anahtar_dogrula();
+    vTaskDelete(nullptr);
+}
+
+}  // namespace
+
 void anahtar_baglanti_hatasi()
 {
     {
@@ -454,7 +491,25 @@ void anahtar_baglanti_hatasi()
             return;
         }
     }
-    anahtar_dogrula();
+
+    // ⚠️ AYRI GOREVDE, CUNKU CAGIRAN YERLER BEKLEYEMEZ.
+    //
+    // Burayi cagiranlar: uyandirma (mikrofon gorevi), oturum yenileme ve
+    // sohbet kurulumu. Ilki gecikme yolunun tam ustunde — orada 15
+    // saniyelik bir TLS istegini beklemek cocugun sesini kesmek olurdu.
+    //
+    // 🔴 Ustelik bloklamak YANLIS CEVAP da veriyordu: 31.07.2026'da
+    // acilista app_main'den bloklu cagriliyordu ve gozler gorevi CPU 0'i
+    // doyurdugu icin TLS el sikismasi ac kalip dusuyordu
+    // (mbedtls -0x0050). Anahtar saglamken panel "Google'a
+    // ulasilamiyor" yaziyordu.
+    //
+    // Gorev acilamazsa SESSIZ KALIYORUZ: durum "bilinmiyor" olarak
+    // kalir, ki bu dogru — sormadik, bilmiyoruz.
+    if (xTaskCreate(sorma_gorevi, "pati_anh_s", 6144, nullptr, 3, nullptr)
+        != pdPASS) {
+        ESP_LOGW(ETIKET, "sorma gorevi acilamadi — durum bilinmiyor kaliyor");
+    }
 }
 
 std::string anahtar_json()

@@ -238,6 +238,7 @@ void uyandir()
         g_uykuda = true;
         return;
     }
+    anahtar_kod_bildir(200);
     kullanim_devam();
     gozler_dinliyor();
     ESP_LOGI(ETIKET, "uyandi (%lld ms)", (esp_timer_get_time() - t0) / 1000);
@@ -713,8 +714,36 @@ esp_err_t sohbet_baslat()
         return ESP_FAIL;
     }
 
+    // ANAHTARIN CALISTIGININ KANITI BU: oturum acildi.
+    //
+    // Gemini Live anahtari WebSocket el sikismasinda dogruluyor
+    // (?key=...). Yani buraya gelmek, anahtarin Google tarafindan kabul
+    // edildigi anlamina geliyor — ayrica bir sinama istegi atmaktan
+    // daha guvenilir, cunku sinanan sey robotun GERCEKTEN yaptigi is.
+    //
+    // Bildirmek ayrica eski bir kotu durumu TEMIZLIYOR: anahtar bir ara
+    // kotaya takilip sonra acildiysa panel "kota doldu" demeye devam
+    // ederdi. Basarili her oturum onu siliyor.
+    anahtar_kod_bildir(200);
+
     g_son_hareket_us = esp_timer_get_time();
     g_calisiyor = true;
+
+    // 🔴 YUZU BURADA DUZELTIYORUZ, YOKSA "UYKULU" KALIYOR.
+    //
+    // 31.07.2026, gercek kartta goruldu: anahtar girildi, oturum acildi,
+    // kullanim sayaci islemeye basladi — ama hem ekrandaki hem paneldeki
+    // gozler UYKULU duruyordu. Sebep app_main'in anahtar bekleme
+    // dongusu: anahtar yokken "beni ayarla" hali icin `uykulu` yaziyor
+    // ve sohbet acilinca onu geri alan kimse yoktu. Ilk gerceklesme
+    // ancak cocuk konustugunda oluyordu (`uyandir` -> gozler_dinliyor).
+    //
+    // Panelin robotun halini yanlis gostermesi bu projede dorduncu kez
+    // cikti; hepsinde sebep ayniydi — durumu KURAN yer ile GOSTEREN yer
+    // arasinda haber gitmiyor. O yuzden yuz, sohbetin kendi
+    // sorumlulugunda: `sohbet_baslat` basarili donuyorsa robot
+    // dinliyordur ve yuzu de oyle demelidir.
+    gozler_dinliyor();
 
     // Ses gorevi once acilsin ki ilk olaylar kuyrukta beklemesin.
     //

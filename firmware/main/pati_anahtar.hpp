@@ -112,6 +112,11 @@ void anahtar_kod_bildir(int http_kod);
 // Sohbet baglantisi kurulamadi. Sebep bilinmiyor (WebSocket kod vermiyor),
 // o yuzden bir dogrulama istegiyle soruyoruz.
 //
+// HEMEN DONER, isi ayri bir gorevde yapar. Cagiranlarin biri mikrofon
+// gorevi (uyandirma) ve orada beklemek cocugun sesini kesmek olurdu;
+// ustelik bloklu cagri gercek kartta YANLIS CEVAP verdi (ayrinti
+// pati_anahtar.cpp §anahtar_baglanti_hatasi).
+//
 // Kendini sinirliyor: en fazla dakikada bir. Baglanti hatasi arka arkaya
 // gelebiliyor ve her birinde Google'a istek atmak, kotasi zaten dolu olan
 // bir anahtari daha da doldurmak olurdu.
