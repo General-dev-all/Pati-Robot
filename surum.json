@@ -1,6 +1,6 @@
 {
-  "surum": "2.1.1",
+  "surum": "2.2.0",
   "tarih": "2026-08-01",
-  "notlar": "Anahtar durumu artık doğru gösteriliyor, gözler uyanınca uyanıyor.",
-  "bin": "https://github.com/General-dev-all/Pati-Robot/releases/download/v2.1.1/pati.bin"
+  "notlar": "Güncellemeler artık kendiliğinden hazırlanıyor.",
+  "bin": "https://github.com/General-dev-all/Pati-Robot/releases/download/v2.2.0/pati.bin"
 }

@@ -51,9 +51,19 @@ set(SDKCONFIG_DEFAULTS "${_pati_defaults}")
 # SURUM — panelin "guncelleme var mi" sorusunun dayanagi
 # ---------------------------------------------------------------------------
 #
-# Tek kaynak surum.txt. Buradan PROJECT_VER'e gidiyor, oradan uygulama
-# imzasina (esp_app_desc), oradan da panele. Yani panelde gorunen sayi ile
-# flash'taki yapinin ayni olmasi TESADUFE bagli degil.
+# surum.txt IKI SEY tutuyor ve bilerek tek dosya:
+#
+#   1. satir   surum numarasi   -> buraya, PROJECT_VER'e
+#   gerisi     annenin okuyacagi not -> GitHub Actions'a, oradan panele
+#
+# Ayri iki dosya olsaydi biri guncellenip oteki unutulurdu: surum 2.3.0
+# olur, notta hala 2.2.0'in degisiklikleri yazardi. Anne panelde yanlis
+# seyi okur ve kimse fark etmez. Ayni dosyada durunca ikisini birden
+# degistirmemek zor.
+#
+# Buradan PROJECT_VER'e, oradan uygulama imzasina (esp_app_desc), oradan
+# da panele. Yani panelde gorunen sayi ile flash'taki yapinin ayni olmasi
+# TESADUFE bagli degil.
 #
 # ESP-IDF kendiliginden `version.txt` diye bakiyor; dosyanin adi Turkce
 # oldugu icin elle okuyoruz. Dosya yoksa IDF `git describe` kullanirdi ve
@@ -78,11 +88,19 @@ set(SDKCONFIG_DEFAULTS "${_pati_defaults}")
 # Bu satır CMake'e "bu dosya değişirse baştan yapılandır" diyor.
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
              "${CMAKE_CURRENT_LIST_DIR}/surum.txt")
-file(READ "${CMAKE_CURRENT_LIST_DIR}/surum.txt" _pati_surum)
+# YALNIZCA ILK SATIR. Gerisi annenin okuyacagi not ve derlemeyi
+# ilgilendirmiyor.
+file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/surum.txt" _pati_surum
+     LIMIT_COUNT 1)
 string(STRIP "${_pati_surum}" _pati_surum)
-if(_pati_surum STREQUAL "")
-    message(FATAL_ERROR "Pati: surum.txt bos. Panel surum karsilastirmasi "
-                        "yapamaz, guncelleme hic gorunmez.")
+# Bicim denetimi BURADA yapiliyor, cunku hata en ucuz burada yakalanir.
+# Yanlis bicim derlemeyi gecerse cihaz karsilastirmayi yapamaz ve
+# guncelleme sessizce HIC gorunmez — arizasi olmayan bir ariza.
+if(NOT _pati_surum MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+    message(FATAL_ERROR
+        "Pati: surum.txt'nin ILK SATIRI '2.2.0' gibi uc sayi olmali, "
+        "'${_pati_surum}' bulundu. Panel karsilastirmayi sayi sayi "
+        "yapiyor; baska bicim guncellemeyi HIC gostermez.")
 endif()
 set(PROJECT_VER "${_pati_surum}")
 message(STATUS "Pati: surum ${PROJECT_VER}")

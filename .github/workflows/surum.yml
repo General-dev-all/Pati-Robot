@@ -1,0 +1,169 @@
+# Pati — surum yayimlama
+#
+# ===========================================================================
+# NE ISE YARIYOR
+# ===========================================================================
+#
+# `firmware/surum.txt` degisip push edilince: GitHub firmware'i kendi
+# sunucusunda derliyor, bir Release aciyor ve icine iki dosya koyuyor —
+# `pati.bin` ile `surum.json`.
+#
+# Yani Mert'in yapmasi gereken tek sey PUSH. Release acmak, dosya
+# yuklemek, adres yazmak yok.
+#
+# ===========================================================================
+# NEDEN surum.json DEPOYA DEGIL, RELEASE'IN ICINE
+# ===========================================================================
+#
+# Once depodaydi ve sessiz bir kusuru vardi: push, manifesti ANINDA
+# yayina sokuyor ama pati.bin'i olusturmuyor. Derleme bitene kadar
+# gecen dakikalarda panel "guncelleme var" der, anne basar, indirme
+# 404'e duserdi.
+#
+# Ikisi ayni Release'in icinde olunca manifest, tarif ettigi dosyadan
+# ONCE VAR OLAMIYOR. Bosluk mumkun degil — dikkatle degil, yapisi geregi.
+#
+# Cihaz `releases/latest/download/surum.json` adresine bakiyor; o kisayol
+# her zaman en son Release'i gosteriyor.
+#
+# ===========================================================================
+# DERLEME NEDEN GIZLI BILGI ISTEMIYOR
+# ===========================================================================
+#
+# Cunku firmware'de gizli bilgi KALMADI. Gemini anahtari panelden
+# giriliyor ve cihazin NVS'inde duruyor; wifi bilgisi de oyle. Kaynak
+# dosyalarin hicbiri `CONFIG_PATI_WIFI_*` okumuyor.
+#
+# Bu, anahtari Kconfig'den cikarmanin beklenmedik faydasi: GitHub'in
+# sunucusu hicbir sirri gormeden derleyebiliyor ve cikan `pati.bin`
+# herkese acik durabiliyor.
+
+name: surum
+
+on:
+  push:
+    branches: [main]
+    # SADECE surum.txt degisince. Her push'ta derlemek hem gereksiz hem
+    # de her seferinde ayni surum numarasiyla Release acmaya calisip
+    # basarisiz olurdu.
+    paths: ['firmware/surum.txt']
+  # Elle de calistirilabilsin: derleme bir kez basarisiz olursa
+  # surum.txt'ye dokunmadan tekrar denenebilmeli.
+  workflow_dispatch:
+
+permissions:
+  contents: write        # Release acmak icin
+
+jobs:
+  yayimla:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Surumu ve notu oku
+        id: s
+        run: |
+          set -euo pipefail
+          SURUM=$(head -n 1 firmware/surum.txt | tr -d '[:space:]')
+          # Gerisi annenin panelde okuyacagi not. Bos satirlar atiliyor,
+          # satirlar tek cumleye birlestiriliyor: panel bunu tek satirlik
+          # bir kutuda gosteriyor.
+          NOT=$(tail -n +2 firmware/surum.txt | sed '/^[[:space:]]*$/d' \
+                | paste -sd' ' - | cut -c1-300)
+
+          if ! [[ "$SURUM" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::surum.txt'nin ilk satiri '2.2.0' gibi olmali, '$SURUM' bulundu"
+            exit 1
+          fi
+          # Not bos kalirsa panelde bos bir kutu gorunurdu. Sessizce bos
+          # birakmak yerine soyluyoruz: bu, anneye gosterilecek tek metin.
+          if [ -z "$NOT" ]; then
+            echo "::error::surum.txt'de not yok. Ilk satirin ALTINA annenin okuyacagi bir cumle yaz."
+            exit 1
+          fi
+
+          echo "surum=$SURUM"  >> "$GITHUB_OUTPUT"
+          echo "etiket=v$SURUM" >> "$GITHUB_OUTPUT"
+          echo "not=$NOT"      >> "$GITHUB_OUTPUT"
+          echo "Surum $SURUM — $NOT"
+
+      - name: Bu surum zaten yayimlanmis mi
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Ayni etiketle ikinci bir Release acilamaz. Erken ve ANLASILIR
+          # bir hatayla duruyoruz; yoksa on dakika derleyip en sonda
+          # "tag already exists" ile patlardi.
+          if gh release view "${{ steps.s.outputs.etiket }}" >/dev/null 2>&1; then
+            echo "::error::${{ steps.s.outputs.etiket }} zaten var. firmware/surum.txt'de surumu yukselt."
+            exit 1
+          fi
+
+      - name: Derle
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: release-v5.5
+          target: esp32s3
+          path: firmware
+
+      - name: Imajdaki surum dosyadakiyle ayni mi
+        run: |
+          set -euo pipefail
+          # 🔴 BU DENETIM BIR HATA YAKALADI, SUSLEME DEGIL.
+          #
+          # 01.08.2026: surum.txt 2.1.1 diyordu, derlenen pati.bin 2.1.0.
+          # Sebep CMake'in dosyayi bagimlilik saymamasiydi (duzeltildi).
+          # Yayimlansaydi cihaz indirir, "beklenen surum degil" diye
+          # reddederdi ve surum.txt'ye bakan biri sebebi goremezdi.
+          #
+          # Surum, uygulama imzasinda 48. bayttan basliyor (esp_app_desc).
+          IMAJ=$(python3 -c "
+          d=open('firmware/build/pati.bin','rb').read()
+          print(d[48:80].split(b'\x00')[0].decode())")
+          echo "dosyada: ${{ steps.s.outputs.surum }} · imajda: $IMAJ"
+          if [ "$IMAJ" != "${{ steps.s.outputs.surum }}" ]; then
+            echo "::error::Imajdaki surum ($IMAJ) surum.txt ile ayni degil."
+            exit 1
+          fi
+
+      - name: surum.json uret
+        run: |
+          set -euo pipefail
+          # jq ile uretiliyor, elle dize birlestirerek DEGIL: notta tirnak
+          # ya da ters bolu gecerse elle kurulan JSON bozulur ve cihaz
+          # manifesti hic okuyamaz — yani guncelleme sessizce kaybolur.
+          jq -n \
+            --arg surum  "${{ steps.s.outputs.surum }}" \
+            --arg tarih  "$(date -u +%Y-%m-%d)" \
+            --arg notlar "${{ steps.s.outputs.not }}" \
+            --arg bin    "${{ github.server_url }}/${{ github.repository }}/releases/download/${{ steps.s.outputs.etiket }}/pati.bin" \
+            '{surum:$surum, tarih:$tarih, notlar:$notlar, bin:$bin}' \
+            > surum.json
+          cat surum.json
+
+      - name: Release ac
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Ikisi TEK adimda yukleniyor. Ayri adimlar olsaydi arada
+          # manifest'i olan ama binary'si olmayan bir Release olusurdu —
+          # kacinmaya calistigimiz seyin ta kendisi.
+          gh release create "${{ steps.s.outputs.etiket }}" \
+            firmware/build/pati.bin \
+            surum.json \
+            --title "${{ steps.s.outputs.etiket }}" \
+            --notes "${{ steps.s.outputs.not }}" \
+            --latest
+
+      - name: Ozet
+        run: |
+          {
+            echo "### Pati ${{ steps.s.outputs.surum }} yayimlandi"
+            echo ""
+            echo "${{ steps.s.outputs.not }}"
+            echo ""
+            echo "Anne artik panelden **Güncellemeleri kontrol et** diyebilir."
+          } >> "$GITHUB_STEP_SUMMARY"

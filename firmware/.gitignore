@@ -10,7 +10,17 @@ sdkconfig.old
 
 # Bilesen yoneticisinin indirdikleri (esp_websocket_client vb.)
 managed_components/
-dependencies.lock
+
+# 🔴 dependencies.lock ARTIK DEPOYA GIRIYOR — listeden cikarildi.
+#
+# Eskiden burada, "uretilen dosya" oldugu icin. Guncelleme GitHub'in
+# sunucusunda derlenmeye baslayinca bu yanlis oldu: kilit dosyasi
+# olmayinca bilesen yoneticisi surumleri HER DERLEMEDE yeniden
+# coziyor, yani CI'nin urettigi firmware Mert'in tezgahta denedigiyle
+# ayni bilesen surumlerini kullanmayabiliyor.
+#
+# Anneye giden ikili dosya, burada test edilenle AYNI olmali. Kilit
+# dosyasi bunu garanti eden tek sey.
 
 # API anahtari ve wifi bilgisi ASLA depoya girmez.
 # Bunlar sdkconfig.defaults.local'a yazilip oradan okunuyor.

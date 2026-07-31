@@ -74,22 +74,26 @@ written over USB — `idf.py flash`, not `app-flash`.
 
 ## Updates
 
-The panel checks [`surum.json`](surum.json) at the repository root,
-compares the version against its own, and downloads the binary named
-there from a GitHub release. Nothing else is involved: no update server,
-no companion app.
+Raise the version in [`firmware/surum.txt`](firmware/surum.txt) — first
+line the number, the lines under it the sentence the parent reads — and
+push. GitHub builds the firmware and publishes a release holding
+`pati.bin` and a generated `surum.json`; the device polls the latter and
+downloads the former. No update server, no companion app, nothing to
+upload by hand. Details in
+[`firmware/SURUM-NASIL-CIKARILIR.md`](firmware/SURUM-NASIL-CIKARILIR.md).
 
-```
-firmware/surum.txt          the single source of the version; raise it
-firmware/YENI-SURUM.bat     builds, then rewrites surum.json to match
-```
-
-Publishing is two steps in this order: attach `pati.bin` to the release
-first, then push. `surum.json` is what the device polls, so pushing it
-before the file exists advertises an update that 404s.
+The manifest is a release asset rather than a committed file because a
+push publishes a committed file immediately but does not build the
+binary. For the minutes in between, the panel would offer an update that
+404s. Sharing a release makes the manifest unable to exist before the
+image it describes.
 
 The binary is not committed. The panel is compiled into it, so a panel
 change ships as a firmware update — which is why the two cannot drift.
+
+The build needs no secrets, which is what makes CI possible at all: the
+key and the Wi-Fi credentials both live in the device's NVS, and no
+source file reads them from the configuration.
 
 Rollback is enabled: a new image boots on trial and is only marked good
 once the network stack and panel are up. An image that cannot get that

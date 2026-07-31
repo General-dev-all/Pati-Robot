@@ -33,19 +33,25 @@ menu "Pati"
 
     config PATI_GUNCELLEME_ADRESI
         string "Guncelleme bilgisi (surum.json) adresi"
-        default "https://raw.githubusercontent.com/General-dev-all/Pati-Robot/main/surum.json"
+        default "https://github.com/General-dev-all/Pati-Robot/releases/latest/download/surum.json"
         help
             Pati "guncellemeleri kontrol et" dendiginde bu adresi cekiyor
             ve icindeki surumu kendi surumuyle karsilastiriyor.
 
-            Depodaki surum.json'a bakiyor, Release'e degil: dosya kucuk,
-            kaynak dosyasi ve gecmisi git'te gorunuyor. Indirilecek
-            pati.bin'in adresi ise o dosyanin ICINDE yaziyor ve Release'i
-            gosteriyor — 1,4 MB'lik ikili dosya depoya girmiyor.
+            🔴 ADRES RELEASE'IN KENDISINI GOSTERIYOR, DEPOYU DEGIL.
+            Onceden depodaki surum.json'a bakiyordu ve bunun sessiz bir
+            kusuru vardi: push, dosyayi ANINDA yayina sokuyor ama
+            pati.bin'i olusturmuyor. Aradaki surede panel "guncelleme
+            var" der, anne basar ve indirme 404'e duserdi.
+
+            `releases/latest/download/...` kisayolu bu bosluğu ortadan
+            kaldiriyor: surum.json ile pati.bin AYNI Release'in icinde
+            duruyor, yani manifest, tarif ettigi dosyadan once var
+            olamiyor. Ikisini de GitHub Actions ayni adimda koyuyor.
 
             HTTPS OLMAK ZORUNDA. Duz HTTP'de araya giren biri robota
             istedigi kodu yukleyebilir. Firmware ayrica indirme adresinin
-            de https oldugunu ayrica denetliyor.
+            de https oldugunu denetliyor.
 
     config PATI_MODEL
         string "Gemini Live model adi"
