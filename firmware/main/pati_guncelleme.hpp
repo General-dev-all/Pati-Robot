@@ -23,10 +23,13 @@
 // bir ikili dosyayi git gecmisine gomsek o kural bir yalana donerdi.
 // Release tam bu is icin var.
 //
-// Bedeli: GitHub Release adresi objects.githubusercontent.com'a 302 ile
-// yonleniyor. esp_https_ota yonlendirmeyi izliyor (belgelenmis davranis)
-// ve sertifika demeti ACIK oldugu icin ikinci sunucunun sertifikasi da
-// dogrulaniyor. Kendi sertifikamizi gomseydik burasi kirilirdi.
+// Bedeli: GitHub Release adresi 302 ile BASKA bir sunucuya yonleniyor.
+// 01.08.2026'da gercek kartta olculdu, hedef
+// `release-assets.githubusercontent.com` idi — ama bu ad GitHub'in
+// bilecegi is ve degisebilir, o yuzden hicbir yere yazilmiyor.
+// esp_https_ota yonlendirmeyi izliyor ve sertifika demeti ACIK oldugu
+// icin ikinci sunucunun sertifikasi da dogrulaniyor. Kendi
+// sertifikamizi gomseydik burasi kirilirdi.
 //
 // ===========================================================================
 // NEDEN SHA256 YOK

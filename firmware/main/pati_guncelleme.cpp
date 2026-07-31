@@ -275,12 +275,15 @@ void indirme_gorevi(void*)
     http.url = adres.c_str();
     http.crt_bundle_attach = esp_crt_bundle_attach;
     http.timeout_ms = 30000;
-    // 🔴 VARSAYILAN (512) YETMIYOR. GitHub Release adresi
-    // objects.githubusercontent.com'a 302 ile yonleniyor ve o
-    // Location basligi imzali bir adres — tek basina 500 karakteri
-    // asabiliyor. Tampon kucuk kalirsa baslik kirpiliyor ve yonlendirme
-    // "bozuk adres" diye basarisiz oluyor. Sebebi de gorunmuyor:
-    // hata "baglanti kurulamadi" gibi cikiyor.
+    // 🔴 VARSAYILAN (512) YETMIYOR — OLCULDU.
+    //
+    // GitHub Release adresi 302 ile imzali bir indirme adresine
+    // yonleniyor. 01.08.2026'da o Location basligi olculdu: 897
+    // KARAKTER (imza + JWT). Varsayilan tamponla baslik kirpilir,
+    // yonlendirme "bozuk adres" diye duser ve disaridan "baglanti
+    // kurulamadi" gibi gorunur — yani sebebi tamponda aranmaz.
+    //
+    // 4096 iki kat pay birakiyor; GitHub imza bicimini buyutebilir.
     http.buffer_size = 4096;
     http.buffer_size_tx = 2048;
     http.keep_alive_enable = true;
