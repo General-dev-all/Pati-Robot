@@ -1,6 +1,6 @@
 {
-  "surum": "2.1.0",
+  "surum": "2.1.1",
   "tarih": "2026-08-01",
-  "notlar": "Anahtar panelden giriliyor, güncellemeler panelden geliyor.",
-  "bin": "https://github.com/General-dev-all/Pati-Robot/releases/download/v2.1.0/pati.bin"
+  "notlar": "Anahtar durumu artık doğru gösteriliyor, gözler uyanınca uyanıyor.",
+  "bin": "https://github.com/General-dev-all/Pati-Robot/releases/download/v2.1.1/pati.bin"
 }

@@ -63,6 +63,21 @@ set(SDKCONFIG_DEFAULTS "${_pati_defaults}")
 # ⚠️ Surum burada yukselmezse panel yeni yapiyi GORMEZ: karsilastirma
 # surum.json'daki sayi ile bunun arasinda yapiliyor. YENI-SURUM.bat bu
 # dosyayi okuyup surum.json'a yaziyor, yani ikisi ayrisamiyor.
+# 🔴 SESSIZ TUZAK — bir kez ısırdı, bir daha ısırmasın.
+#
+# `file(READ)` YAPILANDIRMA anında çalışıyor. CMake bu dosyayı bir
+# bağımlılık saymadığı için surum.txt değişince yeniden yapılandırmıyor:
+# sürümü yükseltirsin, derlersin, binary'nin içinde ESKİ sürüm kalır.
+#
+# 01.08.2026'da tam bunu yaşadım: surum.txt 2.1.1 yazıyordu, derlenen
+# pati.bin 2.1.0 diyordu. Yayımlansaydı cihaz dosyayı indirip "beklenen
+# sürüm değil" diye reddederdi (pati_guncelleme.cpp o denetimi yapıyor)
+# ve sebebi surum.txt'ye bakan biri için görünmez olurdu — dosyada
+# doğru sayı yazıyor.
+#
+# Bu satır CMake'e "bu dosya değişirse baştan yapılandır" diyor.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+             "${CMAKE_CURRENT_LIST_DIR}/surum.txt")
 file(READ "${CMAKE_CURRENT_LIST_DIR}/surum.txt" _pati_surum)
 string(STRIP "${_pati_surum}" _pati_surum)
 if(_pati_surum STREQUAL "")
