@@ -1,2 +1,2 @@
-2.2.1
-Güncelleme kontrolü artık çalışıyor.
+2.2.2
+Küçük düzeltmeler.

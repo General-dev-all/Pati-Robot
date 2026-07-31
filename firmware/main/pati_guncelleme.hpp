@@ -4,32 +4,49 @@
 // AKIS
 // ===========================================================================
 //
-//   Mert           surum.txt'yi yukseltir, derler, pati.bin'i GitHub
-//                  Release'ine koyar, surum.json'i gunceller, push eder
+//   Mert           firmware/surum.txt'yi yukseltir, push eder. Baska
+//                  hicbir sey yapmaz.
+//   GitHub         derler, Release acar, icine pati.bin + surum.json
+//                  koyar (.github/workflows/surum.yml)
 //   Anne           pati.local -> "Güncellemeleri kontrol et"
 //   Pati           surum.json'i ceker, kendi surumuyle karsilastirir
 //   Anne           yeni surum varsa "Güncelle"
 //   Pati           pati.bin'i bos OTA bolumune indirir, yeniden baslar
 //
 // ===========================================================================
-// NEDEN IKI AYRI ADRES (surum.json ve pati.bin)
+// IKISI DE AYNI RELEASE'IN ICINDE — ve bu bilincli
 // ===========================================================================
 //
-// surum.json depoda duruyor ve raw.githubusercontent.com'dan geliyor:
-// kucuk, kaynak dosyasi, gecmisi git'te gorunuyor.
+// surum.json bir donem DEPODA durdu. Sessiz bir kusuru vardi: push,
+// manifesti ANINDA yayina sokuyor ama pati.bin'i olusturmuyor. Derleme
+// bitene kadarki dakikalarda panel "guncelleme var" der, anne basar ve
+// indirme 404'e duserdi.
 //
-// pati.bin ise Release'e konuyor, DEPOYA GIRMIYOR. .gitignore'un ilk
-// satiri "Depoya SADECE kaynak kod girer" diyor ve her surumde 1,4 MB'lik
-// bir ikili dosyayi git gecmisine gomsek o kural bir yalana donerdi.
-// Release tam bu is icin var.
+// Ikisi ayni Release'te olunca manifest, tarif ettigi dosyadan ONCE VAR
+// OLAMIYOR. Bosluk dikkatle degil, YAPISI GEREGI kapali.
 //
-// Bedeli: GitHub Release adresi 302 ile BASKA bir sunucuya yonleniyor.
-// 01.08.2026'da gercek kartta olculdu, hedef
-// `release-assets.githubusercontent.com` idi — ama bu ad GitHub'in
-// bilecegi is ve degisebilir, o yuzden hicbir yere yazilmiyor.
-// esp_https_ota yonlendirmeyi izliyor ve sertifika demeti ACIK oldugu
-// icin ikinci sunucunun sertifikasi da dogrulaniyor. Kendi
-// sertifikamizi gomseydik burasi kirilirdi.
+// pati.bin depoya girmiyor: .gitignore'un ilk satiri "Depoya SADECE
+// kaynak kod girer" diyor ve her surumde 1,4 MB'lik bir ikili dosyayi
+// git gecmisine gomsek o kural bir yalana donerdi.
+//
+// ===========================================================================
+// BEDELI: HER IKI ADRES DE YONLENDIRIYOR
+// ===========================================================================
+//
+// Hem `releases/latest/download/surum.json` hem `releases/download/.../
+// pati.bin`, imzali bir indirme adresine 302 ile atiyor. 01.08.2026'da
+// gercek kartta olculdu: ikinci Location basligi 897 KARAKTER, ve
+// `esp_http_client`'in varsayilan tamponu 512. Ikisinde de tampon
+// buyutuldu.
+//
+// Hedef sunucunun adi hicbir yere yazilmiyor: GitHub'in bilecegi is ve
+// degisebilir. Sertifika demeti ACIK oldugu icin hangisi olursa olsun
+// dogrulaniyor — kendi sertifikamizi gomseydik burasi kirilirdi.
+//
+// ⚠️ Yonlendirme KENDILIGINDEN izlenmiyor. `esp_https_ota` izliyor ama
+// duz `esp_http_client`'ta yalnizca `perform()` izliyor; elle acilan
+// istekte 30x sadece bir durum kodu olarak geliyor. Manifest cekimi tam
+// bu yuzden bir kez kirildi (ayrinti pati_guncelleme.cpp'de).
 //
 // ===========================================================================
 // NEDEN SHA256 YOK

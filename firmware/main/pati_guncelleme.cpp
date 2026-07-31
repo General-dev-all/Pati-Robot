@@ -6,7 +6,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
-#include <vector>
 
 #include <cJSON.h>
 #include <esp_app_desc.h>
