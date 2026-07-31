@@ -57,7 +57,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "if (-not (Test-Path (Join-Path $env:IDF_PATH 'export.ps1'))) {" ^
   "  Write-Host ('  !! ESP-IDF bulunamadi: ' + $env:IDF_PATH) -ForegroundColor Red;" ^
   "  Read-Host '  Kapatmak icin Enter'; exit 1 }" ^
-  "if (-not (Get-Command python -ErrorAction SilentlyContinue)) {" ^
+  "$pyCalisiyor = $false;" ^
+  "try { if ((& python -c 'print(7*6)' 2>$null) -eq '42') { $pyCalisiyor = $true } } catch {}" ^
+  "if (-not $pyCalisiyor) {" ^
   "  $uv = Join-Path $env:APPDATA 'uv\python';" ^
   "  if (Test-Path $uv) {" ^
   "    $py = Get-ChildItem $uv -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'python.exe') } | Select-Object -First 1;" ^

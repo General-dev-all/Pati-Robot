@@ -48,7 +48,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "  Write-Host '  IDF_PATH ortam degiskenini kur ya da ESP-IDF''yi';" ^
   "  Write-Host '  %%USERPROFILE%%\esp\esp-idf altina kur.';" ^
   "  Read-Host '  Kapatmak icin Enter'; exit 1 }" ^
-  "if (-not (Get-Command python -ErrorAction SilentlyContinue)) {" ^
+  "$pyCalisiyor = $false;" ^
+  "try { if ((& python -c 'print(7*6)' 2>$null) -eq '42') { $pyCalisiyor = $true } } catch {}" ^
+  "if (-not $pyCalisiyor) {" ^
   "  $uv = Join-Path $env:APPDATA 'uv\python';" ^
   "  if (Test-Path $uv) {" ^
   "    $py = Get-ChildItem $uv -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'python.exe') } | Select-Object -First 1;" ^
