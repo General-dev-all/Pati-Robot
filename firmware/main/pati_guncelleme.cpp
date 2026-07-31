@@ -133,6 +133,25 @@ std::string json_kacisla(const std::string& ham)
 // surum.json
 // ---------------------------------------------------------------------------
 
+// Gelen govdeyi biriktirir. `perform()` veriyi parca parca bu olayla
+// veriyor; tek seferde okunacak bir tampon YOK.
+esp_err_t manifest_olayi(esp_http_client_event_t* olay)
+{
+    if (olay->event_id != HTTP_EVENT_ON_DATA) return ESP_OK;
+    auto* govde = static_cast<std::string*>(olay->user_data);
+    if (govde == nullptr) return ESP_OK;
+    // Sinir asilirsa yeni parcalari ATIYORUZ. Bozuk/dev bir cevap
+    // yigini tuketmesin; JSON zaten cozulemeyecek ve hata dogru yerden
+    // gelecek.
+    if (govde->size() + static_cast<size_t>(olay->data_len)
+        > static_cast<size_t>(MANIFEST_SINIRI)) {
+        return ESP_OK;
+    }
+    govde->append(static_cast<const char*>(olay->data),
+                  static_cast<size_t>(olay->data_len));
+    return ESP_OK;
+}
+
 bool manifesti_cek(std::string& govde)
 {
     esp_http_client_config_t ayar{};
@@ -140,35 +159,52 @@ bool manifesti_cek(std::string& govde)
     ayar.method = HTTP_METHOD_GET;
     ayar.crt_bundle_attach = esp_crt_bundle_attach;
     ayar.timeout_ms = 15000;
-    ayar.buffer_size = 1024;
+    // 🔴 VARSAYILAN YETMIYOR — indirmedekiyle AYNI sebep.
+    // `releases/latest/download/...` iki kez yonlendiriyor ve ikinci
+    // Location basligi imzali bir adres: olculdu, 897 karakter.
+    ayar.buffer_size = 4096;
     ayar.buffer_size_tx = 1024;
+    ayar.event_handler = manifest_olayi;
+    ayar.user_data = &govde;
 
     esp_http_client_handle_t c = esp_http_client_init(&ayar);
     if (c == nullptr) return false;
 
+    // ---- 🔴 NEDEN perform(), ELLE open/fetch_headers/read DEGIL -------
+    //
+    // 01.08.2026, gercek kartta: manifest cekimi `surum.json HTTP 302`
+    // ile dusuyordu. Sebep, elle akista YONLENDIRMENIN IZLENMEMESI.
+    //
+    // ESP-IDF belgesi acik: `esp_http_client_perform()` iceride
+    // open -> write -> fetch_headers -> read yapiyor VE 30x gorunce
+    // `esp_http_client_set_redirection()` cagiriyor. Elle acilan bir
+    // istekte o adim YOK — 302 sadece bir durum kodu olarak geliyor ve
+    // govde bos kaliyor.
+    //
+    // Kod once elle akisi kullaniyordu ve CALISIYORDU, cunku manifest
+    // `raw.githubusercontent.com`'dan geliyordu ve orasi yonlendirmiyor.
+    // Adres Release'e tasininca kirildi. Yani hata yeni yazilan kodda
+    // degil, DEGISMEYEN kodun yeni ortamdaydi — en sinsi turu.
+    //
+    // ⚠️ `anahtar_dogrula()` hala elle akisi kullaniyor ve BILEREK
+    // oyle birakildi: Google'in REST ucu yonlendirmiyor ve o yol gercek
+    // kartta dogrulandi. Bir gun yonlendirirse belirti burada goruleni
+    // olacak — "HTTP 302" ve bos cevap.
     bool tamam = false;
-    if (esp_http_client_open(c, 0) == ESP_OK
-        && esp_http_client_fetch_headers(c) >= 0) {
+    const esp_err_t s = esp_http_client_perform(c);
+    if (s == ESP_OK) {
         const int kod = esp_http_client_get_status_code(c);
-        std::vector<char> tampon(512);
-        while (static_cast<int>(govde.size()) < MANIFEST_SINIRI) {
-            const int n = esp_http_client_read(c, tampon.data(),
-                                               static_cast<int>(tampon.size()));
-            if (n <= 0) break;
-            govde.append(tampon.data(), static_cast<size_t>(n));
-        }
-        // 404: adres yanlis ya da dosya henuz push edilmemis. Kodu
-        // yaziyoruz, cunku "guncelleme bakilamadi" tek basina hangisi
-        // oldugunu soylemiyor.
         if (kod == 200) {
             tamam = true;
         } else {
+            // 404: henuz hic Release yok, ya da adres yanlis. Kodu
+            // yaziyoruz; "guncelleme bakilamadi" tek basina hangisi
+            // oldugunu soylemiyor.
             ESP_LOGE(ETIKET, "surum.json HTTP %d", kod);
         }
     } else {
-        ESP_LOGE(ETIKET, "surum.json cekilemedi (ag?)");
+        ESP_LOGE(ETIKET, "surum.json cekilemedi: %s", esp_err_to_name(s));
     }
-    esp_http_client_close(c);
     esp_http_client_cleanup(c);
     return tamam;
 }
