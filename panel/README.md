@@ -44,4 +44,22 @@ data, marking itself with a banner so measurements are not mistaken for
 real ones. With a robot present it polls `/api/durum` and switches to
 live values.
 
+The key and update cards have no counterpart on the Python side — one
+lives in the device's NVS, the other writes the device's own flash. In
+bench mode the page simulates both, so the design can be reviewed from a
+phone and cannot quietly differ from what the parent sees.
+
+```
+node panel_test.mjs         loads the page against a stub DOM, once per
+                            sample data set, and fails on a missing
+                            element, an unbound button, or a card that
+                            never drew
+```
+
+It also asserts what the sample sets exist to cover: no warning when the
+key works, a warning when it has never been entered, and — the one that
+matters — no red key warning when the network is simply down. Those
+three lead to different parental actions, and conflating them invites
+paying for an outage.
+
 The user interface is Turkish only.

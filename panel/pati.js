@@ -1157,10 +1157,14 @@ $('#wBagla').addEventListener('click', async () => {
 //
 // Sonuncusu ayri tutulmasaydi en pahali yanlisa yol acardi: wifi
 // koptugu icin susan robota bakip Google'a para yuklemek.
+// `rozet` kartin ustunde tek basina duran YAZININ TAMAMI, bir sifat
+// degil. Once "Anahtar " + rozet diye kuruluyordu ve "Anahtar kota
+// doldu" cikiyordu — Turkce cumle kurmuyor. Ayni tuzak robotun adinda
+// da var (bkz. cocukYaz §"Adin GECTIGI cumle kurulmuyor").
 const ANAHTAR_HALI = {
   yok: {
     agir: true,
-    rozet: 'girilmedi',
+    rozet: 'Anahtar girilmedi',
     baslik: 'Pati’nin Gemini anahtarı gerekiyor',
     yazi: 'Pati konuşmak için Google’ın servisini kullanıyor. '
         + 'aistudio.google.com/apikey adresinden bir anahtar alıp '
@@ -1168,7 +1172,7 @@ const ANAHTAR_HALI = {
   },
   gecersiz: {
     agir: true,
-    rozet: 'geçersiz',
+    rozet: 'Anahtar geçersiz',
     baslik: 'Google anahtarı kabul etmiyor',
     yazi: 'Anahtar yanlış, iptal edilmiş ya da süresi geçmiş olabilir. '
         + 'aistudio.google.com/apikey adresinden yeni bir tane alıp '
@@ -1176,7 +1180,7 @@ const ANAHTAR_HALI = {
   },
   kota: {
     agir: false,
-    rozet: 'kota doldu',
+    rozet: 'Kota doldu',
     baslik: 'Google kotası dolmuş görünüyor',
     yazi: 'Anahtar çalışıyor ama Google şu an istek kabul etmiyor: '
         + 'ücretsiz kota bitmiş ya da hesapta bakiye kalmamış olabilir. '
@@ -1185,7 +1189,7 @@ const ANAHTAR_HALI = {
   },
   ulasilamadi: {
     agir: false,
-    rozet: 'denenemedi',
+    rozet: 'Anahtar denenemedi',
     baslik: 'Google’a ulaşılamıyor',
     yazi: 'Anahtarın durumu şu an öğrenilemiyor — internet bağlantısı '
         + 'kopmuş olabilir. Bu anahtarla ilgili değil; bağlantı '
@@ -1205,7 +1209,7 @@ function anahtarYaz() {
     $('#aDurum').textContent = a.var ? 'Anahtar yazılı' : 'Anahtar yok';
     $('#aNot').textContent = a.var ? 'henüz denenmedi' : '';
   } else if (hal) {
-    $('#aDurum').textContent = 'Anahtar ' + hal.rozet;
+    $('#aDurum').textContent = hal.rozet;
     // Google'in kendi cumlesi (Ingilizce). Anneye yazilmis bir metin
     // degil ama sorun beklenmedik bir seyse tek ipucu bu — ve gizlemek,
     // sebebi bilinen bir hatayi bilinmez yapmak olurdu.

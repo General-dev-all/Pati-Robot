@@ -103,7 +103,14 @@ far is reverted by the bootloader on the next power cycle.
 firmware/test/derle.bat     C++ eye renderer vs. the browser renderer,
                             pixel by pixel; C++ memory engine vs. Python
 python prototype/testler.py prototype behaviour
+node panel/panel_test.mjs   the panel loads against a stub DOM, in each
+                            of the four sample data sets
 ```
+
+The panel check exists because a missing element makes `querySelector`
+return null, and the resulting throw stops the module — so the failure
+is not the card that was edited, it is every card below it. Nothing on
+screen says why.
 
 The host comparisons exist because a port that compiles is not a port
 that behaves identically. Generated headers are produced by
