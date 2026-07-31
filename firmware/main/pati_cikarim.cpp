@@ -9,6 +9,7 @@
 #include <esp_http_client.h>
 #include <esp_log.h>
 
+#include "pati_anahtar.hpp"
 #include "pati_cikarim_uretilmis.h"
 #include "pati_hafiza.hpp"
 
@@ -170,13 +171,15 @@ std::string promptu_kur()
 
 // ---------------------------------------------------------------------------
 
-int cikarim_calistir(const char* api_anahtari)
+int cikarim_calistir()
 {
     if (g_dokum.empty()) return 0;
-    if (api_anahtari == nullptr || api_anahtari[0] == '\0') {
+    const std::string anahtar = anahtar_al();
+    if (anahtar.empty()) {
         ESP_LOGE(ETIKET, "API anahtari yok — cikarim yapilamiyor");
         return -1;
     }
+    const char* api_anahtari = anahtar.c_str();
 
     // --- istek govdesi
     cJSON* k = cJSON_CreateObject();
@@ -227,6 +230,11 @@ int cikarim_calistir(const char* api_anahtari)
 
     std::string cevap;
     int eklenen = -1;
+    // Google'in verdigi durum kodu. `goto bitir` uzerinden atlanabildigi
+    // icin gotolardan ONCE, ilk degeriyle duruyor. 0 kaliyorsa istek hic
+    // gitmemis demektir ve anahtar katmani bunu "ag sorunu" sayiyor —
+    // anahtarin sucu degil.
+    int http_kod = 0;
 
     esp_err_t s = esp_http_client_open(c, static_cast<int>(std::strlen(govde)));
     if (s != ESP_OK) {
@@ -243,6 +251,7 @@ int cikarim_calistir(const char* api_anahtari)
     }
     {
         const int kod = esp_http_client_get_status_code(c);
+        http_kod = kod;
         std::vector<char> tampon(1024);
         while (static_cast<int>(cevap.size()) < CEVAP_SINIRI) {
             const int n = esp_http_client_read(c, tampon.data(),
@@ -322,6 +331,15 @@ bitir:
     esp_http_client_close(c);
     esp_http_client_cleanup(c);
     cJSON_free(govde);
+
+    // ANAHTARIN DURUMUNU BURADAN OGRENIYORUZ.
+    //
+    // Bu, Pati'nin Google'a attigi tek REST istegi — sohbet WebSocket
+    // uzerinden gidiyor ve el sikismasi basarisiz oldugunda HTTP kodu
+    // gorunmuyor. Yani "anahtar gecersiz" ya da "kota doldu" bilgisi
+    // pratikte ILK burada beliriyor, ve panel bunu ayrica bir dogrulama
+    // istegi atmadan gosterebiliyor.
+    anahtar_kod_bildir(http_kod);
     return eklenen;
 }
 

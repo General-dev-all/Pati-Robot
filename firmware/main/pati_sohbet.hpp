@@ -85,4 +85,15 @@ std::uint32_t sohbet_dusen_olay();
 // diye gorunur, sebebi mikrofonda ya da agda aranir. Sayi burada.
 std::uint32_t sohbet_gonderilemeyen();
 
+// Oturumu kapatir, ses ve mikrofon gorevlerini sonlandirir.
+//
+// Guncelleme icin var (pati_guncelleme): indirme sirasinda TLS tamponu
+// ile Gemini'nin TLS'i ayni anda ayakta olunca PSRAM'de sikisiyoruz.
+// Ustelik indirme bitince cihaz yeniden basliyor — cocugun cumlesinin
+// ortasinda kesmektense once susmasi dogru.
+//
+// GERI DONUSU YOK: `sohbet_baslat()` yeniden cagrilmadikca sohbet geri
+// gelmiyor. Guncellemeden sonra cihaz zaten yeniden basliyor.
+void sohbet_durdur();
+
 }  // namespace pati

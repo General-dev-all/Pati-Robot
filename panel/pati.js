@@ -132,6 +132,12 @@ const D = {
   wifi: { ...ORNEK.wifi },
   bagli: ORNEK.bagli,
   kurulum: false,
+  // Gemini anahtari. `durum` firmware'den geliyor ve panelin gosterecegi
+  // uyariyi belirliyor: yok · bilinmiyor · gecerli · gecersiz · kota ·
+  // ulasilamadi (bkz. ANAHTAR_HALI).
+  anahtar: { ...ORNEK.anahtar },
+  // Guncelleme. `durum`: bos · bakiliyor · guncel · var · iniyor · bitti
+  guncelleme: { ...ORNEK.guncelleme },
 };
 
 // ---------------------------------------------------------------------------
@@ -237,6 +243,12 @@ async function reste_cevir(nesne) {
       return gonderJson('/api/hafiza', { id: nesne.id });
     case 'hafiza_sifirla':
       return gonderJson('/api/hafiza', { hepsi: true });
+    case 'anahtar_yaz':
+      return gonderJson('/api/anahtar', { deger: nesne.deger });
+    case 'guncelleme_bak':
+      return gonderJson('/api/guncelleme', { is: 'bak' });
+    case 'guncelleme_kur':
+      return gonderJson('/api/guncelleme', { is: 'kur' });
     case 'ses_dene':
       // Robotta panel YOK: ayarlanan ses robotun kendi
       // hoparlorunden zaten duyulacak. Sahte bir dugme birakmak
@@ -251,6 +263,83 @@ async function reste_cevir(nesne) {
     default:
       console.warn('robot modunda karsiligi olmayan komut:', t);
       return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// TEZGAHTA ANAHTAR VE GUNCELLEME — benzetim
+// ---------------------------------------------------------------------------
+//
+// Bu ikisinin Python tarafinda karsiligi YOK ve olamaz: anahtar robotun
+// NVS'inde duruyor, guncelleme robotun kendi flash'ina yaziyor.
+// Bilgisayarda calisan bir sunucunun ikisini de yapacak bir sey yok.
+//
+// Ama TASARIMLARI incelenebilmeli. TELEFONDAN-INCELE.bat ile bakilan
+// panel, annenin gordugu panelin AYNISI olmali — kart varsa ikisinde de
+// var, uyari kirmiziysa ikisinde de kirmizi. Aksi halde burada
+// onaylanan bir tasarimin robotta baska gorunmesi mumkun olur ve o
+// zaman testin hicbir seyi dogrulamadigi anlasilmaz.
+//
+// O yuzden tezgahta bu komutlar sunucuya HIC gitmiyor; burada, gercek
+// firmware'in yaptigi durum gecislerinin aynisi taklit ediliyor.
+// Gecikmeler de uydurma degil: 1,2 sn agdan cevap beklemenin, ~25 sn de
+// 1,4 MB'in ev wifi'sinden inmesinin kabaca karsiligi.
+//
+// Hangi sonucun cikacagini VERI TAKIMI belirliyor (ornek.js): `zor`
+// takiminda anahtar kotasi doluyor, otekilerde calisiyor. Boylece
+// uyarinin kirmizi ve sari hali de, "guncelleme yok" hali de
+// gorulebiliyor:  panel/?veri=zor
+let tezgah_sayac = null;
+
+function tezgah_komut(nesne) {
+  const gecikmeli = (ms, is) => { setTimeout(is, ms); return true; };
+
+  switch (nesne.tip) {
+    case 'anahtar_yaz':
+      return gecikmeli(1200, () => {
+        // Kaydedilen anahtarin son dort karakteri — firmware de tam
+        // bunu geri gonderiyor, anahtarin kendisini degil.
+        const d = ORNEK.anahtar.kaydedince || 'gecerli';
+        D.anahtar = {
+          var: true,
+          durum: d,
+          kuyruk: nesne.deger.slice(-4),
+          ayrinti: d === 'kota'
+            ? 'You exceeded your current quota, please check your plan '
+              + 'and billing details.'
+            : '',
+        };
+        anahtarYaz();
+        tost(d === 'gecerli' ? 'Anahtar çalışıyor ✓' : 'Anahtar kabul edilmedi',
+             d !== 'gecerli');
+      });
+
+    case 'guncelleme_bak':
+      return gecikmeli(1200, () => {
+        const o = ORNEK.guncelleme;
+        D.guncelleme = { ...D.guncelleme, ...o.bakinca };
+        guncellemeYaz();
+      });
+
+    case 'guncelleme_kur':
+      // Cubugu gercekten yuruttuyoruz: yerlesim %0'da bozulmuyor ama
+      // %100'de ya da uc haneli yuzde yazisinda bozulabilir.
+      if (tezgah_sayac) clearInterval(tezgah_sayac);
+      tezgah_sayac = setInterval(() => {
+        const y = (D.guncelleme.yuzde || 0) + 4;
+        if (y >= 100) {
+          clearInterval(tezgah_sayac);
+          tezgah_sayac = null;
+          D.guncelleme = { ...D.guncelleme, durum: 'bitti', yuzde: 100 };
+        } else {
+          D.guncelleme = { ...D.guncelleme, durum: 'iniyor', yuzde: y };
+        }
+        guncellemeYaz();
+      }, 1000);
+      return true;
+
+    default:
+      return false;
   }
 }
 
@@ -269,6 +358,12 @@ function gonder(nesne) {
       .catch(() => tost('Pati\'ye ulaşılamadı', true));
     return true;
   }
+  // Tezgahta anahtar ve guncelleme sunucuya GITMIYOR, burada taklit
+  // ediliyor (yukarida gerekcesi). Bu kontrol WebSocket'ten ONCE
+  // olmali: Python bu komutlari tanimiyor ve sessizce yutardi — dugme
+  // basilir, hicbir sey olmaz, sebebi de gorunmezdi.
+  if (tezgah_komut(nesne)) return true;
+
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(nesne));
     return true;
@@ -323,6 +418,26 @@ function durumu_uygula(d) {
   // ifadesini model de secebiliyor, yani uyanikken de gorulebilir.
   if (typeof d.uyuyor === 'boolean') {
     D.uyuyor = d.uyuyor;
+  }
+  if (d.anahtar) {
+    D.anahtar = {
+      var: !!d.anahtar.var,
+      durum: d.anahtar.durum || 'bilinmiyor',
+      kuyruk: d.anahtar.kuyruk || '',
+      ayrinti: d.anahtar.ayrinti || '',
+    };
+    anahtarYaz();
+  }
+  if (d.guncelleme) {
+    D.guncelleme = {
+      durum: d.guncelleme.durum || 'bos',
+      suAnki: d.guncelleme.su_anki || '',
+      yeni: d.guncelleme.yeni || '',
+      notlar: d.guncelleme.notlar || '',
+      yuzde: d.guncelleme.yuzde || 0,
+      hata: d.guncelleme.hata || '',
+    };
+    guncellemeYaz();
   }
   D.calisiyor = !!(d.ag && d.ag.bagli);
   durumYaz();
@@ -559,7 +674,6 @@ let serit = null;
 function seritGuncelle() {
   if (D.canli) {
     if (serit) { serit.remove(); serit = null; }
-    $('#surum').textContent = '';
     return;
   }
   if (serit) return;
@@ -573,7 +687,8 @@ function seritGuncelle() {
         ? 'örnek veri · Pati çalışmıyor'
         : `örnek veri: ${TAKIM_ADI} · Pati çalışmıyor`);
   document.body.prepend(serit);
-  $('#surum').textContent = ORNEK.surum;
+  // Surum yazisi artik Guncelleme kartinda ve guncellemeYaz() yaziyor.
+  // Iki yerden birden yazilsaydi biri otekini eziyordu.
 }
 
 // ---------------------------------------------------------------------------
@@ -1016,6 +1131,212 @@ $('#wBagla').addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Gemini anahtari
+// ---------------------------------------------------------------------------
+//
+// Pati konusmak icin Google'in servisini kullaniyor; anahtar faturanin
+// kime yazilacagini soyluyor. Anahtar ROBOTTA duruyor, firmware'in
+// icinde degil — yoksa guncelleme dosyasiyla birlikte herkese acilirdi
+// (firmware/main/pati_anahtar.hpp).
+//
+// 🔴 ANAHTARIN KENDISI HIC GERI GELMIYOR. Firmware yalnizca son dort
+// karakteri gonderiyor. Panel ev agindaki herkese acik ve anahtar
+// kutuda dolu dursaydi aga giren biri onu okurdu. Bu yuzden kutu her
+// zaman BOS aciliyor: gorunen sey "yazili olan" degil, "yazilacak olan".
+
+// Durumdan anneye gorunen hal. Uc sey birden lazim: BASLIK (ne oldu),
+// YAZI (ne yapmali) ve AGIRLIK (kirmizi mi sari mi).
+//
+// "Pati konusmuyor" tek basina bir ise yaramiyor; yapilacak sey sebebe
+// gore degisiyor ve metin onu SOYLEMEK zorunda:
+//
+//   gecersiz  yeni anahtar yazacak
+//   kota      Google'a para yukleyecek (ya da baska anahtar)
+//   yok       ilk kurulum, anahtar hic girilmemis
+//   ulasilamadi  HICBIR SEY yapmayacak — ag sorunu, kendi duzelir
+//
+// Sonuncusu ayri tutulmasaydi en pahali yanlisa yol acardi: wifi
+// koptugu icin susan robota bakip Google'a para yuklemek.
+const ANAHTAR_HALI = {
+  yok: {
+    agir: true,
+    rozet: 'girilmedi',
+    baslik: 'Pati’nin Gemini anahtarı gerekiyor',
+    yazi: 'Pati konuşmak için Google’ın servisini kullanıyor. '
+        + 'aistudio.google.com/apikey adresinden bir anahtar alıp '
+        + 'aşağıya yapıştırın. Bir kez yapılıyor.',
+  },
+  gecersiz: {
+    agir: true,
+    rozet: 'geçersiz',
+    baslik: 'Google anahtarı kabul etmiyor',
+    yazi: 'Anahtar yanlış, iptal edilmiş ya da süresi geçmiş olabilir. '
+        + 'aistudio.google.com/apikey adresinden yeni bir tane alıp '
+        + 'yazın. Pati o zamana kadar konuşamaz.',
+  },
+  kota: {
+    agir: false,
+    rozet: 'kota doldu',
+    baslik: 'Google kotası dolmuş görünüyor',
+    yazi: 'Anahtar çalışıyor ama Google şu an istek kabul etmiyor: '
+        + 'ücretsiz kota bitmiş ya da hesapta bakiye kalmamış olabilir. '
+        + 'Google hesabına bakiye yükleyin, ya da başka bir anahtar yazın. '
+        + 'Geçici bir hız sınırıysa kendiliğinden düzelir.',
+  },
+  ulasilamadi: {
+    agir: false,
+    rozet: 'denenemedi',
+    baslik: 'Google’a ulaşılamıyor',
+    yazi: 'Anahtarın durumu şu an öğrenilemiyor — internet bağlantısı '
+        + 'kopmuş olabilir. Bu anahtarla ilgili değil; bağlantı '
+        + 'gelince kendiliğinden düzelir.',
+  },
+};
+
+function anahtarYaz() {
+  const a = D.anahtar;
+  const hal = ANAHTAR_HALI[a.durum];
+
+  // --- kartin kendi satiri
+  if (a.durum === 'gecerli') {
+    $('#aDurum').textContent = 'Anahtar çalışıyor';
+    $('#aNot').textContent = a.kuyruk ? `…${a.kuyruk} ile biten` : '';
+  } else if (a.durum === 'bilinmiyor') {
+    $('#aDurum').textContent = a.var ? 'Anahtar yazılı' : 'Anahtar yok';
+    $('#aNot').textContent = a.var ? 'henüz denenmedi' : '';
+  } else if (hal) {
+    $('#aDurum').textContent = 'Anahtar ' + hal.rozet;
+    // Google'in kendi cumlesi (Ingilizce). Anneye yazilmis bir metin
+    // degil ama sorun beklenmedik bir seyse tek ipucu bu — ve gizlemek,
+    // sebebi bilinen bir hatayi bilinmez yapmak olurdu.
+    $('#aNot').textContent = a.ayrinti || '';
+  }
+  $('#aDurum').className = (a.durum === 'gecerli') ? 'iyi' : '';
+
+  // --- ustteki uyari bandi
+  const u = $('#anahtarUyari');
+  if (!hal) {
+    u.hidden = true;
+    return;
+  }
+  u.hidden = false;
+  u.className = 'uyari' + (hal.agir ? ' agir' : '');
+  $('#anahtarUyariBaslik').textContent = hal.baslik;
+  $('#anahtarUyariYazi').textContent = hal.yazi;
+}
+
+function anahtarPaneliAc() {
+  $('#aPanel').hidden = false;
+  $('#aGiris').value = '';
+}
+
+$('#aDegistir').addEventListener('click', () => {
+  const p = $('#aPanel');
+  p.hidden = !p.hidden;
+  if (!p.hidden) $('#aGiris').value = '';
+});
+
+$('#anahtarUyariDugme').addEventListener('click', () => {
+  anahtarPaneliAc();
+  $('#anahtarKart').scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
+$('#aGoster').addEventListener('change', (e) => {
+  $('#aGiris').type = e.target.checked ? 'text' : 'password';
+});
+
+$('#aKaydet').addEventListener('click', () => {
+  const deger = $('#aGiris').value.trim();
+  if (!deger) { tost('Önce anahtarı yapıştırın', true); return; }
+
+  // Iyimser gosterim: durum HEMEN "deneniyor"a geciyor. Firmware
+  // sinamayi arka planda yapiyor ve sonuc iki saniyelik yoklamayla
+  // geliyor; o ana kadar hicbir sey degismezse anne dugmenin calisip
+  // calismadigini bilemez.
+  D.anahtar = { ...D.anahtar, var: true, durum: 'bilinmiyor', ayrinti: '' };
+  anahtarYaz();
+  $('#aGiris').value = '';
+  $('#aPanel').hidden = true;
+
+  if (gonder({ tip: 'anahtar_yaz', deger })) {
+    tost('Anahtar kaydedildi · deneniyor');
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Guncelleme
+// ---------------------------------------------------------------------------
+//
+// Pati kendini yeniliyor: yeni surum GitHub'da duruyor, Pati oradan
+// indirip yaziyor ve yeniden basliyor. Bilgisayar, kablo, program
+// yuklemek yok.
+//
+// Panel burada SADECE iki dugme: "kontrol et" ve "guncelle". Isin
+// tamami firmware'de (pati_guncelleme.cpp) ve durum /api/durum
+// yoklamasindan geliyor — ayri bir baglanti acilmiyor.
+
+const GUNCELLEME_YAZI = {
+  bos: '',
+  bakiliyor: 'bakılıyor…',
+  guncel: 'en son sürüm',
+  var: 'yeni sürüm var',
+  iniyor: 'indiriliyor…',
+  bitti: 'yeniden başlıyor…',
+};
+
+function guncellemeYaz() {
+  const g = D.guncelleme;
+
+  $('#gSurum').textContent = g.suAnki ? `Sürüm ${g.suAnki}` : '—';
+  $('#gNot').textContent = g.hata || GUNCELLEME_YAZI[g.durum] || '';
+  $('#gNot').className = g.hata ? 'dikkat' : '';
+
+  // "Yeni sürüm var" kutusu: sürüm numarası + Mert'in yazdığı not.
+  const yeniVar = g.durum === 'var';
+  $('#gYeni').hidden = !yeniVar;
+  if (yeniVar) {
+    $('#gNotlar').textContent = g.notlar
+      ? `${g.yeni} · ${g.notlar}`
+      : `${g.yeni} sürümüne güncellenecek.`;
+  }
+
+  // Ilerleme cubugu. "bitti"de de duruyor ve %100 gosteriyor: cihaz
+  // yeniden baslarken cubugun kaybolmasi, isin yarida kaldigi
+  // izlenimini verirdi.
+  const iniyor = g.durum === 'iniyor' || g.durum === 'bitti';
+  $('#gIlerleme').hidden = !iniyor;
+  if (iniyor) {
+    $('#gCubuk').style.width = `${g.yuzde || 0}%`;
+    $('#gYuzde').textContent = g.durum === 'bitti'
+      ? 'Yazıldı · Pati yeniden başlıyor. Bu sayfa birazdan kendiliğinden '
+        + 'geri gelir.'
+      : `%${g.yuzde || 0} indi · Pati’nin fişini çekmeyin.`;
+  }
+
+  // Indirme sirasinda iki dugme de kilitli: ikinci bir indirme ayni
+  // bolume yazmaya kalkardi. Firmware bunu ayrica engelliyor ama
+  // basilabilen bir dugmenin hicbir sey yapmamasi da yanlis.
+  const mesgul = g.durum === 'bakiliyor' || iniyor;
+  $('#gBak').disabled = mesgul;
+  $('#gKur').disabled = mesgul;
+  $('#gBak').textContent = g.durum === 'bakiliyor' ? 'bakılıyor…' : 'Kontrol et';
+}
+
+$('#gBak').addEventListener('click', () => {
+  D.guncelleme = { ...D.guncelleme, durum: 'bakiliyor', hata: '' };
+  guncellemeYaz();
+  gonder({ tip: 'guncelleme_bak' });
+});
+
+$('#gKur').addEventListener('click', () => {
+  if (!confirm('Pati güncellensin mi?\n\nBir dakika kadar susar ve '
+             + 'yeniden başlar. Hafızası ve ayarları korunur.')) return;
+  D.guncelleme = { ...D.guncelleme, durum: 'iniyor', yuzde: 0, hata: '' };
+  guncellemeYaz();
+  gonder({ tip: 'guncelleme_kur' });
+});
+
+// ---------------------------------------------------------------------------
 // Cocuk bilgisi
 // ---------------------------------------------------------------------------
 
@@ -1173,6 +1494,8 @@ seslerYaz();
 konusmaYaz();
 uykuYaz();
 wifiYaz();
+anahtarYaz();
+guncellemeYaz();
 cocukYaz();
 hafizaYaz();
 durumYaz();
@@ -1211,6 +1534,17 @@ seritGuncelle();
         if (D.kurulum) {
           wifiPaneliAc();
           $('#wPanel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (D.anahtar.durum === 'yok') {
+          // ANAHTAR HIC GIRILMEMIS: kutuyu kendiliginden ac.
+          //
+          // Wifi kurulumundaki gerekcenin aynisi. Anne buraya tek bir is
+          // icin gelmis — Pati konusmuyor — ve o isi "Değiştir"
+          // dugmesinin arkasinda saklamak dogru degil. Wifi kurulumu
+          // varsa ONCE o bitiyor: anahtari sinamak icin zaten internet
+          // gerekiyor.
+          anahtarPaneliAc();
+          $('#anahtarKart').scrollIntoView({ behavior: 'smooth',
+                                            block: 'center' });
         }
         // 2 saniye: ifade aynasi akici gorunsun ama ESP32'yi de
         // gereksiz mesgul etmesin. Sohbet gorevinin onunde degil

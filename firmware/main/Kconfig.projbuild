@@ -15,15 +15,37 @@ menu "Pati"
         string "Ev wifi sifresi"
         default ""
 
-    config PATI_GEMINI_API_KEY
-        string "Gemini API anahtari"
-        default ""
-        help
-            Google AI Studio anahtari. Gemini Live baglantisi bunu URL
-            sorgu parametresi olarak gonderiyor (?key=...).
+    # -----------------------------------------------------------------------
+    # 🔴 PATI_GEMINI_API_KEY BURADAN KALDIRILDI — geri EKLEMEYIN.
+    # -----------------------------------------------------------------------
+    #
+    # Anahtar artik cihazda, kendi NVS bolumunde duruyor ve panelden
+    # giriliyor (pati_anahtar.cpp).
+    #
+    # Sebep: panelden guncelleme, `pati.bin`'in GitHub'a konmasini
+    # gerektiriyor. Anahtar derlemede gomulu kalsaydi her surumle birlikte
+    # herkese acilir, faturayi da anahtarin sahibi oderdi.
+    #
+    # Kconfig girdisi silindi ki kimse "sadece kendi kartim icin"
+    # doldurup yayimlamasin. Ayar orada dursaydi bunun bir gun olmasi
+    # kesindi ve fark edilmesi imkansiz olurdu — bir dosyanin icinde
+    # sessizce duran 39 karakter.
 
-            Gercek robotta anahtar NVS'te duracak ve panelden girilecek —
-            derlemede gomulu KALMAYACAK.
+    config PATI_GUNCELLEME_ADRESI
+        string "Guncelleme bilgisi (surum.json) adresi"
+        default "https://raw.githubusercontent.com/General-dev-all/Pati-Robot/main/surum.json"
+        help
+            Pati "guncellemeleri kontrol et" dendiginde bu adresi cekiyor
+            ve icindeki surumu kendi surumuyle karsilastiriyor.
+
+            Depodaki surum.json'a bakiyor, Release'e degil: dosya kucuk,
+            kaynak dosyasi ve gecmisi git'te gorunuyor. Indirilecek
+            pati.bin'in adresi ise o dosyanin ICINDE yaziyor ve Release'i
+            gosteriyor — 1,4 MB'lik ikili dosya depoya girmiyor.
+
+            HTTPS OLMAK ZORUNDA. Duz HTTP'de araya giren biri robota
+            istedigi kodu yukleyebilir. Firmware ayrica indirme adresinin
+            de https oldugunu ayrica denetliyor.
 
     config PATI_MODEL
         string "Gemini Live model adi"

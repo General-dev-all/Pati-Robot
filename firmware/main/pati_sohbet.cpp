@@ -18,6 +18,7 @@
 #include <conversation/gemini_live_client.hpp>
 
 #include "pati_kisilik_uretilmis.h"
+#include "pati_anahtar.hpp"
 #include "pati_ayar.hpp"
 #include "pati_cikarim.hpp"
 #include "pati_gozler.hpp"
@@ -201,7 +202,7 @@ void uyu()
     // BLOKLUYOR (~2-10 sn) ama sorun degil: oturum kapali, ses yolu
     // bos, cocuk ortada yok.
     if (cikarim_dokum_var()) {
-        const int n = cikarim_calistir(CONFIG_PATI_GEMINI_API_KEY);
+        const int n = cikarim_calistir();
         if (n > 0) {
             ESP_LOGI(ETIKET, "%d yeni bilgi ogrenildi", n);
             // Prompt bir sonraki uyanmada yeniden kuruluyor; yeni
@@ -227,6 +228,13 @@ void uyandir()
     const auto sonuc = g_istemci->start(g_ayar);
     if (!sonuc.has_value()) {
         ESP_LOGE(ETIKET, "uyanamadi — tekrar denenecek");
+        // SEBEBINI SOR. WebSocket el sikismasi basarisiz oldugunda HTTP
+        // kodu gorunmuyor: "anahtar iptal edilmis" ile "wifi koptu" ayni
+        // hataya benziyor. Anahtar katmani kucuk bir REST istegiyle
+        // ayirt ediyor ve panel dogru olani yaziyor. Kendini dakikada
+        // bire sinirliyor, yani uyanma dongusunde her denemede istek
+        // atilmiyor.
+        anahtar_baglanti_hatasi();
         g_uykuda = true;
         return;
     }
@@ -270,6 +278,7 @@ void yenileme_gerekirse()
     if (!sonuc.has_value()) {
         // Bayragi BIRAKMIYORUZ: bir sonraki bosta tekrar denenecek.
         ESP_LOGE(ETIKET, "yenileme basarisiz, tekrar denenecek");
+        anahtar_baglanti_hatasi();
         return;
     }
 
@@ -636,10 +645,17 @@ void mik_gorevi(void* /*arg*/)
 
 esp_err_t sohbet_baslat()
 {
-    if (std::strlen(CONFIG_PATI_GEMINI_API_KEY) == 0) {
-        ESP_LOGE(ETIKET, "Gemini API anahtari BOS.");
-        ESP_LOGE(ETIKET, "  sdkconfig.defaults.local dosyasini doldur,");
-        ESP_LOGE(ETIKET, "  sonra sdkconfig'i SIL ve yeniden derle.");
+    // ANAHTAR ARTIK PANELDEN. Eskiden burada Kconfig'e bakiliyor ve bos
+    // ise app_main programi durduruyordu — anahtar derleme zamani
+    // geldigi icin dogruydu, "bos" demek "yanlis derledin" demekti.
+    //
+    // Simdi bos olmasi NORMAL bir hal: kutudan yeni cikmis robotta
+    // anahtar yok ve anne panele girip yazacak. Durmak yerine geri
+    // donuyoruz; app_main bekliyor, panel ne yapilmasi gerektigini
+    // yaziyor.
+    const std::string anahtar = anahtar_al();
+    if (anahtar.empty()) {
+        ESP_LOGW(ETIKET, "Gemini anahtari yok — panelden girilmesi bekleniyor");
         return ESP_ERR_INVALID_STATE;
     }
 
@@ -673,12 +689,27 @@ esp_err_t sohbet_baslat()
     ESP_LOGI(ETIKET, "sistem promptu %d karakter (prototype/kisilik.py'den)",
              PROMPT_KARAKTER);
 
-    g_istemci = std::make_unique<GeminiLiveClient>(CONFIG_PATI_GEMINI_API_KEY);
+    g_istemci = std::make_unique<GeminiLiveClient>(anahtar);
     g_istemci->set_event_callback(olay_geldi);
 
     const auto sonuc = g_istemci->start(g_ayar);
     if (!sonuc.has_value()) {
         ESP_LOGE(ETIKET, "Gemini baglantisi baslatilamadi");
+        // Anahtar mi bozuk, ag mi kopuk? Panelin dogru olani yazabilmesi
+        // icin soruyoruz. Bu, kutudan cikan robotta anahtar YANLIS
+        // yazildiginda ilk anda gorulen tek isaret.
+        anahtar_baglanti_hatasi();
+
+        // Temizlik. app_main tekrar deneyecek ve her denemede yeni bir
+        // kuyruk ayirmak bellegi sizdirirdi.
+        //
+        // ⚠️ SIRA ONEMLI: once ISTEMCI, sonra kuyruk. Istemcinin geri
+        // cagirimi (olay_geldi) kuyruga yaziyor ve istemci kendi
+        // gorevinde calisiyor. Kuyrugu once silseydik, o gorev henuz
+        // kapanmamisken silinmis bir kuyruga yazabilirdi.
+        g_istemci.reset();
+        vQueueDelete(g_kuyruk);
+        g_kuyruk = nullptr;
         return ESP_FAIL;
     }
 
@@ -720,6 +751,28 @@ std::uint32_t sohbet_dusen_olay()
 std::uint32_t sohbet_gonderilemeyen()
 {
     return g_gonderilemeyen;
+}
+
+void sohbet_durdur()
+{
+    if (!g_calisiyor) return;
+
+    ESP_LOGW(ETIKET, "sohbet durduruluyor");
+
+    // Bayrak ONCE. Iki gorev de `while (g_calisiyor)` uzerinde donuyor;
+    // once oturumu kapatsaydik, mikrofon gorevi kapali baglantiya
+    // yazmaya devam ederdi. Ayni sira yenilemede de kullaniliyor ve
+    // sebebi orada yazili: Python'da tam bu eksikti ve programi
+    // cokertmisti.
+    g_calisiyor = false;
+
+    // Gorevlerin donguden cikmasi icin bir tur bekle. Mikrofon gorevi
+    // en fazla bir okuma suresi kadar bloklu kaliyor (200 ms).
+    vTaskDelay(pdMS_TO_TICKS(400));
+
+    if (g_istemci) g_istemci->stop();
+    kullanim_duraklat();
+    gozler_bos();
 }
 
 }  // namespace pati

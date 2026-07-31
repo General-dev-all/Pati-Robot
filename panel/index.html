@@ -57,6 +57,17 @@
 
   <div class="kartlar">
 
+    <!-- ANAHTAR UYARISI — Pati susmuşsa sebebi burada yazıyor.
+         Kartın kendi içinde de aynı bilgi var ama oraya inmek için
+         sayfayı kaydırmak gerekiyor. Pati konuşmuyorsa anne panele TAM
+         bunun için giriyor; cevabı aramak zorunda kalmamalı.
+         Sorun yokken görünmüyor (hidden). -->
+    <div class="uyari" id="anahtarUyari" hidden>
+      <b id="anahtarUyariBaslik">—</b>
+      <p id="anahtarUyariYazi">—</p>
+      <button id="anahtarUyariDugme" class="ikincil ince">Anahtarı düzelt</button>
+    </div>
+
     <section class="kart durum">
       <div class="dt">
         <span>Ağ</span>
@@ -200,6 +211,85 @@
       </p>
     </section>
 
+    <!-- GEMİNİ ANAHTARI
+         Pati konuşmak için Google'ın servisini kullanıyor ve bu anahtar
+         onun faturasını kime yazacağını söylüyor. Robotta duruyor,
+         firmware'in içinde DEĞİL — yoksa güncelleme dosyasıyla birlikte
+         herkese açılırdı (pati_anahtar.hpp).
+
+         Giriş kutusu Wifi şifresi gibi düğme arkasında duruyor, ve
+         sebebi aynı: iOS'un captive portal penceresi sayfadaki İLK
+         görünür metin kutusuna kendiliğinden odaklanıyor, klavye
+         açılıyor ve sayfa gezilemez hale geliyor (pati.js §İSTENMEYEN
+         ODAK). Anahtar hiç girilmemişse kutu kendiliğinden açılıyor —
+         anne o an zaten bunun için gelmiş oluyor. -->
+    <section class="kart" id="anahtarKart">
+      <h2>Gemini anahtarı</h2>
+      <div class="satir-arasi">
+        <div>
+          <b id="aDurum">—</b>
+          <small id="aNot">—</small>
+        </div>
+        <button id="aDegistir" class="ikincil ince">Değiştir</button>
+      </div>
+
+      <div id="aPanel" hidden>
+        <label class="kd">
+          <span class="kd-ust"><span>Anahtarı yapıştır</span></span>
+          <input id="aGiris" type="password" placeholder="AIza…"
+                 autocomplete="off" autocapitalize="off" spellcheck="false">
+        </label>
+        <label class="anahtar">
+          <span>Anahtarı göster</span>
+          <input id="aGoster" type="checkbox">
+        </label>
+        <button id="aKaydet" class="birincil genis">Kaydet</button>
+        <p class="ip">
+          <b>aistudio.google.com/apikey</b> adresinden alınıyor.
+          Tamamını kopyalayıp yapıştırın — yarım kopyalanan anahtar
+          kabul edilmez.
+        </p>
+      </div>
+
+      <p class="ip">
+        Bir kez yazılıyor, Pati'de kalıyor.
+        <b>Fabrika ayarlarına dönmek bunu silmez.</b>
+      </p>
+    </section>
+
+    <!-- GÜNCELLEME
+         Pati kendini yeniliyor: bilgisayara takmak, kablo, program
+         yüklemek yok. Yeni sürüm GitHub'da duruyor, Pati oradan
+         indiriyor.
+
+         "Gelişmiş"in içine konmadı: anne bunu bulabilmeli. Ama en üste
+         de konmadı — günlük bir iş değil. -->
+    <section class="kart">
+      <h2>Güncelleme</h2>
+      <div class="satir-arasi">
+        <div>
+          <b id="gSurum">—</b>
+          <small id="gNot">—</small>
+        </div>
+        <button id="gBak" class="ikincil ince">Kontrol et</button>
+      </div>
+
+      <div id="gYeni" hidden>
+        <div class="kutu-bilgi" id="gNotlar">—</div>
+        <button id="gKur" class="birincil genis">Güncelle</button>
+      </div>
+
+      <div id="gIlerleme" hidden>
+        <div class="cubuk"><div class="cubuk-ic" id="gCubuk"></div></div>
+        <p class="ip" id="gYuzde">—</p>
+      </div>
+
+      <p class="ip">
+        Güncellenirken Pati susar ve kendini yeniden başlatır.
+        <b>Bir dakika kadar sürer.</b> Hafızası ve ayarları korunur.
+      </p>
+    </section>
+
     <section class="kart">
       <h2>Kişi bilgisi</h2>
 
@@ -254,7 +344,9 @@
     <details class="kart gelismis">
       <summary>Gelişmiş</summary>
       <button class="tehlike genis" id="fabrika">Fabrika ayarlarına dön</button>
-      <p class="ip" id="surum">—</p>
+      <!-- Sürüm yazısı buradan Güncelleme kartına taşındı: sürümün
+           tek bir yerde görünmesi gerekiyor ve doğru yer, "yeni sürüm
+           var mı" sorusunun sorulduğu yer. -->
     </details>
 
   </div>

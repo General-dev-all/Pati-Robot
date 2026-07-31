@@ -56,7 +56,7 @@ refuses to run under MSYS.
 
 ```
 cp firmware/sdkconfig.defaults.local.ornek firmware/sdkconfig.defaults.local
-# fill in Wi-Fi credentials and a Gemini API key
+# fill in Wi-Fi credentials
 
 . "$IDF_PATH/export.ps1"
 cd firmware
@@ -65,6 +65,35 @@ idf.py -p <PORT> flash monitor
 
 `firmware/KARTA-YUKLE.bat` does the same on Windows and finds the
 serial port itself.
+
+No API key is built in. The Gemini key is entered from the parent panel
+and stored on the device, so the image contains no secret and can be
+published. The partition table is custom
+([`firmware/partitions.csv`](firmware/partitions.csv)) and must be
+written over USB — `idf.py flash`, not `app-flash`.
+
+## Updates
+
+The panel checks [`surum.json`](surum.json) at the repository root,
+compares the version against its own, and downloads the binary named
+there from a GitHub release. Nothing else is involved: no update server,
+no companion app.
+
+```
+firmware/surum.txt          the single source of the version; raise it
+firmware/YENI-SURUM.bat     builds, then rewrites surum.json to match
+```
+
+Publishing is two steps in this order: attach `pati.bin` to the release
+first, then push. `surum.json` is what the device polls, so pushing it
+before the file exists advertises an update that 404s.
+
+The binary is not committed. The panel is compiled into it, so a panel
+change ships as a firmware update — which is why the two cannot drift.
+
+Rollback is enabled: a new image boots on trial and is only marked good
+once the network stack and panel are up. An image that cannot get that
+far is reverted by the bootloader on the next power cycle.
 
 ---
 
@@ -90,8 +119,17 @@ and serves a captive portal for Wi-Fi setup. Once connected it
 advertises itself over mDNS and the panel is reachable at `pati.local`.
 
 The panel covers voice and rate, response latency, sleep threshold,
-usage and estimated cost, the robot's name, and the facts it has
-retained. The interface is Turkish only.
+usage and estimated cost, the robot's name, the facts it has retained,
+the Gemini key, and firmware updates. The interface is Turkish only.
+
+Setup is Wi-Fi, then the key. Until a key is entered the robot has a
+face but no voice, and the panel says so rather than leaving the parent
+to guess.
+
+When Google rejects a request the panel distinguishes the cases, because
+the parent's next action differs: a rejected key needs replacing, an
+exhausted quota needs credit, and an unreachable network needs nothing
+at all. Collapsing the three would invite paying for an outage.
 
 ---
 

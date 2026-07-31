@@ -1,0 +1,62 @@
+# Pati — bolum tablosu
+#
+# ===========================================================================
+# BU DOSYA KABLOYLA YUKLENIR. OTA ILE DEGISTIRILEMEZ.
+# ===========================================================================
+#
+# Bolum tablosu flash'in 0x8000 adresinde duruyor ve OTA yalnizca uygulama
+# bolumlerini yaziyor — tabloyu degil. Yani Pati govdeye girdikten sonra bu
+# dosyada yapilan hicbir degisiklik cihaza ULASAMAZ; kutuyu acip USB takmak
+# gerekir.
+#
+# Bu yuzden tablo BASTAN genis tasarlandi: uygulama 1,37 MB, slotlar 4 MB.
+# Uc kat buyume payi var ve 7,8 MB flash hala bos duruyor.
+#
+# ===========================================================================
+# NEDEN OZEL TABLO — hazir olanlar neden yetmiyor
+# ===========================================================================
+#
+# ESP-IDF'in hazir "two_ota" tablosu bu isi gorurdu ama iki eksigi var:
+#
+#   1. nvs'i 0x4000'e dusuruyor (otadata'ya yer acmak icin 0x9000'den
+#      sonrasini kaydiriyor). Buradaki nvs 0x6000 ve ICINDE VERI VAR:
+#      wifi bilgisi, Pati'nin hafizasi, kullanim sayaclari. Adres ya da
+#      boy degisirse NVS bicimi bozulur ve app_main onu SILIP yeniden
+#      kurar (nvs_flash_erase). Anne robotu guncelledi diye cocugunun
+#      adini unutmasi kabul edilemez.
+#
+#      Bu yuzden nvs BILEREK 0x9000 / 0x6000'de birakildi — tek_uygulama
+#      tablosundaki ADRESIN VE BOYUN AYNISI. Kabloyla yeni tabloya
+#      gecerken eski veri oldugu yerde duruyor.
+#
+#   2. Ayri bir anahtar bolumu yok (asagi bak).
+#
+# ===========================================================================
+# "anahtar" NEDEN AYRI BIR NVS BOLUMU
+# ===========================================================================
+#
+# Icinde tek bir sey var: Gemini API anahtari. Ayri durmasinin iki
+# gerekcesi var, ikisi de yasanmis senaryodan:
+#
+#   FABRIKA AYARLARI. Panel "fabrika ayarlarina don" dedigi zaman wifi,
+#   hafiza ve ayarlar siliniyor. Anahtar SILINMEMELI: annenin Google
+#   hesabindan aldigi, panele elle yazdigi bir sey ve robotu sifirlamak
+#   onu geri yazmayi gerektirmemeli.
+#
+#   NVS BOZULMASI. Bu robotun BEKLENEN kapanma bicimi fisin cekilmesi
+#   (README). Yarim kalan bir yazma NVS'i bozabiliyor ve app_main bozuk
+#   NVS'i silip yeniden kuruyor — dogru davranis, ama "nvs" bolumunu
+#   siliyor. Anahtar baska bolumde oldugu icin o silmeden etkilenmiyor.
+#
+# Uc sektor (0x3000) NVS'in izin verdigi en kucuk boy. 39 karakterlik bir
+# anahtar icin fazlasiyla yeterli.
+#
+# ===========================================================================
+#
+# Ad,       Tur,  AltTur,   Adres,     Boy
+nvs,        data, nvs,      0x9000,    0x6000,
+otadata,    data, ota,      0xf000,    0x2000,
+phy_init,   data, phy,      0x11000,   0x1000,
+anahtar,    data, nvs,      0x12000,   0x3000,
+ota_0,      app,  ota_0,    0x20000,   0x400000,
+ota_1,      app,  ota_1,    0x420000,  0x400000,

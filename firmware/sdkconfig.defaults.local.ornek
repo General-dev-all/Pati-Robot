@@ -3,9 +3,9 @@
 #
 #     kopyala:  sdkconfig.defaults.local.ornek  ->  sdkconfig.defaults.local
 #
-# "sdkconfig.defaults.local" .gitignore'da: şifren ve API anahtarın
-# depoya GİRMEZ. Bu örnek dosya depoya giriyor ama içinde gerçek bilgi
-# yok, sadece biçimi gösteriyor.
+# "sdkconfig.defaults.local" .gitignore'da: şifren depoya GİRMEZ. Bu örnek
+# dosya depoya giriyor ama içinde gerçek bilgi yok, sadece biçimi
+# gösteriyor.
 #
 # Doldurduktan sonra:  idf.py build
 #
@@ -19,10 +19,31 @@
 # "şifre yanlış" der — sen dosyaya bakıp "ama şifre doğru" dersin.
 #
 # CMake bunu yakalayıp uyarıyor ama uyarı gözden kaçabilir.
+#
+# ===========================================================================
+# 🔴 GEMİNİ API ANAHTARI ARTIK BURADA DEĞİL
+# ===========================================================================
+#
+# Eskiden bu dosyada CONFIG_PATI_GEMINI_API_KEY vardı ve anahtar
+# firmware'in İÇİNE gömülüyordu. Kaldırıldı.
+#
+# Sebep: panelden güncelleme, `pati.bin`'in GitHub'a konmasını
+# gerektiriyor. Anahtar derlemede gömülü kalsaydı her sürümle birlikte
+# herkese açılır, faturayı da anahtarın sahibi öderdi.
+#
+# Anahtar artık robotta duruyor ve panelden giriliyor:
+#
+#     pati.local  ->  "Gemini anahtarı"  ->  yapıştır  ->  Kaydet
+#
+# Bir kez yazılıyor, NVS'te kalıyor. Kendi ayrı bölümünde duruyor:
+# fabrika ayarlarına dönmek de, NVS'in bozulup silinmesi de onu
+# silmiyor (partitions.csv).
+#
+# Anahtar: https://aistudio.google.com/apikey
+#
+# 🔴 sdkconfig.defaults.local dosyanda hâlâ CONFIG_PATI_GEMINI_API_KEY
+# satırı varsa SİL. Artık böyle bir ayar yok; derleme "unknown option"
+# uyarısı verir ve anahtar hiçbir işe yaramaz.
 
 CONFIG_PATI_WIFI_SSID="ev-wifi-adin"
 CONFIG_PATI_WIFI_PASS="wifi-sifren"
-
-# Google AI Studio'dan: https://aistudio.google.com/apikey
-# prototype/anahtar.txt içindeki anahtarın aynısı kullanılabilir.
-CONFIG_PATI_GEMINI_API_KEY="AIza..."

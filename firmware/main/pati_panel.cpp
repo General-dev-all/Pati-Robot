@@ -14,8 +14,10 @@
 #include <lwip/sockets.h>
 
 #include "pati_ag.hpp"
+#include "pati_anahtar.hpp"
 #include "pati_ayar.hpp"
 #include "pati_gozler.hpp"
+#include "pati_guncelleme.hpp"
 #include "pati_hafiza.hpp"
 #include "pati_kullanim.hpp"
 #include "pati_ses.hpp"
@@ -197,12 +199,15 @@ esp_err_t durum_isle(httpd_req_t* r)
     if (ham != nullptr) cJSON_free(ham);
     cJSON_Delete(k);
 
-    // Hafiza ve ayarlar kendi JSON'larini uretiyor (her modul kendi
-    // alanlarini biliyor); parcalari burada birlestiriyoruz.
+    // Hafiza, ayarlar, anahtar ve guncelleme kendi JSON'larini uretiyor
+    // (her modul kendi alanlarini biliyor); parcalari burada
+    // birlestiriyoruz.
     if (govde.size() > 2) {
         govde.pop_back();                       // kapanis }
         govde += "," + ayar_json();
         govde += ",\"hafiza\":" + hafiza_ozet_json();
+        govde += "," + anahtar_json();
+        govde += "," + guncelleme_json();
         govde += "}";
     }
     return json_yolla(r, govde);
@@ -351,6 +356,133 @@ esp_err_t hafiza_isle(httpd_req_t* r)
 }
 
 // ---------------------------------------------------------------------------
+// POST /api/anahtar — Gemini anahtarini kaydet
+// ---------------------------------------------------------------------------
+
+// Kaydedilen anahtari Google'a sorar ve gerekiyorsa cihazi yeniden
+// baslatir. AYRI GOREVDE calisiyor.
+//
+// 🔴 HTTP ISLEYICISINDE YAPILAMAZ. esp_http_server butun istekleri TEK
+// gorevde, sirayla isliyor. Dogrulama istegi en kotu halde 15 saniye
+// (zaman asimi) suruyor ve o sure boyunca panel butunuyle donardi:
+// yoklamalar cevapsiz kalir, panel "Pati'ye ulasilamiyor" seridini
+// acar ve anne anahtari yazar yazmaz robotu bozdugunu sanirdi.
+//
+// Bunun yerine hemen "kaydedildi" diyoruz; sonucu panel iki saniyelik
+// yoklamayla zaten goruyor (durum: bilinmiyor -> gecerli/gecersiz/kota).
+void anahtar_gorevi(void*)
+{
+    // Sohbet ZATEN calisiyor muydu? Cevap dogrulamadan ONCE alinmali:
+    // dogrulama saniyeler suruyor ve o arada app_main sohbeti baslatmis
+    // olabilir. O durumda yeniden baslatmaya gerek yok — sohbet zaten
+    // YENI anahtarla acilmis olur.
+    const bool sohbet_vardi = sohbet_calisiyor();
+
+    const auto d = anahtar_dogrula();
+
+    // ---- NEDEN YENIDEN BASLATIYORUZ -------------------------------------
+    //
+    // GeminiLiveClient anahtari KURULURKEN aliyor ve icinde tutuyor.
+    // Anne kotasi dolmus bir anahtari yenisiyle degistirdiginde, ayakta
+    // duran istemci hala ESKISINI kullaniyor: panel "anahtar gecerli"
+    // der, robot susmaya devam eder. Panelin yalan soyledigi bu durum
+    // bu projede uc kez cikti (PLAN.md).
+    //
+    // Istemciyi yerinde degistirmek de mumkundu ama ses gorevi,
+    // mikrofon gorevi ve olay kuyrugu ona bagli; hepsini akis
+    // ortasinda soktan cikarip takmak, kazanci kadar risk. Yeniden
+    // baslamak 3-4 saniye suruyor ve hafiza NVS'te duruyor.
+    //
+    // IKINCI HAL: sohbet hic baslamamis ve HALA baslamamis.
+    //
+    // app_main anahtari bekleyen bir donguda ve normalde yeni anahtari
+    // birkac saniyede goruyor. Ama anahtar ONCEDEN gecersizse o dongu
+    // uzun beklemeye geciyor (60 sn) — Google'in "hayir" cevabini
+    // saniyede bir tekrar sormanin anlami yok, ustelik kotasi dolmus bir
+    // anahtari daha da doldurur.
+    //
+    // O beklemenin ortasinda dogru anahtar yazilirsa anne bir dakikaya
+    // kadar hicbir sey olmadigini gorurdu. Yeniden baslamak 3-4 saniye.
+    //
+    // `sohbet_calisiyor()` DOGRULAMADAN SONRA okunuyor: dogrulama
+    // saniyeler suruyor ve bu arada app_main sohbeti zaten baslatmis
+    // olabilir. Baslattiysa yeniden baslatmaya gerek yok.
+    if (d == AnahtarDurumu::Gecerli && (sohbet_vardi || !sohbet_calisiyor())) {
+        ESP_LOGW(ETIKET, "anahtar gecerli — yeni anahtarla baslamak icin "
+                         "yeniden baslaniyor");
+        vTaskDelay(pdMS_TO_TICKS(1500));
+        esp_restart();
+    }
+    vTaskDelete(nullptr);
+}
+
+esp_err_t anahtar_isle(httpd_req_t* r)
+{
+    std::string govde;
+    if (!govde_oku(r, govde)) return hata_yolla(r, "400", "govde okunamadi");
+
+    cJSON* k = cJSON_Parse(govde.c_str());
+    if (k == nullptr) return hata_yolla(r, "400", "bozuk JSON");
+    const std::string yeni = json_dize(k, "deger");
+    cJSON_Delete(k);
+
+    if (!anahtar_yaz(yeni)) {
+        // Bicim denetimi. Sebebi SOYLUYORUZ: "kabul edilmedi" tek basina
+        // anneyi ayni yanlisi tekrarlamaya birakir. En sik hata yarim
+        // kopyalamak.
+        return hata_yolla(r, "400",
+                          "anahtar kabul edilmedi — eksik kopyalanmis "
+                          "olabilir, tamamini yapistirin");
+    }
+
+    // Cevap ONCE gidiyor, sinama sonra: bkz. anahtar_gorevi.
+    json_yolla(r, "{\"tamam\":true}");
+
+    if (xTaskCreate(anahtar_gorevi, "pati_anh", 6144, nullptr, 3, nullptr)
+        != pdPASS) {
+        // Gorev acilamadi. Anahtar YAZILDI, sadece hemen sinanamiyor;
+        // bir sonraki sohbet denemesi zaten sinayacak.
+        ESP_LOGW(ETIKET, "anahtar sinama gorevi acilamadi");
+    }
+    return ESP_OK;
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/guncelleme — {"is":"bak"} ya da {"is":"kur"}
+// ---------------------------------------------------------------------------
+//
+// Tek uc, iki is. /api/ayar'daki "alan" deseninin aynisi.
+//
+// Ikisi de HEMEN DONUYOR ve isi arka planda yapiyor; sonucu panel
+// /api/durum yoklamasindan aliyor (guncelleme.durum / .yuzde). Ayri bir
+// ilerleme baglantisi acilmiyor cunku panel zaten iki saniyede bir
+// soruyor ve ESP32'de her acik soket sayili (LWIP_MAX_SOCKETS).
+esp_err_t guncelleme_isle(httpd_req_t* r)
+{
+    std::string govde;
+    if (!govde_oku(r, govde)) return hata_yolla(r, "400", "govde okunamadi");
+
+    cJSON* k = cJSON_Parse(govde.c_str());
+    if (k == nullptr) return hata_yolla(r, "400", "bozuk JSON");
+    const std::string is = json_dize(k, "is");
+    cJSON_Delete(k);
+
+    if (is == "bak") {
+        guncelleme_kontrol_et();
+    } else if (is == "kur") {
+        guncelleme_indir();
+    } else {
+        // Bilinmeyen isi SESSIZCE YUTMUYORUZ — /api/ayar'daki gerekcenin
+        // aynisi: panel yeni bir sey gonderiyor ve firmware onu
+        // tanimiyorsa, kullanici dugmeye basip hicbir sey olmadigini
+        // gorur ve sebebini bulamaz.
+        ESP_LOGW(ETIKET, "bilinmeyen guncelleme isi: %s", is.c_str());
+        return hata_yolla(r, "400", "bilinmeyen istek");
+    }
+    return json_yolla(r, "{\"tamam\":true}");
+}
+
+// ---------------------------------------------------------------------------
 // POST /api/fabrika
 // ---------------------------------------------------------------------------
 
@@ -361,6 +493,18 @@ esp_err_t fabrika_isle(httpd_req_t* r)
     kullanim_sifirla();
     ayar_sifirla();
     ag_unut();
+
+    // 🔴 GEMINI ANAHTARI BILEREK SILINMIYOR. Buraya `anahtar_sil()`
+    // EKLEMEYIN.
+    //
+    // Anahtar cocuga ait bir veri degil, kurulum bilgisi: anne Google
+    // hesabina girip almis ve panele elle yazmis. Fabrika ayarlari
+    // "robotu kutudan yeni cikmis haline getir" demek, "annenin
+    // Google'a geri gitmesini gerektir" demek degil.
+    //
+    // Anahtar zaten AYRI bir NVS bolumunde duruyor (partitions.csv), o
+    // yuzden buradaki silmelerin hicbiri ona dokunmuyor. Anahtari
+    // gercekten degistirmek isteyen panelden yenisini yaziyor.
     // Cevabi yollayip SONRA yeniden baslatiyoruz; yoksa tarayici
     // "baglanti kesildi" gosteriyor ve ebeveyn islemin basarisiz
     // oldugunu saniyor.
@@ -463,7 +607,12 @@ esp_err_t panel_baslat()
     k.uri_match_fn = httpd_uri_match_wildcard;
     // Joker isleyici bilinmeyen adresleri de yakaliyor (captive portal),
     // o yuzden az sayida isleyici yetiyor.
-    k.max_uri_handlers = 10;
+    //
+    // ⚠️ Su an 9 yol kayitli. Sinir asilirsa httpd son yollari SESSIZCE
+    // kaydetmiyor — hata donuyor ama biz donus degerine bakmiyoruz ve
+    // eksik olan yol 404 veriyor. Panelin bir dugmesi calismaz ve sebebi
+    // hicbir yerde gorunmez. Pay birakiliyor.
+    k.max_uri_handlers = 12;
     k.lru_purge_enable = true;
     k.stack_size = 6144;
 
@@ -493,6 +642,8 @@ esp_err_t panel_baslat()
         {"/api/wifi", HTTP_POST, wifi_isle, nullptr},
         {"/api/ayar", HTTP_POST, ayar_isle, nullptr},
         {"/api/hafiza", HTTP_POST, hafiza_isle, nullptr},
+        {"/api/anahtar", HTTP_POST, anahtar_isle, nullptr},
+        {"/api/guncelleme", HTTP_POST, guncelleme_isle, nullptr},
         {"/api/fabrika", HTTP_POST, fabrika_isle, nullptr},
         // Joker EN SONDA: yukaridakiler once denenmeli.
         {"/*", HTTP_GET, dosya_isle, nullptr},

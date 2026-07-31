@@ -37,7 +37,9 @@
 #include "pati_ses.hpp"
 #include "pati_sohbet.hpp"
 #include "pati_ag.hpp"
+#include "pati_anahtar.hpp"
 #include "pati_ayar.hpp"
+#include "pati_guncelleme.hpp"
 #include "pati_kullanim.hpp"
 #include "pati_panel.hpp"
 
@@ -218,8 +220,17 @@ extern "C" void app_main()
     }
     ESP_ERROR_CHECK(nvs);
 
+    // Gemini anahtari KENDI NVS bolumunde (bkz. partitions.csv). Ayri
+    // durmasinin sebebi tam da yukaridaki satir: bozuk NVS silinip
+    // yeniden kuruluyor ve anahtar o silmeden etkilenmemeli.
+    //
+    // Basarisiz olursa DEVAM EDIYORUZ: sebebi neredeyse kesin olarak
+    // eski bolum tablosu ve bunu gorebilmenin tek yolu panelin acilmasi.
+    pati::anahtar_baslat();
+    pati::guncelleme_baslat();
+
     ESP_LOGI(ETIKET, "");
-    ESP_LOGI(ETIKET, "===== PATI — Asama 2 =====");
+    ESP_LOGI(ETIKET, "===== PATI %s =====", pati::guncelleme_surumu());
     ESP_LOGI(ETIKET, "Amac: gercek kartta 'cocuk sustu -> ilk ses' olcumu");
     ESP_LOGI(ETIKET, "Kriter: <=1500 ms gecer (PLAN.md)");
     ESP_LOGI(ETIKET, "");
@@ -282,6 +293,30 @@ extern "C" void app_main()
         ESP_LOGW(ETIKET, "panel acilmadi — ayarlar telefondan yapilamaz");
     }
 
+    // ---- GERI ALMAYI IPTAL ET -------------------------------------------
+    //
+    // Yeni bir yapi OTA ile geldiyse "denemede" (PENDING_VERIFY) aciliyor
+    // ve burasi cagrilmadan yeniden baslarsa onyukleyici ESKI yapiya
+    // donuyor (CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE).
+    //
+    // NEDEN TAM BURADA:
+    //
+    //   ONCESI OLMAZ. Buraya kadar gelmek NVS, ekran, ses hatti, ag
+    //   katmani ve HTTP sunucusunun tamaminin ayaga kalktigini
+    //   kanitliyor. Daha erken onaylamak, bu yollardan birini kiran bir
+    //   yapiyi saglam ilan etmek olurdu.
+    //
+    //   SONRASI DA OLMAZ. Bir sonraki adim wifi bekleme dongusu ve orada
+    //   SURESIZ kalinabiliyor: robot kurulum modundaysa anne wifi
+    //   bilgisini girene kadar bekliyor. Onayi oraya koysaydik, kurulum
+    //   sirasinda fisi cekilen robot bir onceki surume donerdi — ve
+    //   fisin cekilmesi bu robotun BEKLENEN kapanma bicimi.
+    //
+    // Sohbetin baslamasi onaya dahil DEGIL: anahtar yanlissa sohbet
+    // acilmiyor ama bu firmware'in degil, girilen anahtarin sorunu.
+    // Geri almak onu duzeltmezdi.
+    pati::guncelleme_onayla();
+
     // Baglanti kurulana kadar bekle. Kurulum modundaysa BEKLEMIYORUZ:
     // ebeveyn bilgiyi girene kadar burada durmak, gozleri ve paneli
     // olu birakmak olurdu — oysa panel tam o an gerekli.
@@ -321,11 +356,70 @@ extern "C" void app_main()
     pati::kullanim_saat_ayarla();
     ESP_LOGI(ETIKET, "ag hazir (%s)", pati::ag_ip());
 
+    // ANAHTARI SIMDI SINA. Aga yeni baglandik; panel acilir acilmaz
+    // dogru durumu gostersin.
+    //
+    // Bunu yapmasak panel "bilinmiyor" derdi ve anne sohbet
+    // baslamayinca sebebini hicbir yerden okuyamazdi. Istek belirtec
+    // harcamiyor (model listesi), yani her aciliste calistirmanin
+    // faturaya etkisi yok.
+    if (pati::anahtar_var()) {
+        pati::anahtar_dogrula();
+    }
+
     pati::kullanim_oturum_basladi();
-    if (pati::sohbet_baslat() != ESP_OK) {
-        ESP_LOGE(ETIKET, "sohbet baslatilamadi. Sebep yukarida.");
-        bekle_ve_dur();
-        return;
+
+    // ---- SOHBET — anahtar gelene kadar bekliyoruz -----------------------
+    //
+    // 🔴 ESKIDEN BURADA `bekle_ve_dur()` VARDI. Anahtar Kconfig'den
+    // geldigi surece dogruydu: bos anahtar "yanlis derledin" demekti ve
+    // durup sebebi seri porta yazmak dogru davranisti.
+    //
+    // Artik anahtar panelden giriliyor. Kutudan yeni cikmis robotta
+    // anahtarin OLMAMASI normal bir hal — durmak, anne anahtari
+    // yazdiktan sonra bile robotun sessiz kalmasi demek olurdu. Ustelik
+    // durdugu yerden geri donusu yok, fis cekilmesi gerekirdi.
+    //
+    // Onun yerine bekliyoruz. Panel bu sirada calisiyor, durumu
+    // gosteriyor ve anne anahtari yazar yazmaz asagidaki dongu onu
+    // goruyor.
+    int deneme = 0;
+    while (true) {
+        if (!pati::anahtar_var()) {
+            // "Beni ayarla" hali — wifi kurulumunda kullanilan gozlerin
+            // aynisi. Ikisi de ayni seyi soyluyor: panelde bir isin var.
+            pati::gozler_durum("uykulu");
+            vTaskDelay(pdMS_TO_TICKS(2000));
+            deneme = 0;
+            continue;
+        }
+
+        if (pati::sohbet_baslat() == ESP_OK) break;
+
+        // Anahtar var ama baglanti kurulamadi. Sebebi anahtar katmani
+        // biliyor (sohbet_baslat dogrulama istegi attirdi) ve panel
+        // yaziyor.
+        //
+        // BEKLEME SUREYI SEBEBE GORE DEGISIYOR:
+        //
+        //   Gecersiz/Kota  Google'in kararini yeniden denemek DEGISTIRMEZ.
+        //                  Insan mudahalesi bekleniyor (yeni anahtar ya
+        //                  da bakiye), o yuzden seyrek deniyoruz. Sik
+        //                  denemek 429 yiyen bir anahtari daha da
+        //                  batirmak olurdu.
+        //   otekiler       Ag dalgalanmasi olabilir; birazdan duzelir.
+        const auto d = pati::anahtar_durumu();
+        const bool insan_bekleniyor = (d == pati::AnahtarDurumu::Gecersiz
+                                       || d == pati::AnahtarDurumu::Kota);
+        if (++deneme <= 3 || !insan_bekleniyor) {
+            ESP_LOGW(ETIKET, "sohbet baslamadi, 15 sn sonra tekrar");
+            vTaskDelay(pdMS_TO_TICKS(15000));
+        } else {
+            ESP_LOGW(ETIKET, "sohbet baslamadi ve sebep anahtar — "
+                             "panelden duzeltilmesi bekleniyor");
+            pati::gozler_durum("uykulu");
+            vTaskDelay(pdMS_TO_TICKS(60000));
+        }
     }
 
     ESP_LOGI(ETIKET, "");

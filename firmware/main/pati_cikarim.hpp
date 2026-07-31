@@ -61,8 +61,18 @@ size_t cikarim_dokum_boyu();
 // BLOKLAR (~2-10 sn, ag hizina bagli). Ses gorevinden CAGRILMAMALI;
 // uyku gorevinden cagriliyor.
 //
+// Anahtari KENDI aliyor (pati_anahtar). Disaridan gecirilmiyor cunku
+// anahtar artik panelden degistirilebiliyor: cagiran taraf onu bir kez
+// okuyup saklasaydi, anne anahtari degistirdikten sonra cikarim eski
+// anahtarla denemeye devam ederdi.
+//
+// Donen HTTP durum kodunu anahtar katmanina BILDIRIYOR. Yani Google
+// "anahtarin gecersiz" ya da "kotan doldu" dediginde bunu panel ayrica
+// bir dogrulama istegi atmadan ogreniyor — cikarim zaten Google'a giden
+// tek REST istegi.
+//
 // Doner: eklenen bilgi sayisi. Hata durumunda -1 ve sebep gunluge
 // yaziliyor — dokum SILINMIYOR ki bir sonraki uykuda tekrar denensin.
-int cikarim_calistir(const char* api_anahtari);
+int cikarim_calistir();
 
 }  // namespace pati

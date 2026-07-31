@@ -47,5 +47,30 @@ else()
 endif()
 set(SDKCONFIG_DEFAULTS "${_pati_defaults}")
 
+# ---------------------------------------------------------------------------
+# SURUM — panelin "guncelleme var mi" sorusunun dayanagi
+# ---------------------------------------------------------------------------
+#
+# Tek kaynak surum.txt. Buradan PROJECT_VER'e gidiyor, oradan uygulama
+# imzasina (esp_app_desc), oradan da panele. Yani panelde gorunen sayi ile
+# flash'taki yapinin ayni olmasi TESADUFE bagli degil.
+#
+# ESP-IDF kendiliginden `version.txt` diye bakiyor; dosyanin adi Turkce
+# oldugu icin elle okuyoruz. Dosya yoksa IDF `git describe` kullanirdi ve
+# surum "v2.0-3-gaacea4f" gibi bir seye donerdi — anneye gosterilecek ve
+# karsilastirilacak bir sayi degil.
+#
+# ⚠️ Surum burada yukselmezse panel yeni yapiyi GORMEZ: karsilastirma
+# surum.json'daki sayi ile bunun arasinda yapiliyor. YENI-SURUM.bat bu
+# dosyayi okuyup surum.json'a yaziyor, yani ikisi ayrisamiyor.
+file(READ "${CMAKE_CURRENT_LIST_DIR}/surum.txt" _pati_surum)
+string(STRIP "${_pati_surum}" _pati_surum)
+if(_pati_surum STREQUAL "")
+    message(FATAL_ERROR "Pati: surum.txt bos. Panel surum karsilastirmasi "
+                        "yapamaz, guncelleme hic gorunmez.")
+endif()
+set(PROJECT_VER "${_pati_surum}")
+message(STATUS "Pati: surum ${PROJECT_VER}")
+
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(pati)

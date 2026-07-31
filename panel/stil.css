@@ -260,6 +260,10 @@ button.tehlike { color: var(--kalir); border-color: rgba(248, 81, 73, .5); }
 }
 .satir-arasi small { display: block; color: var(--soluk); font-size: 12px; margin-top: 2px; }
 .satir-arasi small.dikkat { color: var(--sinir); }
+/* Anahtar kartinda "calisiyor". Yesil YALNIZCA gercekten dogrulanmis
+   anahtar icin: "yazili ama denenmedi" hali de yesil gorunseydi panel,
+   bilmedigi bir seyi biliyormus gibi gosterirdi. */
+.satir-arasi b.iyi { color: var(--gecer); }
 
 /* ANAHTAR (switch) — onay kutusu yerine.
    Uc sebep: (1) kare kutu ayar panelinde kaba duruyor, (2) acik/kapali
@@ -327,6 +331,54 @@ button.tehlike { color: var(--kalir); border-color: rgba(248, 81, 73, .5); }
   color: var(--turkuaz-acik);
   font-size: 12.5px;
   line-height: 1.55;
+}
+
+/* ---------------------------------------------------------------- uyari */
+
+/* Pati susmussa sebebi burada. Kart DEGIL, kartlardan once gelen bir
+   uyari kutusu: anne panele tam bunun icin girmis oluyor ve cevabi
+   aramak zorunda kalmamali.
+
+   Renk sebebe gore degisiyor ve bu bilincli:
+     sari (varsayilan)  kota/bakiye — para yuklenince duzeliyor
+     kirmizi (.agir)    anahtar gecersiz ya da hic yok; Pati HIC
+                        konusamaz, elle duzeltilmesi sart
+
+   Ikisini ayni renkte gostermek "biraz sorun var" ile "hicbir sey
+   calismiyor"u ayni sey gibi gosterirdi. */
+.uyari {
+  padding: 14px 15px;
+  border-radius: 12px;
+  background: rgba(210, 153, 34, .10);
+  border: 1px solid rgba(210, 153, 34, .45);
+}
+.uyari b { display: block; color: var(--sinir); font-size: 15px; }
+.uyari p { margin: 6px 0 0; font-size: 13px; line-height: 1.55; color: var(--yazi); }
+.uyari button { margin-top: 11px; }
+
+.uyari.agir { background: rgba(248, 81, 73, .10); border-color: rgba(248, 81, 73, .45); }
+.uyari.agir b { color: var(--kalir); }
+
+/* ------------------------------------------------------------ ilerleme */
+
+/* Guncelleme indirilirken. Yuzdeyi YAZIYLA da veriyoruz: cubugun tek
+   basina ne kadar kaldigini soylemesi zor ve indirme bir dakika
+   surebiliyor — o sure boyunca ilerledigini gormek gerekiyor, yoksa
+   donmus sanilip fis cekiliyor. */
+.cubuk {
+  margin-top: 14px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--kart2);
+  border: 1px solid var(--cizgi);
+  overflow: hidden;
+}
+.cubuk-ic {
+  height: 100%;
+  width: 0;
+  background: var(--turkuaz);
+  border-radius: 999px;
+  transition: width .35s ease;
 }
 
 /* ---------------------------------------------------------------- liste */

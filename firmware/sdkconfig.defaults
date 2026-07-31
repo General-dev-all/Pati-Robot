@@ -37,11 +37,35 @@ CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
 CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
 
 # ---------------------------------------------------------------------------
-# Bolum tablosu
+# Bolum tablosu — OTA'li
 # ---------------------------------------------------------------------------
-# Tek uygulama + buyuk alan. OTA (panelden guncelleme) sonra eklenecek;
-# o zaman cift bolume gecilir.
-CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
+#
+# 🔴 BU AYAR KABLOYLA YUKLENMEK ZORUNDA. Bolum tablosunu OTA degistiremiyor:
+# OTA yalnizca uygulama bolumune yaziyor, tabloya dokunmuyor. Pati govdeye
+# girip cocuga gittikten SONRA burasi degistirilemez — kutuyu acmak gerekir.
+#
+# Gerekcelerin tamami partitions.csv'nin basinda.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# ---------------------------------------------------------------------------
+# OTA geri alma — bozuk guncelleme robotu tuglaya cevirmesin
+# ---------------------------------------------------------------------------
+#
+# Pati baskasinin evinde, cocugun odasinda duracak. Bozuk bir yapi
+# yuklenirse oraya gidip USB takmak yok.
+#
+# Bu ayar acikken yeni yapi "denemede" (PENDING_VERIFY) aciliyor. Uygulama
+# `esp_ota_mark_app_valid_cancel_rollback()` diyene kadar gecici sayiliyor;
+# demeden once yeniden baslarsa onyukleyici ESKI yapiya donuyor.
+#
+# Pati bunu panel ayaga kalkinca soyluyor (app_main). Gerekcesi orada.
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
+# Indirme HTTPS'ten. Duz HTTP'ye asla izin verilmiyor: guncelleme dosyasi
+# robotun UZERINDE CALISACAK kod ve araya girilebilir bir kanaldan
+# gelmemeli.
+# CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP is not set
 
 # ---------------------------------------------------------------------------
 # Derleyici optimizasyonu — HIZ

@@ -2,10 +2,12 @@ idf_component_register(
     SRCS
         "app_main.cpp"
         "pati_ag.cpp"
+        "pati_anahtar.cpp"
         "pati_ayar.cpp"
         "pati_cikarim.cpp"
         "pati_ekran.cpp"
         "pati_gozler.cpp"
+        "pati_guncelleme.cpp"
         "pati_hafiza.cpp"
         "pati_kullanim.cpp"
         "pati_olcum.cpp"
@@ -27,7 +29,9 @@ idf_component_register(
         esp_netif         # SNTP ve ag arayuzleri
         lwip              # captive portal DNS soketi
         esp-tls           # cikarim istegi TLS
-        nvs_flash         # wifi bilgisi ve hafiza
+        esp_https_ota     # panelden guncelleme: pati.bin'i indirip yazmak
+        app_update        # OTA bolumleri, geri alma, kosan surumun imzasi
+        nvs_flash         # wifi bilgisi, hafiza ve (ayri bolumde) anahtar
     EMBED_FILES
         # Panel sayfasi. panel/ klasorunun AYNISI gomuluyor: bir
         # kopya cikarsak biri gunceenip oteki eskir ve fark sessizce

@@ -39,7 +39,13 @@ const TAKIMLAR = {
   normal: {
     bagli: true,
     konusuyor: false,
-    surum: 'Pati 2.0 · aşama 2',
+    // Her sey yolunda: anahtar calisiyor, en son surum kurulu. Uyari
+    // bandi GORUNMUYOR — panelin olagan hali bu ve kalabalik olmamali.
+    anahtar: { var: true, durum: 'gecerli', kuyruk: 'q7Fa', ayrinti: '',
+               kaydedince: 'gecerli' },
+    guncelleme: { durum: 'bos', suAnki: '2.1.0', yeni: '', notlar: '',
+                  yuzde: 0, hata: '',
+                  bakinca: { durum: 'guncel', yeni: '2.1.0', notlar: '' } },
     wifi: { ad: 'Ev-Wifi', guc: 3 },
     ses: { seviye: 0.85, hiz: 1.30, sesAdi: 'Puck' },
     uyku: 4,
@@ -63,7 +69,23 @@ const TAKIMLAR = {
   zor: {
     bagli: true,
     konusuyor: true,
-    surum: 'Pati 2.0 · aşama 2 · yapı 4181',
+    // KOTA DOLMUS — sari uyari. Google'in kendi cumlesi de duruyor
+    // cunku gercekte de geliyor ve uzun: satirin tasip tasmadigi
+    // ancak boyle gorulur.
+    anahtar: {
+      var: true, durum: 'kota', kuyruk: '3xZq', kaydedince: 'kota',
+      ayrinti: 'You exceeded your current quota, please check your plan '
+             + 'and billing details.',
+    },
+    // Uzun surum notu: kutunun kac satira cikabilecegi burada gorunur.
+    guncelleme: {
+      durum: 'var', suAnki: '2.1.0', yeni: '2.2.0', yuzde: 0, hata: '',
+      notlar: 'Gözler daha akıcı, uyku sayacı düzeltildi, uzun '
+            + 'konuşmalarda sesin kesilmesi giderildi.',
+      bakinca: { durum: 'var', yeni: '2.2.0',
+                 notlar: 'Gözler daha akıcı, uyku sayacı düzeltildi, uzun '
+                       + 'konuşmalarda sesin kesilmesi giderildi.' },
+    },
     wifi: { ad: 'TurkTelekom_ZTE_A1B2C3_5GHz_Misafir', guc: 1 },
     ses: { seviye: 1.00, hiz: 1.45, sesAdi: 'Fenrir' },
     uyku: 15,
@@ -92,7 +114,14 @@ const TAKIMLAR = {
   ilk: {
     bagli: false,
     konusuyor: false,
-    surum: 'Pati 2.0 · ilk açılış',
+    // ANAHTAR HIC GIRILMEMIS — kirmizi uyari, ve kutu kendiliginden
+    // aciliyor. Annenin en ilk gorecegi hal bu: wifi'yi girdikten sonra
+    // sirada bu var ve Pati o zamana kadar tek kelime edemiyor.
+    anahtar: { var: false, durum: 'yok', kuyruk: '', ayrinti: '',
+               kaydedince: 'gecerli' },
+    guncelleme: { durum: 'bos', suAnki: '2.1.0', yeni: '', notlar: '',
+                  yuzde: 0, hata: '',
+                  bakinca: { durum: 'guncel', yeni: '2.1.0', notlar: '' } },
     wifi: { ad: 'Ağ seçilmedi', guc: 0 },
     ses: { seviye: 0.85, hiz: 1.30, sesAdi: 'Puck' },
     uyku: 4,
@@ -106,7 +135,16 @@ const TAKIMLAR = {
   kopuk: {
     bagli: false,
     konusuyor: false,
-    surum: 'Pati 2.0 · aşama 2',
+    // AG YOK. Anahtarin durumu BILINMIYOR ve bu anahtarin sucu degil —
+    // panel "para yükleyin" DEMEMELI. Bu takim tam da o yanlisi
+    // yakalamak icin var: kopuk agda kirmizi bir "anahtar geçersiz"
+    // uyarisi cikiyorsa metin yanlis kurulmus demektir.
+    anahtar: { var: true, durum: 'ulasilamadi', kuyruk: 'q7Fa', ayrinti: '',
+               kaydedince: 'ulasilamadi' },
+    guncelleme: { durum: 'hata', suAnki: '2.1.0', yeni: '', notlar: '',
+                  yuzde: 0, hata: 'Güncelleme sunucusuna ulaşılamadı',
+                  bakinca: { durum: 'hata',
+                             hata: 'Güncelleme sunucusuna ulaşılamadı' } },
     wifi: { ad: 'Ev-Wifi (bağlanamıyor)', guc: 0 },
     ses: { seviye: 0.85, hiz: 1.30, sesAdi: 'Puck' },
     uyku: 4,
