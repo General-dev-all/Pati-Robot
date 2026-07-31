@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pati — Tasarım İnceleme Stüdyosu</title>
+<link rel="stylesheet" href="studyo.css">
+</head>
+<body>
+
+<header class="ust">
+  <div class="marka">Pati <span>tasarım inceleme</span></div>
+
+  <nav class="sekmeler">
+    <button class="sekme etkin" data-sekme="robot">Robot</button>
+    <button class="sekme" data-sekme="telefon">Telefon paneli</button>
+  </nav>
+
+  <div class="ust-sag">
+    <button id="kalibreAc" class="ince" title="Ekranını ölç">1:1 ayarı</button>
+  </div>
+</header>
+
+<!-- ================================================== KALİBRASYON -->
+<!-- Tarayıcı gerçek DPI'yı vermiyor: CSS'te 1 inç her zaman 96 piksel
+     sayılıyor, oysa gerçek ekranlarda değişiyor. "1:1 gerçek boyut"
+     iddiasında bulunacaksak ölçeği ÖLÇMEK zorundayız. Kredi kartı
+     standart (ISO/IEC 7810 ID-1: 85,60 mm) ve herkesin elinde var. -->
+<div id="kalibre" class="kalibre" hidden>
+  <div class="kalibre-ic">
+    <h2>Ekran ölçeğini ayarla</h2>
+    <p>
+      Bir <b>banka/kredi kartını</b> ekrana tut ve aşağıdaki dikdörtgen
+      kartla <b>tam aynı genişliğe</b> gelene kadar kaydırıcıyı oynat.
+      Bundan sonra “1:1” gerçekten 1:1 olur.
+    </p>
+    <div id="kalibreKart" class="kalibre-kart"><span>85,60 mm</span></div>
+    <input id="kalibreKaydirici" type="range" min="2.2" max="9" step="0.005">
+    <div class="kalibre-alt">
+      <span id="kalibreDeger">—</span>
+      <button id="kalibreTamam" class="birincil">Tamam</button>
+    </div>
+    <p class="ipucu">
+      Kart yoksa dokunma — varsayılan (3,78 px/mm) çoğu ekranda kabaca
+      doğru. Sadece “1:1” modunu etkiler, tasarımı etkilemez.
+    </p>
+  </div>
+</div>
+
+<!-- ================================================== ROBOT -->
+<main id="gorunumRobot" class="gorunum">
+
+  <section class="sahne-alan">
+    <div class="olcek-bar">
+      <span>Ölçek</span>
+      <button class="olcek etkin" data-olcek="1">1:1 gerçek boyut</button>
+      <button class="olcek" data-olcek="2">2×</button>
+      <button class="olcek" data-olcek="4">4×</button>
+      <button class="olcek" data-olcek="8">8×</button>
+      <span class="ayrac"></span>
+      <button id="sadeceEkran" class="olcek">Sadece ekran</button>
+    </div>
+
+    <div id="sahne" class="sahne">
+      <canvas id="govde"></canvas>
+      <canvas id="gozler"></canvas>
+      <div id="akrilikOrtu" class="akrilik-ortu"></div>
+    </div>
+
+    <div class="sahne-alt">
+      <div class="durum-satir">
+        <b id="ifadeAdi">bos</b>
+        <span id="sahneNot"></span>
+      </div>
+      <div class="cetvel">
+        <div id="cetvelCizgi" class="cetvel-cizgi"></div>
+        <span id="cetvelYazi">—</span>
+      </div>
+    </div>
+
+    <p class="ipucu genis">
+      Ekranın aktif alanı <b>23,35 mm</b> (1.3" köşegen kare). Hoparlör
+      <b>50 mm</b>. Yani gövdenin boyunu yüz değil <b>hoparlör</b>
+      belirliyor. 1:1 modunda gözler gerçekte bu kadar küçük olacak.
+    </p>
+  </section>
+
+  <aside class="ayar-alan">
+
+    <details open>
+      <summary>Sahne</summary>
+      <div class="satir">
+        <button id="sahneOynat" class="birincil">▶ Konuşmayı oynat</button>
+      </div>
+      <p class="ipucu">
+        Gerçek bir konuşmanın akışı, <b>ölçülen sürelerle</b>: düşünme
+        payı 1325 ms (Aşama 1 medyanı). Tek tek ifadeye bakmak yanıltıcı —
+        robotun hissi hareketinde.
+      </p>
+      <div id="ifadeDugmeleri" class="dugme-kutu"></div>
+    </details>
+
+    <details open>
+      <summary>Göz ölçüleri <span class="not">piksel — C++'a birebir geçer</span></summary>
+      <div id="gozAyarlari"></div>
+      <button id="gozSifirla" class="ince genis-dugme">Varsayılanlara dön</button>
+    </details>
+
+    <details>
+      <summary>Görünüm</summary>
+      <div id="gorunumAyarlari"></div>
+    </details>
+
+    <details>
+      <summary>Gövde ölçüleri <span class="not">mm — kumpasla düzeltilecek</span></summary>
+      <div id="govdeAyarlari"></div>
+    </details>
+
+    <!-- Ölçüm değil, aritmetik. İki gerçek darboğaz var ve ikisi de
+         tasarım kararını etkiliyor: çizim maliyeti (dokunulan piksel)
+         ve SPI taşıma (tam ekran = 23 ms @40 MHz). -->
+    <details open>
+      <summary>ESP32 bütçesi <span class="not">hesap — ölçüm değil</span></summary>
+      <div id="butce" class="butce"></div>
+      <p class="ipucu">
+        Bu sayılar <b>hesaplanmış</b>, kartta doğrulanmamış. Amaç
+        “parlama katmanını 3’ten 6’ya çıkarsam ne olur” sorusuna
+        cevap vermek.
+      </p>
+    </details>
+
+    <details>
+      <summary>C++ çıktısı</summary>
+      <p class="ipucu">
+        Beğendiğin ayarlar. Firmware'e bu değerler yazılacak — böylece
+        burada gördüğün şeyle ekranda görünen şey aynı olur.
+      </p>
+      <pre id="cikti" class="cikti"></pre>
+      <button id="ciktiKopyala" class="ince genis-dugme">Kopyala</button>
+    </details>
+
+  </aside>
+</main>
+
+<!-- ================================================== TELEFON -->
+<main id="gorunumTelefon" class="gorunum" hidden>
+
+  <section class="sahne-alan">
+
+    <!-- 🔴 EN ÖNEMLİ DÜĞME BU.
+         Telefondan bakarken aşağıdaki çerçeve İÇİNDEKİ paneli
+         incelemek yanıltır: telefonun ekranında, 390 px'e sıkıştırılmış
+         bir iframe görünür. Gerçek değerlendirme paneli TAM EKRAN
+         açmakla olur — o zaman sayfa telefonun kendi genişliğini,
+         kendi yazı tipini, kendi kaydırmasını kullanır. -->
+    <a class="tamekran" href="./" target="_blank" rel="noopener">
+      📱 Paneli bu cihazda <b>tam ekran</b> aç
+      <span>telefondan bakıyorsan buraya dokun</span>
+    </a>
+
+    <div class="olcek-bar">
+      <span>Örnek veri</span>
+      <button class="veri etkin" data-veri="normal">Olağan</button>
+      <button class="veri" data-veri="zor">Zor</button>
+      <button class="veri" data-veri="ilk">İlk açılış</button>
+      <button class="veri" data-veri="kopuk">Kopuk</button>
+    </div>
+
+    <div class="olcek-bar">
+      <span>Çerçeve</span>
+      <button class="cihaz etkin" data-g="390" data-y="800">Normal telefon</button>
+      <button class="cihaz" data-g="360" data-y="640">Küçük telefon</button>
+      <button class="cihaz" data-g="430" data-y="880">Büyük telefon</button>
+      <span class="ayrac"></span>
+      <!-- Konuşma sırasında panele girilirse ne görünüyor? Bu durumu
+           gözden kaçırmak kolay, o yüzden tek tuşla denenebiliyor. -->
+      <button id="konusuyorAnahtar" class="olcek">Pati konuşuyor</button>
+      <button id="panelYenile" class="olcek">Yenile</button>
+    </div>
+
+    <div class="telefon" id="telefon">
+      <div class="centik"></div>
+      <iframe id="panelCerceve" src="./" title="Pati paneli"></iframe>
+    </div>
+
+    <p class="ipucu genis">
+      Bu <b>gerçek sayfa</b>, resim değil — HTTP üzerinden, telefon
+      genişliğinde açılıyor. Robot geldiğinde aynı dosyalar ESP32'den
+      servis edilecek. Beğenmediğin yeri söyle: “şu kutu şöyle olsun”.
+    </p>
+
+    <!-- Duzenli veriyle bakip "guzel gorunuyor" demek yaniltiyor.
+         Yerlesim duzenli veride bozulmaz; UZUN isimde, 24 satirlik
+         hafizada, BOS listede bozulur. -->
+    <p class="ipucu genis">
+      <b>“Zor”</b> düğmesine bas: uzun çocuk adı, uzun wifi adı,
+      24 satır hafıza, dört haneli dakika. Yerleşim kırılacaksa orada
+      kırılır. <b>“İlk açılış”</b> ise annenin paneli en çok
+      önemseyeceği hal — kutudan yeni çıkmış, hiçbir şey ayarlı değil.
+    </p>
+  </section>
+
+  <aside class="ayar-alan">
+    <details open>
+      <summary>Bu panel ne, ne değil</summary>
+      <p class="ipucu">
+        Bu <b>ebeveyn paneli</b> — ölçüm tezgahı değil. Aşama 1'deki
+        panelde p90 gecikme, dolgu turu, ham kayıt var; onlar bize ait
+        ve robota gitmiyor.
+      </p>
+      <p class="ipucu">
+        Buraya sadece <b>kanıtlanmış ayarlar</b> taşındı: ses seviyesi
+        sınırları (0,15–1,00), tizlik/hız aralığı (0,85–1,45×), uyku
+        süresi. Hepsi Aşama 1'de ölçülmüş değerler.
+      </p>
+    </details>
+
+    <!-- Verilen kararlar burada duruyor, cunku bir sonraki oturumda
+         "bunu neden boyle yapmisiz" sorusu mutlaka geliyor. -->
+    <details open>
+      <summary>Verilen kararlar <span class="not">30.07.2026</span></summary>
+
+      <div class="karar-oge">
+        <b>✅ Uyarı kutusu yok.</b>
+        <div class="karar-sahne">
+          Çocuk konuşurken sen mutfaktan sesi kısıyorsun — <b>hemen</b>
+          kısılıyor, cümlenin ortasında. İnce ayar yapabilirsin.
+        </div>
+        Tizlik ve ses seçimi de bir “sonraki konuşmayı” beklemiyor:
+        Pati cümlesini bitirince, GoAway yenilemesiyle aynı
+        mekanizmadan geçiyor — <b>568 ms</b> ve hafıza korunuyor.
+        Yarım saniye için ekrana sarı kutu çıkarmak gereksiz.
+      </div>
+
+      <div class="karar-oge">
+        <b>✅ Hazır kişilik düğmesi yok.</b>
+        <div class="karar-sahne">
+          “Pati diş fırçalamayı hatırlatsın” → “Pati bunları bilsin”
+          alanına yazılıyor, Pati bunu <b>bilgi</b> olarak alıyor.
+        </div>
+        “Daha az konuşsun”, “günde en fazla 60 dakika” gibi düğmeler
+        önerildi ve <b>reddedildi</b>: anne konuşmasını istemezse fişi
+        çeker. Her düğme panelde, promptta ve firmware'de birer kural
+        daha demekti.
+      </div>
+    </details>
+
+    <details>
+      <summary>Henüz bağlı olmayan yerler</summary>
+      <p class="ipucu">
+        Panel <b>örnek veriyle</b> çalışıyor (<code>ornek.js</code>).
+        Robot gelince o dosya gerçek uç noktalarla değişecek; sayfanın
+        geri kalanı aynı kalacak.
+      </p>
+    </details>
+  </aside>
+</main>
+
+<script type="module" src="studyo.js"></script>
+</body>
+</html>

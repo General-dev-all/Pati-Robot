@@ -1,0 +1,37 @@
+# Depoya SADECE kaynak kod girer.
+#
+# Gizlilik kurallari klasorlerin kendi .gitignore'unda, kaynagina yakin
+# dursun diye:
+#
+#   prototype/.gitignore   anahtar.txt · hafiza.json · kullanim.json ·
+#                          olcumler/   (hepsi cocuk verisi ya da anahtar)
+#   firmware/.gitignore    build/ · sdkconfig · managed_components/ ·
+#                          sdkconfig.defaults.local  (wifi bilgisi)
+#
+# Burada yalnizca her yerde gecerli olanlar var.
+
+# Python'un urettikleri
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Arsivler ve yarim indirmeler
+*.rar
+*.zip
+*.7z
+*.yarim
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# --- Depoya girmeyen calisma dosyalari -------------------------------------
+# Bunlar projeye ait ama YAYIMLANMIYOR: ya kisisel calisma notu, ya da
+# icinde ortama/kisiye ozel ayrinti var.
+# Modullerin fotograflari — dogrulama icin cekildi, referans belge degil.
+hardware/
+
+# Ic muhendislik kaydi ve ham olcum defteri: calisma dosyalari.
+PLAN.md
+prototype/NOTLAR.md

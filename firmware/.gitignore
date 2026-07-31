@@ -1,0 +1,32 @@
+# Depoya sadece kaynak girer.
+
+# Derleme cikti klasoru (yuzlerce MB)
+build/
+
+# idf.py'nin urettigi gercek yapilandirma. sdkconfig.defaults depoya
+# giriyor (gerekceleri yazili), sdkconfig ondan URETILIYOR.
+sdkconfig
+sdkconfig.old
+
+# Bilesen yoneticisinin indirdikleri (esp_websocket_client vb.)
+managed_components/
+dependencies.lock
+
+# API anahtari ve wifi bilgisi ASLA depoya girmez.
+# Bunlar sdkconfig.defaults.local'a yazilip oradan okunuyor.
+sdkconfig.defaults.local
+
+# Konak testinin uretttikleri: derlenmis exe, ara nesneler ve ham
+# kare dokumu (2,7 MB x2). Hepsi `test/derle.bat` ile yeniden
+# uretiliyor, depoda durmalarina gerek yok.
+test/*.exe
+test/*.obj
+test/*.exp
+test/*.lib
+test/*.pdb
+test/*.ilk
+test/*.ham
+test/obj/
+test/derleme*.log
+test/hafiza_beklenen.txt
+test/hafiza_test.json

@@ -1,0 +1,29 @@
+menu "Stackchan Conversation"
+
+    config STACKCHAN_OPENAI_API_KEY
+        string "OpenAI API key"
+        default ""
+        help
+            API key used for the OpenAI Realtime API WebSocket upgrade
+            (Authorization: Bearer ...). Leave empty here and set the real
+            value in sdkconfig.defaults.local, which is gitignored and chained
+            last by the Makefile.
+
+    config STACKCHAN_OPENAI_REALTIME_MODEL
+        string "OpenAI Realtime model"
+        default "gpt-realtime"
+
+    config STACKCHAN_OPENAI_VOICE
+        string "OpenAI Realtime voice"
+        default "alloy"
+
+    config STACKCHAN_CONV_WS_RX_BUFFER
+        int "WebSocket RX reassembly buffer size (bytes)"
+        default 131072
+        help
+            Maximum size of a single reassembled WebSocket text frame. Frames
+            larger than this are dropped. OpenAI response.audio.delta frames
+            can exceed 40 KB, so this needs generous headroom. Allocated from
+            PSRAM.
+
+endmenu

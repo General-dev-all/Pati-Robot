@@ -1,0 +1,26 @@
+# API anahtari ASLA depoya girmez (PLAN §7: anahtar derlemede gomulu degil)
+anahtar.txt
+
+.venv/
+__pycache__/
+*.pyc
+
+# Olcum ciktilarinda konusma dokumu var - cocugun sesinin metni.
+# Gizlilik geregi depoya girmiyor; raporu elle paylasmak istersen
+# tek tek ekleyebilirsin.
+olcumler/
+
+# Kullanim sayaci: hangi gun ne kadar konusuldu. Cocugun gunluk
+# aliskanligini gosteriyor (hangi saat evde, ne kadar oynadi) —
+# kisisel veri sayilir, depoya girmez.
+kullanim.json
+.kullanim-*.tmp
+
+# Robotun cocuk hakkinda ogrendikleri. Kisisel veri — depoya girmez.
+# (v1'in ilkesi: hafiza seffaf olmali, ama seffaf olmasi gereken kisi
+#  cocuk ve sen; internet degil.)
+hafiza.json
+hafiza.json.gecici
+hafiza.json.test
+hafiza.json.test.gecici
+hafiza.bozuk-*.json

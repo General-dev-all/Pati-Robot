@@ -1,0 +1,84 @@
+menu "Pati"
+
+    comment "Bu degerler sdkconfig.defaults.local dosyasina yazilir."
+    comment "O dosya .gitignore'da — sifreler ve anahtar depoya GIRMEZ."
+
+    config PATI_WIFI_SSID
+        string "Ev wifi adi (SSID)"
+        default ""
+        help
+            Asama 2'de wifi bilgisi firmware'e gomuluyor cunku bu asamanin
+            tek amaci gecikme olcmek. Gercek robotta boyle OLMAYACAK:
+            SoftAP + captive portal ile telefondan girilecek (PLAN §4.3).
+
+    config PATI_WIFI_PASS
+        string "Ev wifi sifresi"
+        default ""
+
+    config PATI_GEMINI_API_KEY
+        string "Gemini API anahtari"
+        default ""
+        help
+            Google AI Studio anahtari. Gemini Live baglantisi bunu URL
+            sorgu parametresi olarak gonderiyor (?key=...).
+
+            Gercek robotta anahtar NVS'te duracak ve panelden girilecek —
+            derlemede gomulu KALMAYACAK.
+
+    config PATI_MODEL
+        string "Gemini Live model adi"
+        default "gemini-3.1-flash-live-preview"
+        help
+            Asama 1'de bu modelle olculdu: medyan 1325 ms, kriter gecti.
+            Degistirilirse olcum tekrarlanmali.
+
+    config PATI_SES
+        string "Gemini sesi"
+        default "Puck"
+        help
+            Asama 1'de panelden dinlenerek secildi (29.07.2026): Puck,
+            calma hizi 1.30x ile birlikte Turkcesi "akici ve hizli"
+            bulundu. Calma hizi ESP32'de I2S saat ayari olacak.
+
+    config PATI_YARIM_DUPLEKS
+        bool "Yanki korumasi ACIK olarak baslasin (panelden degistirilebilir)"
+        default y
+        help
+            YANKI SORUNU: hoparlorle mikrofon yan yana duruyor. Robot
+            konusurken mikrofon kendi sesini duyuyor ve sunucunun VAD'i
+            bunu "cocuk konusuyor" sanip robotun sozunu kesiyor. Robot
+            kendi sozunu keser. iPhone'da CANLI GORULDU
+            (asama1/NOTLAR.md §3e).
+
+            Koruma acikken robot konusurken mikrofon verisi
+            GONDERILMIYOR (yarim dupleks).
+
+            BEDELI: sozunu kesme CALISMAZ. Cocuk robotun uzerine
+            konustugunda robot duymaz.
+
+            ⚠️ BU SADECE BASLANGIC DEGERI. Asil ayar panelde:
+            "Pati'nin sozu kesilebilsin". NVS'te kayit varsa o gecerli;
+            burasi yalnizca kutudan yeni cikmis robotun hali.
+            Varsayilan `y` cunku PC tarafinda da soz kesme KAPALI
+            (PLAN §4.4) ve iki tarafin ayni davranmasi sart.
+
+            ⚠️ Bu bir COZUM DEGIL, bir KOLDUR. Gercek cozum govde
+            tasariminda: hoparloru mikrofondan uzaga ve ters yone koymak
+            (PLAN §4.6).
+
+            Onerilen sira:
+              1. Koruma KAPALI + kulaklik  -> temiz gecikme VE sozunu
+                 kesme olcumu
+              2. Koruma KAPALI + hoparlor  -> yanki gercekten sorun mu
+              3. Koruma ACIK + hoparlor    -> sorunsa gecici care
+
+    config PATI_VAD_SESSIZLIK_MS
+        int "Sunucunun 'sustu' karari (ms)"
+        default 500
+        help
+            Gemini'nin cocugun sustuguna karar verme suresi. PLAN'da
+            "gecikmenin EN BUYUK PARCASI, ayarlanabilir" diye isaretli.
+            Dusurmek gecikmeyi azaltir ama cocugun sozunu kesme riskini
+            artirir. 0 = sunucu varsayilani.
+
+endmenu

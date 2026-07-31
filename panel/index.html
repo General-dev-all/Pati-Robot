@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e13">
+<title>Pati</title>
+<link rel="stylesheet" href="stil.css">
+</head>
+<body>
+
+<!-- ==========================================================================
+     TEK SAYFA: üstte robotun yüzü, altında ayar paneli.
+
+     Bu sayfa hem TASARIM ÖNİZLEMESİ hem GERÇEK TEST aracı. Aynı dosyalar
+     robot bittiğinde ESP32'den servis edilecek — panel kısmı olduğu gibi,
+     gözler ise C++'a çevrilmiş hâliyle (gozler240.js aynı mantığı 240×240
+     tamponuna piksel piksel çiziyor, tarayıcının çizim komutlarını
+     kullanmıyor).
+
+     PANEL DİLİ (tasarım kararı, 30.07.2026):
+     kısa, net, genel. "Çocuk şunu yapsın" gibi ifadeler yok; özne Pati.
+     Açıklamalar iki satırı geçmiyor. Geliştirici araçları burada değil
+     (gelistirici.html), ölçüm sayıları da gösterilmiyor — Python hepsini
+     prototype/olcumler/ içine yazmaya devam ediyor.
+     ========================================================================== -->
+
+<main class="sayfa">
+
+  <!-- ---------------------------------------------------------------- yüz -->
+  <section class="yuz-alan">
+
+    <div class="kafa">
+      <div class="cam">
+        <canvas id="gozler" width="240" height="240"></canvas>
+        <div class="parlama"></div>
+      </div>
+    </div>
+
+    <!-- Robotun güç düğmesi. Gerçekte USB takmak buna karşılık geliyor. -->
+    <button id="guc" class="guc">Pati'yi başlat</button>
+    <div id="gucNot" class="guc-not">mikrofon izni istenecek</div>
+
+  </section>
+
+  <!-- -------------------------------------------------------------- panel -->
+  <header class="ust">
+    <div class="logo"><span class="goz"></span><span class="goz"></span></div>
+    <!-- Ad CANLI: robotun gercek adi yaziliyor, sabit "Pati" degil.
+         Ebeveyn de cocuk da adi degistirebiliyor; burasi kimligin
+         gorundugu tek yer oldugu icin takip etmesi sart. -->
+    <div class="baslik">
+      <b id="ustAd">Pati</b>
+      <small id="durumYazi">bağlanıyor…</small>
+    </div>
+  </header>
+
+  <div class="kartlar">
+
+    <section class="kart durum">
+      <div class="dt">
+        <span>Ağ</span>
+        <b id="dWifi">—</b>
+      </div>
+      <div class="dt">
+        <span>Bugün</span>
+        <b id="dBugun">—</b>
+      </div>
+      <div class="dt">
+        <span>Bu ay</span>
+        <b id="dAy">—</b>
+      </div>
+    </section>
+
+    <!-- KONUŞMA — panelin en üstünde, en sık değişen ayarlar olduğu için.
+         Üçü de setup mesajında gidiyor, yani çalışan oturumda değişmiyor;
+         GoAway yenilemesiyle tur arasında uygulanıyor (ölçüldü 568 ms,
+         hafıza korunuyor). -->
+    <section class="kart">
+      <h2>Konuşma</h2>
+
+      <label class="anahtar">
+        <span>Sözü kesilebilsin</span>
+        <input id="sozKesme" type="checkbox">
+      </label>
+      <p class="ip">
+        Konuşurken araya girilebilir, hemen susar.
+        <b>Kulaklık gerekir</b> — yoksa kendi sesini duyup sözünü keser.
+      </p>
+
+      <label class="kd">
+        <span class="kd-ust"><span>Cevap hızı</span></span>
+        <!-- "Normal" = Google varsayılanı; `silenceDurationMs` hiç
+             gönderilmiyor. Karşılığı ÖLÇÜLDÜ: ~920 ms
+             (NOTLAR.md — metin modu 835 ms, sesli mod 1757 ms, fark). -->
+        <select id="vadSecim">
+          <option value="">Normal · ~0,9 sn</option>
+          <option value="800">0,8 sn</option>
+          <option value="600">0,6 sn</option>
+          <option value="400">0,4 sn — hızlı</option>
+          <option value="300">0,3 sn — en hızlı</option>
+        </select>
+      </label>
+      <p class="ip">
+        Ses kesildikten sonra bu kadar bekleyip cevap verir.
+        Kısaltmak hızlandırır; <b>fazla kısaltmak düşünme aralarında
+        sözü keser.</b>
+      </p>
+
+      <label class="anahtar">
+        <span>Gözleriyle duygusunu göstersin</span>
+        <input id="yuzAcik" type="checkbox">
+      </label>
+      <p class="ip">
+        Sevinme, şaşırma, sitem gözlere yansır. Karşılığı
+        <b>~0,6 saniye</b> daha yavaş cevap. Kapalıyken gözler yine
+        hareket eder.
+      </p>
+    </section>
+
+    <section class="kart">
+      <h2>Ses</h2>
+
+      <label class="kd">
+        <span class="kd-ust"><span>Ses seviyesi</span><b id="vSeviye">—</b></span>
+        <input id="kSeviye" type="range">
+      </label>
+      <p class="ip">
+        Konuşurken bile <b>anında</b> değişir. Tamamen sessize alınmaz.
+        Sesle de söylenebilir: <b>“sesini kıs”</b>.
+      </p>
+
+      <label class="kd">
+        <span class="kd-ust"><span>Tizlik / hız</span><b id="vHiz">—</b></span>
+        <input id="kHiz" type="range">
+      </label>
+      <p class="ip">
+        Sağa kaydırınca ses hem tizleşir hem hızlanır.
+      </p>
+
+      <label class="kd">
+        <span class="kd-ust"><span>Konuşma sesi</span></span>
+        <select id="sSes"></select>
+      </label>
+      <button id="dene" class="ikincil genis">Dinle</button>
+      <p class="ip">
+        Tizlik ve ses seçimi, konuşma sürüyorsa cümle bitince
+        geçerli olur.
+      </p>
+    </section>
+
+    <!-- Bu kutu "güç tasarrufu" gibi görünüyor ama asıl mesele PARA:
+         ücret dakikayla işliyor ve en büyük kalem sohbet değil boşta
+         beklemek. Uyandırma ölçüldü: 617 ms. -->
+    <section class="kart">
+      <h2>Uyku</h2>
+      <label class="kd">
+        <span class="kd-ust"><span>Sessizlikten sonra uyu</span><b id="vUyku">—</b></span>
+        <!-- step 0,5: varsayilan 90 saniye (1,5 dk) ve tam sayi
+             adimda kaydirici bunu gosteremiyordu. Math.round ile
+             "2 dk" yaziyordu — panel gercekte olmayan bir degeri
+             soyluyordu. -->
+        <input id="kUyku" type="range" min="1" max="15" step="0.5">
+      </label>
+      <p class="ip">
+        Uykudayken de <b>dinler</b>; ses gelince <b>0,6 saniyede</b>
+        uyanır. Yavaşlatmaz, <b>faturayı</b> düşürür.
+      </p>
+      <div class="kutu-bilgi" id="kotaBilgi">—</div>
+    </section>
+
+    <section class="kart">
+      <h2>Wifi</h2>
+      <div class="satir-arasi">
+        <div>
+          <b id="wAd">—</b>
+          <small id="wGuc">—</small>
+        </div>
+        <button id="wDegistir" class="ikincil ince">Değiştir</button>
+      </div>
+
+      <div id="wPanel" hidden>
+        <div id="wListe" class="liste"></div>
+        <div id="wSifreKutu" hidden>
+          <label class="kd">
+            <span class="kd-ust"><span id="wSecilen">—</span></span>
+            <input id="wSifre" type="password" placeholder="Şifre"
+                   autocomplete="off">
+          </label>
+          <label class="anahtar">
+            <span>Şifreyi göster</span>
+            <input id="wGoster" type="checkbox">
+          </label>
+          <button id="wBagla" class="birincil genis">Bağlan</button>
+        </div>
+      </div>
+      <p class="ip">
+        Ağa bağlanamazsa kendi ağını açar (“Pati-…”). Telefonla
+        bağlanınca bu sayfa kendiliğinden açılır.
+      </p>
+    </section>
+
+    <section class="kart">
+      <h2>Kişi bilgisi</h2>
+
+      <!-- Adı İKİ TARAF DA değiştirebiliyor: buradan yazılarak, ya da
+           konuşma sırasında ("bundan sonra senin adın Osman"). Ayrı bir
+           öncelik kuralı yok, son yazılan geçerli.
+           Boş bırakmak hata değil, varsayılana döndürüyor. -->
+      <label class="kd">
+        <span class="kd-ust"><span>Robotun adı</span></span>
+        <input id="rAd" type="text" placeholder="Pati">
+      </label>
+      <p class="ip" id="rAdNot">Konuşma sırasında da değiştirilebilir.</p>
+
+      <div class="ikili">
+        <label class="kd">
+          <span class="kd-ust"><span>Çocuğun adı</span></span>
+          <input id="cAd" type="text" placeholder="—">
+        </label>
+        <label class="kd kisa">
+          <span class="kd-ust"><span>Yaş</span></span>
+          <input id="cYas" type="number" min="2" max="12" placeholder="—">
+        </label>
+      </div>
+
+      <label class="kd">
+        <span class="kd-ust"><span>Ek bilgi</span></span>
+        <textarea id="cEk" rows="3"
+          placeholder="Kedisinin adı… sevdikleri… akşam sekizde diş fırçalaması…"></textarea>
+      </label>
+      <!-- Sistem promptu ebeveyne açılmıyor. Kişilik kuralları ölçülerek
+           bulundu (soru kuralı: %9 → %86) ve serbest metin onları
+           seyreltiyor. Buradan yazılanlar kuralların YERİNE geçmiyor,
+           ayrı bir başlık altında yanına ekleniyor. -->
+      <p class="ip">
+        <b>Bilgi</b> olarak verilir, sonraki konuşmada geçerli olur.
+        Karakteri değişmez.
+      </p>
+    </section>
+
+    <section class="kart">
+      <h2>
+        Hafıza
+        <button id="hepsiniSil" class="tehlike ince">Tümünü sil</button>
+      </h2>
+      <div id="hListe" class="liste"></div>
+      <p class="ip">
+        Konuşmalardan kendi çıkardı. Yanlış olanı sil; yenisini
+        sonraki konuşmada öğrenir.
+      </p>
+    </section>
+
+    <details class="kart gelismis">
+      <summary>Gelişmiş</summary>
+      <button class="tehlike genis" id="fabrika">Fabrika ayarlarına dön</button>
+      <p class="ip" id="surum">—</p>
+    </details>
+
+  </div>
+</main>
+
+<div id="tost" class="tost" hidden></div>
+
+<script type="module" src="pati.js"></script>
+</body>
+</html>

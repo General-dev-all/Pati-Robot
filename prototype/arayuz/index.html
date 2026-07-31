@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pati — Aşama 1 paneli</title>
+<link rel="stylesheet" href="stil.css">
+</head>
+<body>
+
+<div class="sol">
+  <!-- Robot yüzü.
+       Kasa + füme akrilik görünümü PLAN.mdb'den geliyor: Eilik'in
+       "siyah cam" hissi ekrandan değil, önündeki koyu şeffaf
+       akrilikten geliyor. 250 TL'lik ekranı sipariş etmeden nasıl
+       duracağını burada görüyoruz. -->
+  <div class="kafa">
+    <div class="cam">
+      <canvas id="gozler"></canvas>
+      <div class="yansima"></div>
+    </div>
+  </div>
+
+  <div class="ifade-adi"><span id="ifadeAdi">bos</span></div>
+  <div class="mik-durum" id="mikDurum"></div>
+
+  <div class="dugmeler">
+    <button id="baslat" class="birincil">Başlat</button>
+    <button id="durdur" disabled>Durdur</button>
+  </div>
+
+  <div class="mod">
+    <label><input type="radio" name="mod" value="ses" checked> Mikrofonla (gecikme ölçülür)</label>
+    <label><input type="radio" name="mod" value="metin"> Metinle (mikrofon gerekmez)</label>
+    <!-- Uzaktan bağlanan biri (telefon, tünel) kendi mikrofonuyla
+         konuşabilsin diye. Ölçüm için DEĞİL: araya tarayıcı ve ağ
+         girdiği için gecikme sayıları §4 kriteri sayılmaz. -->
+    <label><input type="radio" name="mod" value="tarayici"> Bu cihazın mikrofonuyla <b>(gösteri — ölçüm değil)</b></label>
+  </div>
+
+  <!-- Kulaklıksız kullanımda hoparlörden çıkan ses mikrofona girip
+       robotun kendi sözünü kestiriyor. Robot konuşurken mikrofonu
+       kapatmak bunu tamamen bitiriyor; bedeli sözünü kesememek. -->
+  <label class="onay" id="dubleksSatir" hidden>
+    <input id="yarimDubleks" type="checkbox" checked>
+    <span>Kulaklıksız kullanıyorum</span>
+  </label>
+  <div class="ipucu" id="dubleksNot" hidden>
+    Robot konuşurken mikrofon kapanır — böylece <b>kendi sesini duyup
+    sözünü kesmez</b>. Karşılığında sen de onun sözünü kesemezsin.
+    Kulaklık takarsan işareti kaldır, ikisi de düzelir.
+  </div>
+
+  <div class="yazi-satiri">
+    <input id="yazi" type="text" placeholder="Yazarak konuş… (Enter)" disabled>
+  </div>
+
+  <!-- SES SEÇİMİ.
+       30 hazır ses var; tizlik/hız API'den ayarlanamıyor
+       (SpeechConfig şemasında speakingRate/pitch yok). Onun yerine
+       v1'in hilesi: sesi olduğundan hızlı çalınca hem hızlanıyor hem
+       tizleşiyor. ESP32'de bu sadece bir I2S saat ayarı. -->
+  <details class="deneme" open>
+    <summary>Ses seç</summary>
+
+    <div class="ses-satir">
+      <select id="sesListesi"></select>
+      <button id="sesDinle" class="kucuk">Dinle</button>
+    </div>
+
+    <!-- Tek ayar: çalma hızı. Sesi olduğundan hızlı çalınca tizleşir
+         ama aynı oranda hızlanır da — fizik gereği ayrılmıyor.
+         Prompta "yavaş konuş" talimatı eklemek denendi ve GERİ ALINDI:
+         her yeni talimat kişilik kurallarını seyreltiyor (soru kuralı
+         ölçümü: sadece ifade değişimi %9 → %86 fark yarattı). -->
+    <label class="kaydirici">
+      <span>Tizlik / hız <b id="hizDeger">1.00×</b></span>
+      <input id="hizKaydirici" type="range" min="0.85" max="1.45"
+             step="0.01" value="1.00">
+    </label>
+    <div class="ipucu">
+      Sağa kaydırınca ses <b>hem tizleşir hem hızlanır</b> — ikisi fizik
+      gereği ayrılmıyor. Local Pati'de ayrılabiliyordu çünkü orada
+      üretim hızı da ayarlanabiliyordu; burada o ayar yok.
+    </div>
+
+    <!-- SES SEVİYESİ. Tizlikten farkı: bu ANINDA geçerli oluyor,
+         sonraki başlatmayı beklemiyor. Çünkü tizlik oturum açılırken
+         sabitleniyor, seviye ise her ses parçasında yeniden uygulanıyor.
+
+         Çocuk bunu sesiyle de ayarlayabiliyor ("sesini kıs") — ikisi
+         de aynı sınırlardan geçiyor. Tamamen sessize alma KASITLI
+         olarak yok: çocuk sıfıra indirip "Pati bozuldu" sanmasın. -->
+    <label class="kaydirici">
+      <span>Ses seviyesi <b id="seviyeDeger">85%</b></span>
+      <input id="seviyeKaydirici" type="range" min="0.15" max="1"
+             step="0.05" value="0.85">
+    </label>
+    <div class="ipucu">
+      Anında geçerli. Çocuk <b>"sesini kıs"</b> diyerek de
+      ayarlayabilir — o istek tur bittikten sonra işleniyor, gecikmeye
+      hiçbir şey eklemiyor.
+    </div>
+
+    <div class="uygulandi" id="sesDurum">—</div>
+  </details>
+
+  <!-- GECİKME AYARLARI.
+       Ölçüldü (11 tur, mikrofonla): ortalama 1783 ms, medyan 1989 ms
+       → SINIRDA. Bu iki ayara o ölçümde HİÇ dokunulmamıştı ve ikisi de
+       gecikmenin en büyük kalemleri. -->
+  <details class="deneme" open>
+    <summary>Gecikme ayarları</summary>
+
+    <div class="ayar">
+      <span>“Sustu” kararı</span>
+      <select id="vadSecim">
+        <option value="">Varsayılan</option>
+        <option value="800">800 ms</option>
+        <option value="600">600 ms</option>
+        <option value="400">400 ms</option>
+        <option value="300">300 ms</option>
+      </select>
+    </div>
+    <div class="ipucu">
+      Robot, sen sustuktan sonra bu kadar bekleyip “bitti” diyor.
+      Ölçtük: bu karar şu an <b>~920 ms</b> tutuyor — gecikmenin en
+      büyük tek kalemi. Kısaltmak hızlandırır, <b>ama çok kısaltırsan
+      çocuk düşünmek için durduğunda robot sözünü keser.</b>
+    </div>
+
+    <label class="onay">
+      <input id="yuzAcik" type="checkbox" checked>
+      <span>Yüz ifadesi aracı açık</span>
+    </label>
+    <div class="ipucu">
+      Kapatırsan gözler sadece konuşma akışına göre değişir (dinliyor /
+      düşünüyor / konuşuyor), model kendi duygusunu seçemez.
+      Ölçtük: açıkken cevabın önüne <b>~600 ms</b> ekliyor.
+    </div>
+
+    <div class="uygulandi" id="gecikmeDurum">—</div>
+  </details>
+
+  <details class="deneme">
+    <summary>İfadeleri elle dene</summary>
+    <div id="ifadeDugmeleri"></div>
+    <p class="ipucu">
+      Bunlar sadece önizleme — ölçüme girmez. Gerçek robotta ifadeyi
+      modelin kendisi seçiyor (PLAN.md).
+    </p>
+  </details>
+</div>
+
+<div class="sag">
+  <header>
+    <h1>Pati — Aşama 1</h1>
+    <div id="baglanti" class="rozet bekliyor">bağlanmadı</div>
+  </header>
+
+  <!-- ÖLÇÜM.
+       PLAN.md'ün ana kriteri: çocuk sustu → ilk ses ≤ 1500 ms.
+       Ortalama tek başına gösterilmiyor; en kötü değer de burada,
+       çünkü çocuk ortalamayı yaşamıyor, her turu tek tek yaşıyor. -->
+  <section class="olcum">
+    <div class="kutu buyuk">
+      <div class="etiket">son gecikme</div>
+      <div id="sonGecikme" class="deger">—</div>
+      <div class="alt">çocuk sustu → ilk ses</div>
+    </div>
+    <div class="kutu">
+      <div class="etiket">ortalama</div>
+      <div id="ortalama" class="deger">—</div>
+    </div>
+    <div class="kutu">
+      <div class="etiket">en kötü</div>
+      <div id="enKotu" class="deger">—</div>
+    </div>
+    <div class="kutu">
+      <div class="etiket">tur</div>
+      <div id="turSayisi" class="deger">0</div>
+    </div>
+  </section>
+
+  <div id="kriter" class="kriter">
+    Kriter: ≤1500 ms geçer · 1500–2500 sınırda · &gt;2500 kalır
+  </div>
+
+  <!-- Gecikmenin hangi parçası ESP32'ye geçer (PLAN.md tablosu).
+       Bu ayrım olmadan PC ölçümü ESP32 için yanıltıcı olur. -->
+  <section class="dagilim">
+    <div class="cubuk">
+      <div id="cubukAg" class="parca ag"></div>
+      <div id="cubukYerel" class="parca yerel"></div>
+    </div>
+    <div class="aciklama">
+      <span><i class="nokta ag"></i> ağ + model <b id="agMs">—</b> · ESP32'ye <b>aynen geçer</b></span>
+      <span><i class="nokta yerel"></i> PC ses yığını <b id="yerelMs">—</b> · ESP32'de <b>farklı olacak</b></span>
+    </div>
+  </section>
+
+  <section class="dokum">
+    <h2>Konuşma</h2>
+    <div id="dokum"></div>
+  </section>
+
+  <!-- HAFIZA.
+       v1'in ilkesi korunuyor: "hafıza ŞEFFAF olmalı. Çocuk robotun
+       kendisi hakkında ne bildiğini görebilmeli, yanlışı
+       düzeltebilmeli, istemediğini silebilmeli."
+       Bilgiler oturum BİTİNCE çıkarılıyor — konuşma sırasında değil,
+       yani cevap gecikmesine hiç eklenmiyor. -->
+  <section class="hafiza">
+    <h2>
+      Hafıza
+      <button id="hafizaSifirla" class="kucuk tehlike">Sıfırla</button>
+    </h2>
+    <div id="hafizaOzet" class="hafiza-ozet">—</div>
+    <div id="hafizaListe"></div>
+  </section>
+
+  <section class="olaylar">
+    <h2>Oturum</h2>
+    <div id="olaylar"></div>
+  </section>
+</div>
+
+<script type="module" src="panel.js"></script>
+</body>
+</html>

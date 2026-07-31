@@ -1,0 +1,12 @@
+# mDNS — panelin "pati.local" adresinden acilmasi icin.
+#
+# 🔴 31.07.2026'da eksik oldugu anlasildi. Ebeveyn ev wifi'sini girdi,
+# robot kendi agini kapatip eve gecti ve panel ULASILAMAZ hale geldi:
+# yeni adres 192.168.x.x gibi bir sey ve bunu kimse bilmiyor.
+# Seri porttan okumak cozum degil — anne baba oraya bakmayacak.
+#
+# mDNS ile adres SABIT bir isim oluyor: http://pati.local
+# iPhone ve Mac'te dogrudan calisiyor (Bonjour), Windows 10+ ve
+# Android 12+ de destekliyor.
+dependencies:
+  espressif/mdns: "^1.8.0"

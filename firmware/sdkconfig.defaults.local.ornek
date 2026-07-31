@@ -1,0 +1,28 @@
+# ÖRNEK DOSYA — bunu kopyalayıp adını "sdkconfig.defaults.local" yap,
+# sonra kendi bilgilerini doldur.
+#
+#     kopyala:  sdkconfig.defaults.local.ornek  ->  sdkconfig.defaults.local
+#
+# "sdkconfig.defaults.local" .gitignore'da: şifren ve API anahtarın
+# depoya GİRMEZ. Bu örnek dosya depoya giriyor ama içinde gerçek bilgi
+# yok, sadece biçimi gösteriyor.
+#
+# Doldurduktan sonra:  idf.py build
+#
+# 🔴 ÖNEMLİ — bu dosyayı SONRADAN düzenlersen:
+#
+#     sdkconfig dosyasını SİL, sonra derle.
+#
+# Sebebi: ESP-IDF, sdkconfig bir kez oluştuktan sonra bu dosyaya
+# bakmıyor. Eski değerler orada çakılı kalıyor. Yani şifreyi burada
+# değiştirirsin, kart hâlâ eski şifreyle bağlanmaya çalışır ve
+# "şifre yanlış" der — sen dosyaya bakıp "ama şifre doğru" dersin.
+#
+# CMake bunu yakalayıp uyarıyor ama uyarı gözden kaçabilir.
+
+CONFIG_PATI_WIFI_SSID="ev-wifi-adin"
+CONFIG_PATI_WIFI_PASS="wifi-sifren"
+
+# Google AI Studio'dan: https://aistudio.google.com/apikey
+# prototype/anahtar.txt içindeki anahtarın aynısı kullanılabilir.
+CONFIG_PATI_GEMINI_API_KEY="AIza..."

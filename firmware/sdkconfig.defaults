@@ -1,0 +1,123 @@
+# Pati — derleme ayarlari
+#
+# Buradaki her satirin bir gerekcesi var. Gerekcesi olmayan ayar
+# eklenmiyor: sonradan "bu neden boyle" diye bakildiginda cevabi
+# olmayan ayar, guvenilmeyen ayardir.
+
+# ---------------------------------------------------------------------------
+# Hedef yonga
+# ---------------------------------------------------------------------------
+#
+# 🔴 BURADA DURMASI SART. PLAN §7 bir ayar tutmadiginda "sdkconfig'i sil,
+# bastan derle" diyor — dogru care, ama hedef yonga SADECE sdkconfig'de
+# duruyordu. 31.07.2026'da tam bunu yaptim ve derleme gecti, yukleme
+# "This chip is ESP32-S3, not ESP32" diye patladi: idf.py hedefi
+# unutmustu.
+#
+# Burada olunca sdkconfig'i silmek zararsiz bir islem oluyor.
+CONFIG_IDF_TARGET="esp32s3"
+
+# ---------------------------------------------------------------------------
+# PSRAM — 8 MB, oktal
+# ---------------------------------------------------------------------------
+# Kartimiz N16R8: 16 MB flash + 8 MB OKTAL PSRAM.
+# PSRAM sart cunku WebSocket'in TLS tamponlari ve ses kuyruklari dahili
+# 512 KB SRAM'e sigmiyor. stackchan'in conversation bileseni de
+# tamponlarini PSRAM'den aliyor (psram_allocator.hpp).
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_USE_MALLOC=y
+
+# ---------------------------------------------------------------------------
+# Flash — 16 MB
+# ---------------------------------------------------------------------------
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+
+# ---------------------------------------------------------------------------
+# Bolum tablosu
+# ---------------------------------------------------------------------------
+# Tek uygulama + buyuk alan. OTA (panelden guncelleme) sonra eklenecek;
+# o zaman cift bolume gecilir.
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
+
+# ---------------------------------------------------------------------------
+# Derleyici optimizasyonu — HIZ
+# ---------------------------------------------------------------------------
+#
+# 🔴 31.07.2026, GERCEK KARTTA OLCULDU. Bu satir eksikti ve ESP-IDF'in
+# varsayilani devreye giriyordu: CONFIG_COMPILER_OPTIMIZATION_DEBUG,
+# yani `-Og`. Butun Pati firmware'i bugune kadar HATA AYIKLAMA kipinde
+# derlendi.
+#
+# Fark eden sey: gozlerin bir karesi 49 ms surdu (butce 33 ms) ve
+# harmanlanan piksel basina 250 islemci cevrimi cikti — yapilan is
+# bunun bes katindan azdi. Once yuvarlama, sonra satir ici acilma
+# denendi; ikisi de sadece birkac milisaniye kazandirdi. Sebep tek bir
+# fonksiyon degil, kodun TAMAMININ optimize edilmemis olmasiymis.
+#
+# Kimse fark etmemisti cunku bugune kadar hicbir sey GERCEK KARTTA
+# olculmemisti. PC testleri MSVC ile /O2 derleniyor, yani oradan
+# gorunmuyor.
+#
+# ⚠️ Yaniltici ipucu: derleme ciktisinda "-- USING O3" yaziyor. O bizim
+# degil — espressif__esp_audio_codec bileseni kendi kodu icin basiyor.
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+# ---------------------------------------------------------------------------
+# C++20
+# ---------------------------------------------------------------------------
+# stackchan'in conversation bileseni C++20 istiyor (CMakeLists'inde
+# cxx_std_20 yazili). tl::expected ve std::span kullaniyor.
+CONFIG_COMPILER_CXX_EXCEPTIONS=y
+
+# ---------------------------------------------------------------------------
+# TLS
+# ---------------------------------------------------------------------------
+# Gemini Live wss:// uzerinden. Sertifika dogrulamasi ACIK kaliyor —
+# cocugun sesini tasiyan bir baglantida bunu kapatmak kabul edilemez.
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
+
+# TLS el sikisma tamponu. AGENTS.md/PLAN §5: "TLS tek gercek yuk."
+# Varsayilan 16 KB yetiyor ama PSRAM'den alinsin ki dahili SRAM bosalsin.
+CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
+
+# ---------------------------------------------------------------------------
+# Gorev yigitlari ve zamanlayici
+# ---------------------------------------------------------------------------
+# esp_timer'i olcum icin kullaniyoruz (mikrosaniye damgasi). stackchan'in
+# ConversationEvent'i de emit_us alaninda ayni saati veriyor.
+CONFIG_ESP_TIMER_TASK_STACK_SIZE=4096
+
+# WebSocket ve ses gorevleri ayni cekirdekte bogusmasin.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# ---------------------------------------------------------------------------
+# Soket sayisi — captive portal bunu tuketiyordu
+# ---------------------------------------------------------------------------
+#
+# 🔴 31.07.2026, gercek cihazda logdan gorildi:
+#     E httpd: httpd_accept_conn: error in accept (23)
+#     W httpd: httpd_server: error accepting new connection
+# errno 23 = ENFILE, yani sistemde bos soket kalmamis.
+#
+# Varsayilan 10 idi ve kurulum modunda su anda ayni anda kullaniliyor:
+# httpd dinleyicisi + denetim soketi + 7 acik baglanti + DNS sunucusu
+# (captive portal). Tarayici sayfayi acarken alti dosyayi paralel
+# cekiyor, ustune telefonun isletim sistemi "internet var mi" diye
+# saniyede bir yoklama atiyor. Sinir tam burada doluyor.
+#
+# Sonucu ebeveyn su sekilde goruyordu: panel iki saniyede bir
+# "baglanti koptu" deyip kendine geliyor, sayfa zipliyor ve
+# gezilemiyor hale geliyordu.
+CONFIG_LWIP_MAX_SOCKETS=16
+
+# ---------------------------------------------------------------------------
+# Kayit
+# ---------------------------------------------------------------------------
+# Asama 2'nin tek isi olcum; olculen sayilar seri porttan okunacak.
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y

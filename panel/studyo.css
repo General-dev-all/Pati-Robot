@@ -1,0 +1,343 @@
+/* Pati — tasarim inceleme studyosu.
+   Koyu tema, cunku incelenen sey koyu bir yuz. Aydinlik zeminde
+   turkuaz gozler olduklarindan parlak goruluyor ve yanlis
+   begeniliyor. */
+
+:root {
+  --turkuaz: #17c4c4;
+  --turkuaz-acik: #5df2f2;
+  --zemin: #0b0e13;
+  --kart: #14191f;
+  --kart2: #1a2027;
+  --cizgi: #242c35;
+  --yazi: #e6edf3;
+  --soluk: #8b949e;
+  --gecer: #3fb950;
+  --sinir: #d29922;
+  --kalir: #f85149;
+}
+
+* { box-sizing: border-box; }
+
+/* 🔴 BU SATIR BIR HATADAN CIKTI — silmeyin.
+   `hidden` niteliginin `display:none`'i tarayicinin en zayif
+   kuralindan geliyor. Asagida `.kalibre { display:flex }`,
+   `.gorunum { display:grid }`, `#govde { display:block }` yaziyor ve
+   ucu de onu eziyor. Sonuc: kalibrasyon penceresi kapanmadi (acilista
+   bile acik geldi), "Sadece ekran" govdeyi gizlemedi, sekme
+   degistirmede iki gorunum ust uste bindi. Uc ayri belirti, tek sebep.
+   `!important` burada dogru arac: `hidden` bir NIYET beyani, hicbir
+   yerlesim kurali onu gecmemeli. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--zemin);
+  color: var(--yazi);
+  min-height: 100vh;
+}
+
+/* ------------------------------------------------------------------ ust */
+
+.ust {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--cizgi);
+  background: var(--kart);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.marka { font-weight: 700; font-size: 16px; letter-spacing: .02em; }
+.marka span { font-weight: 400; color: var(--soluk); font-size: 13px; margin-left: 6px; }
+
+.sekmeler { display: flex; gap: 6px; margin-left: auto; }
+.ust-sag { display: flex; gap: 8px; }
+
+button {
+  font: inherit;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--cizgi);
+  background: var(--kart2);
+  color: var(--yazi);
+  cursor: pointer;
+}
+button:hover { border-color: var(--turkuaz); }
+button.etkin { background: var(--turkuaz); color: #04211f; border-color: var(--turkuaz); font-weight: 600; }
+button.birincil { background: var(--turkuaz); color: #04211f; border-color: var(--turkuaz); font-weight: 600; }
+button.ince { padding: 5px 12px; font-size: 12px; }
+button.genis-dugme { width: 100%; margin-top: 10px; }
+
+/* ------------------------------------------------------------ kalibrasyon */
+
+.kalibre {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.kalibre-ic {
+  background: var(--kart);
+  border: 1px solid var(--cizgi);
+  border-radius: 14px;
+  padding: 26px;
+  max-width: 620px;
+}
+.kalibre-ic h2 { margin: 0 0 10px; font-size: 17px; }
+.kalibre-ic p { color: var(--soluk); font-size: 13px; line-height: 1.6; margin: 0 0 14px; }
+.kalibre-kart {
+  height: 54px;
+  border: 2px dashed var(--turkuaz);
+  border-radius: 6px;
+  background: rgba(23, 196, 196, .07);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--turkuaz-acik);
+  margin-bottom: 14px;
+}
+#kalibreKaydirici { width: 100%; accent-color: var(--turkuaz); }
+.kalibre-alt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+#kalibreDeger { font-size: 13px; color: var(--turkuaz-acik); font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------- yerlesim */
+
+.gorunum {
+  display: grid;
+  grid-template-columns: 1fr minmax(320px, 400px);
+  gap: 0;
+  align-items: start;
+}
+@media (max-width: 1000px) {
+  .gorunum { grid-template-columns: 1fr; }
+}
+
+.sahne-alan {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.olcek-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--soluk);
+}
+.olcek-bar button { padding: 5px 12px; font-size: 12px; }
+.ayrac { width: 1px; height: 18px; background: var(--cizgi); margin: 0 6px; }
+
+/* ---------------------------------------------------------------- sahne */
+
+.sahne {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+#govde { display: block; }
+
+/* `image-rendering` burada SABIT verilmiyor — studyo.js olcege gore
+   ayarliyor. Sebep: buyuturken `pixelated` dogru (gercek basamaklar
+   goruluyor), kucultürken YANLIS (piksel atiyor, ekrandan daha kotu
+   gorunuyor). */
+#gozler { position: absolute; }
+
+/* Fume akrilik ortusu — YAKLASIK.
+   Gercek akrilik isigin bir kismini yutar ve uzerine cevrenin
+   yansimasini bindirir. Buradaki iki katman o iki etkiyi taklit
+   ediyor; kesin degil, ama "akrilik olmadan nasil, olunca nasil"
+   sorusunun cevabini veriyor. */
+.akrilik-ortu {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 6%;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.13) 0%, rgba(255,255,255,.02) 34%, rgba(255,255,255,0) 55%),
+    rgba(6, 10, 14, .34);
+}
+.akrilik-ortu[hidden] { display: none; }
+
+.sahne-alt { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.durum-satir { font-size: 13px; color: var(--soluk); display: flex; gap: 10px; align-items: baseline; }
+.durum-satir b { color: var(--turkuaz-acik); font-size: 15px; }
+
+/* Cetvel: 10 mm. 1:1 modda gercekten 10 mm olmali — kalibrasyonun
+   ise yarayip yaramadigi buradan bakilarak anlasiliyor. */
+.cetvel { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--soluk); }
+.cetvel-cizgi {
+  height: 8px;
+  border-left: 1px solid var(--soluk);
+  border-right: 1px solid var(--soluk);
+  border-bottom: 1px solid var(--soluk);
+}
+
+.ipucu { font-size: 12px; line-height: 1.6; color: var(--soluk); margin: 4px 0 0; }
+.ipucu.genis { max-width: 520px; text-align: center; }
+/* Gozler 240 pikseli tasarsa ifade degisiminde kenarda kesilir —
+   uyari kirmizi olmali, yoksa gozden kaciyor. */
+.ipucu.tasti b:first-of-type { color: var(--kalir); }
+.ipucu b { color: var(--yazi); }
+.ipucu code { background: var(--kart2); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+
+/* ---------------------------------------------------------------- ayarlar */
+
+.ayar-alan {
+  padding: 22px 22px 60px;
+  border-left: 1px solid var(--cizgi);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: sticky;
+  top: 57px;
+  max-height: calc(100vh - 57px);
+  overflow-y: auto;
+}
+@media (max-width: 1000px) {
+  .ayar-alan { border-left: 0; border-top: 1px solid var(--cizgi); position: static; max-height: none; }
+}
+
+details {
+  background: var(--kart);
+  border: 1px solid var(--cizgi);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+summary .not { font-weight: 400; color: var(--soluk); font-size: 11px; margin-left: 6px; }
+details > *:not(summary) { margin-top: 10px; }
+
+.satir { display: flex; gap: 8px; }
+.satir button { flex: 1; }
+
+.dugme-kutu { display: flex; flex-wrap: wrap; gap: 5px; }
+.dugme-kutu button { padding: 4px 9px; font-size: 11px; }
+
+/* Kaydirici satiri: ad — deger — cubuk. Deger her zaman gorunuyor
+   cunku C++'a gececek sayi tam olarak o. */
+.kd { display: block; font-size: 12px; color: var(--soluk); margin-top: 10px; }
+.kd-ust { display: flex; justify-content: space-between; align-items: baseline; }
+.kd-ust b { color: var(--turkuaz-acik); font-variant-numeric: tabular-nums; }
+.kd input[type=range] { width: 100%; margin-top: 4px; accent-color: var(--turkuaz); }
+
+.onay { display: flex; align-items: center; gap: 9px; font-size: 12.5px; margin-top: 9px; cursor: pointer; }
+.onay input { accent-color: var(--turkuaz); width: 16px; height: 16px; flex: none; }
+.onay span { color: var(--yazi); }
+.onay em { color: var(--soluk); font-style: normal; font-size: 11px; }
+
+/* -------------------------------------------------------------- butce */
+
+.butce { display: flex; flex-direction: column; gap: 7px; font-size: 12px; }
+.bs { display: flex; justify-content: space-between; gap: 10px; }
+.bs span { color: var(--soluk); }
+.bs b { font-variant-numeric: tabular-nums; }
+.bs b.gecer { color: var(--gecer); }
+.bs b.sinir { color: var(--sinir); }
+.bs b.kalir { color: var(--kalir); }
+
+.cikti {
+  background: #05080b;
+  border: 1px solid var(--cizgi);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--turkuaz-acik);
+  overflow-x: auto;
+  white-space: pre;
+  margin: 0;
+}
+
+/* Karar maddesi: somut sahne + su an olan + soru.
+   Duz madde listesi denendi ve okunmadi — soyut kaliyordu. */
+.karar-oge {
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--soluk);
+  padding: 12px 0;
+  border-top: 1px solid var(--cizgi);
+}
+.karar-oge b { color: var(--yazi); }
+.karar-oge i { font-style: normal; }
+
+.karar-sahne {
+  background: var(--kart2);
+  border-left: 2px solid var(--turkuaz);
+  border-radius: 0 8px 8px 0;
+  padding: 9px 12px;
+  margin-bottom: 9px;
+  color: var(--yazi);
+}
+
+/* -------------------------------------------------------------- telefon */
+
+/* Telefondan bakan biri icin en onemli dugme.
+   Cerceve ICINDEKI paneli telefonda incelemek yaniltiyor: telefonun
+   ekraninda 390 px'e sikistirilmis bir iframe goruluyor. Gercek
+   degerlendirme tam ekranla oluyor. */
+.tamekran {
+  display: block;
+  width: 100%;
+  max-width: 460px;
+  text-align: center;
+  text-decoration: none;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: var(--turkuaz);
+  color: #04211f;
+  font-weight: 600;
+  font-size: 15px;
+}
+.tamekran span {
+  display: block;
+  font-weight: 400;
+  font-size: 12px;
+  opacity: .75;
+  margin-top: 2px;
+}
+.tamekran:hover { filter: brightness(1.08); }
+
+
+.telefon {
+  position: relative;
+  background: #05070a;
+  border: 9px solid #1c232b;
+  border-radius: 34px;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, .6);
+  overflow: hidden;
+  line-height: 0;
+}
+.centik {
+  position: absolute;
+  top: 6px; left: 50%;
+  transform: translateX(-50%);
+  width: 92px; height: 20px;
+  background: #05070a;
+  border-radius: 12px;
+  z-index: 2;
+}
+#panelCerceve { border: 0; display: block; background: #0b0e13; }

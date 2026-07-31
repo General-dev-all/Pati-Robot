@@ -1,0 +1,452 @@
+/* Pati — cocugun gordugu yuz + ebeveyn paneli, tek sayfa.
+   Koyu tema: robotun yuzu koyu cam arkasinda duruyor, panel de ayni
+   dili konussun. Ebeveyn telefonda gordugu seyi masadaki robotla ayni
+   sey saymali. */
+
+:root {
+  --turkuaz: #17c4c4;
+  --turkuaz-acik: #5df2f2;
+  --zemin: #0b0e13;
+  --kart: #151b22;
+  --kart2: #1c232b;
+  --cizgi: #252d36;
+  --yazi: #e6edf3;
+  --soluk: #8b949e;
+  --gecer: #3fb950;
+  --sinir: #d29922;
+  --kalir: #f85149;
+}
+
+* { box-sizing: border-box; }
+
+/* `hidden` bir NIYET beyani; hicbir yerlesim kurali onu gecmemeli.
+   Bu satir bir hatadan cikti — CSS'teki display kurallari hidden'i
+   eziyor ve gizlenmesi gereken kutular ekranda kaliyordu. */
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--zemin);
+  color: var(--yazi);
+  font-size: 15px;
+}
+
+/* Sayfa telefon genisliginde tasarlandi; bilgisayarda ortada tek
+   kolon duruyor. Genis ekranda iki kolona yaymadim — o zaman
+   telefondaki gorunumle ayni olmazdi ve karar yanlis verilirdi. */
+.sayfa {
+  max-width: 440px;
+  margin: 0 auto;
+  padding-bottom: 40px;
+}
+
+/* ==================================================================== yuz */
+
+.yuz-alan {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 26px 16px 22px;
+}
+
+/* Kafa: 3D baskiyla cikacak govdenin on yuzu.
+   Olculer gercege oranli — ekranin aktif alani 23,35 mm, kafa ~54 mm.
+   Burada 1 tuval pikseli = 1 CSS pikseli olacak sekilde buyutulmus
+   (240 px yuz), yani gercekte oldugundan ~2,5 kat buyuk gorunuyor.
+   Bu bilincli bir secim: piksel yapisi gorunur kalsin ama telefonda
+   yuz bakilabilir buyuklukte olsun. Gercek boyut gelistirici.html'de
+   1:1 modunda gorulebiliyor. */
+.kafa {
+  width: 292px;
+  padding: 26px;
+  border-radius: 34px;
+  background: linear-gradient(160deg, #eef1f4, #c9cfd6);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .5),
+              inset 0 -6px 14px rgba(0, 0, 0, .07);
+}
+
+/* Fume akrilik. PLAN v1 §10b'nin bulgusu: Eilik'in "siyah cam"
+   gorunumu ekrandan degil onundeki koyu seffaf akrilikten geliyor.
+   Akrilik olmadan ekranin kenari ve modul karti goruluyor ve robot
+   "ekran yapistirilmis kutu" gibi duruyor. */
+.cam {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: radial-gradient(120% 120% at 50% 25%, #111a1f 0%, #04070a 100%);
+  box-shadow: inset 0 0 22px rgba(0, 0, 0, .9), 0 0 0 3px rgba(0, 0, 0, .4);
+}
+
+/* Gozler 240x240 tampona piksel piksel ciziliyor; tarayici onu
+   yumusatmasin. `pixelated` burada DOGRU cunku 1:1 gosteriyoruz. */
+#gozler {
+  display: block;
+  width: 240px;
+  height: 240px;
+  image-rendering: pixelated;
+}
+
+/* Akrilik uzerindeki isik yansimasi — akrilik hissini veren sey bu. */
+.parlama {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(148deg, rgba(255,255,255,.12) 0%,
+                    rgba(255,255,255,.02) 32%, rgba(255,255,255,0) 54%),
+    rgba(6, 10, 14, .22);
+}
+
+.guc {
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 14px 30px;
+  border-radius: 12px;
+  border: 1px solid var(--turkuaz);
+  background: var(--turkuaz);
+  color: #04211f;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.guc:active { transform: scale(.985); }
+.guc.calisiyor {
+  background: transparent;
+  color: var(--soluk);
+  border-color: var(--cizgi);
+  font-weight: 400;
+}
+.guc:disabled { opacity: .5; cursor: default; }
+
+.guc-not { font-size: 12px; color: var(--soluk); min-height: 1.2em; text-align: center; }
+.guc-not.hata { color: var(--kalir); }
+
+/* ================================================================== panel */
+
+.ust {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 18px 14px;
+  position: sticky;
+  top: 0;
+  background: linear-gradient(var(--zemin) 72%, rgba(11, 14, 19, 0));
+  z-index: 5;
+}
+
+/* Kucuk bir goz cifti — ayni sekil, ayni renk. */
+.logo { display: flex; gap: 5px; }
+.goz {
+  width: 13px; height: 17px;
+  border-radius: 5px;
+  background: linear-gradient(#5df2f2, #17c4c4);
+  box-shadow: 0 0 9px rgba(23, 196, 196, .55);
+}
+
+.baslik { display: flex; flex-direction: column; line-height: 1.25; }
+.baslik b { font-size: 19px; }
+.baslik small { color: var(--soluk); font-size: 12px; }
+.baslik small.iyi { color: var(--gecer); }
+.baslik small.kopuk { color: var(--kalir); }
+
+.kartlar { padding: 0 14px; display: flex; flex-direction: column; gap: 12px; }
+
+.kart {
+  background: var(--kart);
+  border: 1px solid var(--cizgi);
+  border-radius: 14px;
+  padding: 15px 16px 17px;
+}
+
+h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--soluk);
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.durum { display: flex; justify-content: space-between; gap: 10px; }
+.dt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.dt span { font-size: 11px; color: var(--soluk); text-transform: uppercase; letter-spacing: .05em; }
+.dt b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* -------------------------------------------------------------- kontrol */
+
+.kd { display: block; margin-top: 15px; }
+.kd-ust {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+  color: var(--soluk);
+}
+.kd-ust b { color: var(--turkuaz-acik); font-variant-numeric: tabular-nums; font-size: 14px; }
+
+/* Dokunma hedefi parmak icin 44 px'in altina inmiyor. */
+.kd input[type=range] {
+  width: 100%;
+  height: 34px;
+  margin-top: 2px;
+  accent-color: var(--turkuaz);
+}
+
+.kd input[type=text],
+.kd input[type=number],
+.kd input[type=password],
+.kd select,
+.kd textarea {
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--cizgi);
+  background: var(--kart2);
+  color: var(--yazi);
+  font: inherit;
+  font-size: 15px;
+}
+.kd textarea { resize: vertical; line-height: 1.5; }
+.kd input:focus, .kd select:focus, .kd textarea:focus {
+  outline: none;
+  border-color: var(--turkuaz);
+}
+
+.ikili { display: flex; gap: 10px; align-items: flex-end; }
+.ikili .kd { flex: 1; }
+.ikili .kd.kisa { flex: 0 0 88px; }
+
+.ip { font-size: 12.5px; line-height: 1.6; color: var(--soluk); margin: 9px 0 0; }
+.ip b { color: var(--yazi); }
+
+button {
+  font: inherit;
+  font-size: 15px;
+  padding: 13px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--cizgi);
+  background: var(--kart2);
+  color: var(--yazi);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+button:active { transform: scale(.985); }
+button:disabled { opacity: .45; cursor: default; }
+button.genis { width: 100%; margin-top: 14px; }
+button.ince { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+button.birincil { background: var(--turkuaz); color: #04211f; border-color: var(--turkuaz); font-weight: 600; }
+/* Varsayilan gorunumle ayni; sinif NIYETI belirtmek icin duruyor
+   ("bu birincil eylem degil"). Kurali silmek, HTML'de karsiligi
+   olmayan bir sinif birakirdi. */
+button.ikincil { background: var(--kart2); border-color: var(--cizgi); }
+button.tehlike { color: var(--kalir); border-color: rgba(248, 81, 73, .5); }
+
+.satir-arasi {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+.satir-arasi small { display: block; color: var(--soluk); font-size: 12px; margin-top: 2px; }
+.satir-arasi small.dikkat { color: var(--sinir); }
+
+/* ANAHTAR (switch) — onay kutusu yerine.
+   Uc sebep: (1) kare kutu ayar panelinde kaba duruyor, (2) acik/kapali
+   tek bakista okunuyor, (3) sag kenarda oldugu icin telefonda basparmak
+   uzanmadan yetisiyor. Etiket solda, anahtar sagda — telefonlarin
+   ayar ekranlarindaki alisik duzen. */
+.anahtar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 14px;
+  font-size: 15px;
+  line-height: 1.35;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.anahtar > span { flex: 1; }
+
+.anahtar input {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  position: relative;
+  width: 46px;
+  height: 27px;
+  margin: 0;
+  border-radius: 999px;
+  border: 1px solid var(--cizgi);
+  background: #0e1319;
+  cursor: pointer;
+  transition: background .16s ease, border-color .16s ease;
+}
+.anahtar input::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: var(--soluk);
+  transition: transform .16s ease, background .16s ease;
+}
+.anahtar input:checked {
+  background: var(--turkuaz);
+  border-color: var(--turkuaz);
+}
+.anahtar input:checked::after {
+  transform: translateX(19px);
+  background: #04211f;
+}
+.anahtar input:focus-visible { outline: 2px solid var(--turkuaz-acik); outline-offset: 2px; }
+.anahtar:active input::after { width: 21px; }
+
+/* Anahtardan hemen sonra gelen aciklama ona yapissin. */
+.anahtar + .ip { margin-top: 7px; }
+
+.kutu-bilgi {
+  margin-top: 13px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: rgba(23, 196, 196, .08);
+  border: 1px solid rgba(23, 196, 196, .28);
+  color: var(--turkuaz-acik);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+/* ---------------------------------------------------------------- liste */
+
+.liste { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
+
+.oge {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 13px;
+  border-radius: 10px;
+  background: var(--kart2);
+  border: 1px solid var(--cizgi);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.oge.tiklanir { cursor: pointer; }
+.oge.tiklanir:active { border-color: var(--turkuaz); }
+.oge .metin { flex: 1; min-width: 0; }
+.oge .kez { font-size: 11px; color: var(--soluk); white-space: nowrap; }
+
+/* Silme dugmesi telefonda HER ZAMAN gorunur — masaustunde hover ile
+   ortaya cikan dugme dokunmatikte bulunamiyor. */
+.oge .sil {
+  flex: none;
+  width: 34px; height: 34px;
+  padding: 0;
+  border-radius: 8px;
+  color: var(--kalir);
+  border-color: transparent;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.guc-cubuk { flex: none; width: 22px; color: var(--soluk); font-size: 12px; letter-spacing: -1px; }
+.kilit { flex: none; color: var(--soluk); font-size: 12px; }
+.bos-yazi { color: var(--soluk); font-size: 13px; padding: 4px 0; }
+
+/* ------------------------------------------------------------- gelismis */
+
+.gelismis summary {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--soluk);
+  cursor: pointer;
+}
+.gelismis[open] summary { margin-bottom: 4px; }
+
+/* ----------------------------------------------------------------- tost */
+
+.tost {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  background: #05080b;
+  border: 1px solid var(--turkuaz);
+  color: var(--turkuaz-acik);
+  padding: 11px 20px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  text-align: center;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, .6);
+  z-index: 40;
+}
+.tost.hata { border-color: var(--kalir); color: var(--kalir); }
+
+/* --------------------------------------------------------- ornek seridi */
+
+/* Robot bagli DEGILSE sayfa ornek veriyle calisiyor. Bunu soylemek
+   sart: sayfa gercekten robottan geliyormus gibi duruyor ve bir sure
+   sonra insan buna inanip olmayan bir seyi degerlendiriyor. */
+.ornek-serit {
+  background: repeating-linear-gradient(45deg,
+    rgba(210,153,34,.16) 0 10px, rgba(210,153,34,.07) 10px 20px);
+  border-bottom: 1px solid rgba(210, 153, 34, .40);
+  color: #e3b341;
+  font-size: 11px;
+  letter-spacing: .04em;
+  text-align: center;
+  padding: 5px 10px;
+}
+
+/* Robot modundaki "baglanti koptu" seridi AKISTA DEGIL, ustte yuzuyor.
+ *
+ * Tezgahta serit kalicidir (ornek veri uyarisi) ve akista durmasi
+ * dogrudur. Robotta ise gelip gidiyor: her gelisinde akistaki bir
+ * eleman butun sayfayi asagi itiyor, gidisinde geri cekiyordu.
+ * Telefonda bu, okudugun yerin ayagininin altindan kaymasi demek —
+ * 31.07.2026'da panel "gezilemiyor" haline gelmisti. */
+/* Kurulum bitince gosterilen YENI ADRES kutusu. Ebeveynin panele bir
+ * daha ulasabilmesi tek bu yaziya bagli, o yuzden sayfanin en ustunde
+ * ve goz alici. */
+.yeni-adres {
+  background: rgba(45, 164, 155, .12);
+  border-bottom: 1px solid rgba(45, 164, 155, .45);
+  padding: 14px 16px;
+  text-align: center;
+  line-height: 1.5;
+}
+.yeni-adres b { color: #2da49b; font-size: 15px; }
+.yeni-adres p { margin: 6px 0 0; font-size: 13px; }
+.yeni-adres .adres {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  margin-top: 8px;
+  user-select: all;
+}
+.yeni-adres .ip { opacity: .7; font-size: 12px; }
+
+.ornek-serit.ucan {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+}

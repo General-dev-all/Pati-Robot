@@ -1,0 +1,240 @@
+/* Pati — Asama 1 paneli.
+   Koyu tema: robot yuzu koyu zeminde dogru goruluyor ve zaten
+   gercekte de fume akrilik arkasinda duracak (PLAN §10b). */
+
+:root {
+  --turkuaz: #17c4c4;
+  --turkuaz-acik: #5df2f2;
+  --zemin: #0d1117;
+  --kart: #161b22;
+  --cizgi: #21262d;
+  --yazi: #e6edf3;
+  --soluk: #8b949e;
+  --gecer: #3fb950;
+  --sinir: #d29922;
+  --kalir: #f85149;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--zemin);
+  color: var(--yazi);
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) 1fr;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  body { grid-template-columns: 1fr; }
+}
+
+/* ---------------------------------------------------------------- sol */
+
+.sol {
+  padding: 24px;
+  border-right: 1px solid var(--cizgi);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+/* Kafa: Eilik'in yuvarlak kafasi + fume akrilik.
+   PLAN §10b: "Eilik'in siyah cam gorunumu ekrandan degil ONUNDEKI
+   FILTREDEN geliyor... koyu fume akrilik + 3D baski cerceve." */
+.kafa {
+  width: 100%;
+  max-width: 340px;
+  aspect-ratio: 1 / 0.92;
+  background: linear-gradient(160deg, #f2f4f6, #d8dde2);
+  border-radius: 46% 46% 42% 42% / 48% 48% 40% 40%;
+  padding: 26px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .45), inset 0 -8px 18px rgba(0,0,0,.08);
+}
+
+.cam {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  /* Fume akrilik: tam siyah degil, cok koyu ve hafif mavi */
+  background: radial-gradient(120% 120% at 50% 30%, #11181c 0%, #05080a 100%);
+  border-radius: 42%;
+  overflow: hidden;
+  box-shadow: inset 0 0 24px rgba(0,0,0,.9), 0 0 0 3px rgba(0,0,0,.35);
+}
+
+#gozler { width: 100%; height: 100%; display: block; }
+
+/* Cam uzerindeki isik yansimasi — akrilik hissini veren sey bu */
+.yansima {
+  position: absolute;
+  top: 6%; left: 12%;
+  width: 34%; height: 22%;
+  background: linear-gradient(140deg, rgba(255,255,255,.16), rgba(255,255,255,0));
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.ifade-adi {
+  font-size: 13px;
+  color: var(--soluk);
+  letter-spacing: .04em;
+}
+.ifade-adi span { color: var(--turkuaz-acik); font-weight: 600; }
+
+/* Mikrofon durumu — kulakliksiz kullanimda robot konusurken mikrofon
+   kapaniyor; kullanici sessizligin sebebini gorsun. */
+.mik-durum { font-size: 12px; color: var(--soluk); min-height: 1.2em; }
+
+.dugmeler { display: flex; gap: 10px; }
+
+button {
+  font: inherit;
+  padding: 10px 22px;
+  border-radius: 8px;
+  border: 1px solid var(--cizgi);
+  background: var(--kart);
+  color: var(--yazi);
+  cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--turkuaz); }
+button:disabled { opacity: .4; cursor: default; }
+button.birincil { background: var(--turkuaz); color: #04211f; border-color: var(--turkuaz); font-weight: 600; }
+
+.mod { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--soluk); }
+.mod label { cursor: pointer; }
+
+.yazi-satiri { width: 100%; }
+#yazi {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--cizgi);
+  background: var(--kart);
+  color: var(--yazi);
+  font: inherit;
+}
+#yazi:disabled { opacity: .4; }
+
+.deneme { width: 100%; font-size: 13px; color: var(--soluk); }
+.deneme summary { cursor: pointer; padding: 6px 0; }
+#ifadeDugmeleri { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+#ifadeDugmeleri button { padding: 5px 10px; font-size: 12px; }
+.ipucu { font-size: 12px; line-height: 1.5; color: var(--soluk); margin: 6px 0 0; }
+.ipucu b { color: var(--yazi); }
+
+/* Ses secimi */
+.ses-satir { display: flex; gap: 8px; margin-top: 8px; }
+#sesListesi {
+  flex: 1; min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--cizgi);
+  background: var(--kart);
+  color: var(--yazi);
+  font: inherit; font-size: 13px;
+}
+#sesDinle { white-space: nowrap; }
+
+.kaydirici { display: block; margin-top: 14px; font-size: 12px; color: var(--soluk); }
+.kaydirici span { display: flex; justify-content: space-between; }
+.kaydirici b { color: var(--turkuaz-acik); font-variant-numeric: tabular-nums; }
+.kaydirici input { width: 100%; margin-top: 6px; accent-color: var(--turkuaz); }
+
+button.genis { width: 100%; margin-top: 12px; }
+
+.ayar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; font-size: 12px; color: var(--soluk); }
+.ayar select {
+  padding: 6px 10px; border-radius: 8px;
+  border: 1px solid var(--cizgi); background: var(--kart);
+  color: var(--yazi); font: inherit; font-size: 12px;
+}
+.onay { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; cursor: pointer; }
+.onay input { accent-color: var(--turkuaz); width: 16px; height: 16px; }
+
+/* Neyin GERCEKTEN etkin oldugu. Ayar degistigi anda uygulaniyor;
+   bu satir "bastim mi acaba" sorusunu ortadan kaldiriyor. */
+.uygulandi {
+  margin-top: 12px; padding: 7px 10px;
+  border-radius: 7px;
+  background: rgba(23, 196, 196, .10);
+  border: 1px solid rgba(23, 196, 196, .35);
+  color: var(--turkuaz-acik);
+  font-size: 12px; font-weight: 600;
+}
+
+
+/* ---------------------------------------------------------------- sag */
+
+.sag { padding: 24px 28px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+header { display: flex; align-items: center; justify-content: space-between; }
+h1 { font-size: 18px; margin: 0; font-weight: 600; }
+h2 { font-size: 13px; margin: 0 0 8px; color: var(--soluk); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+
+.rozet { font-size: 12px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--cizgi); }
+.rozet.bekliyor { color: var(--soluk); }
+.rozet.bagli { color: var(--gecer); border-color: var(--gecer); }
+.rozet.koptu { color: var(--kalir); border-color: var(--kalir); }
+
+.olcum { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px; }
+@media (max-width: 700px) { .olcum { grid-template-columns: 1fr 1fr; } }
+
+.kutu { background: var(--kart); border: 1px solid var(--cizgi); border-radius: 10px; padding: 12px 14px; }
+.etiket { font-size: 11px; color: var(--soluk); text-transform: uppercase; letter-spacing: .05em; }
+.deger { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 4px; }
+.kutu.buyuk .deger { font-size: 38px; }
+.alt { font-size: 11px; color: var(--soluk); margin-top: 2px; }
+
+.deger.gecer { color: var(--gecer); }
+.deger.sinir { color: var(--sinir); }
+.deger.kalir { color: var(--kalir); }
+
+.kriter { font-size: 12px; color: var(--soluk); }
+
+/* Gecikmenin tasinabilir / tasinamaz ayrimi (PLAN §4) */
+.dagilim { background: var(--kart); border: 1px solid var(--cizgi); border-radius: 10px; padding: 14px; }
+.cubuk { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: #0b0f14; }
+.parca { height: 100%; transition: width .25s ease; }
+.parca.ag { background: var(--turkuaz); }
+.parca.yerel { background: #6e7681; }
+.aciklama { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; font-size: 12px; color: var(--soluk); }
+.nokta { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; }
+.nokta.ag { background: var(--turkuaz); }
+.nokta.yerel { background: #6e7681; }
+.aciklama b { color: var(--yazi); }
+
+.dokum, .olaylar { display: flex; flex-direction: column; min-height: 0; }
+#dokum { flex: 1; overflow-y: auto; max-height: 42vh; display: flex; flex-direction: column; gap: 10px; }
+
+.tur { border-left: 2px solid var(--cizgi); padding-left: 12px; }
+.tur .kim { font-size: 11px; color: var(--soluk); text-transform: uppercase; letter-spacing: .05em; }
+.tur .soz { margin: 2px 0 8px; line-height: 1.5; }
+.tur .soz.pati { color: var(--turkuaz-acik); }
+.tur .sure { font-size: 11px; color: var(--soluk); font-variant-numeric: tabular-nums; }
+
+/* Hafiza — seffaflik ilkesi: cocuk ne bilindigini gormeli ve
+   istemedigini silebilmeli (v1'den tasindi). */
+.hafiza h2 { display: flex; align-items: center; justify-content: space-between; }
+button.kucuk { padding: 3px 10px; font-size: 11px; border-radius: 6px; }
+button.tehlike { color: var(--kalir); border-color: var(--kalir); text-transform: none; letter-spacing: 0; }
+button.tehlike:hover { background: var(--kalir); color: #fff; }
+
+.hafiza-ozet { font-size: 12px; color: var(--soluk); margin-bottom: 8px; }
+.hafiza-ozet b { color: var(--turkuaz-acik); }
+
+#hafizaListe { display: flex; flex-direction: column; gap: 4px; max-height: 22vh; overflow-y: auto; }
+.bilgi { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; padding: 5px 10px; background: var(--kart); border: 1px solid var(--cizgi); border-radius: 7px; }
+.bilgi .kez { color: var(--soluk); font-size: 11px; }
+.bilgi button { opacity: 0; transition: opacity .15s; }
+.bilgi:hover button { opacity: 1; }
+
+#olaylar { font-size: 12px; color: var(--soluk); display: flex; flex-direction: column; gap: 4px; max-height: 18vh; overflow-y: auto; font-family: ui-monospace, Consolas, monospace; }
+#olaylar .uyari { color: var(--sinir); }
+#olaylar .hata { color: var(--kalir); }

@@ -1,0 +1,110 @@
+# Pati
+
+A voice companion robot for children, built on an ESP32-S3.
+
+Pati runs no local model. Audio streams from the device to the Gemini
+Live API over a raw WebSocket and returns to the speaker the same way.
+No companion app, no intermediate server, no pairing step. Settings are
+managed from a web panel served by the robot itself.
+
+Firmware is complete and verified on hardware. Electronics assembly and
+enclosure integration are in progress.
+
+---
+
+## Layout
+
+```
+firmware/    ESP-IDF v5.5 application
+panel/       Parent panel — one web page, served from disk during
+             development and compiled into the firmware for the device
+prototype/   Python reference implementation; the host tests compare
+             firmware behaviour against it
+assembly/    Electronics assembly guide (self-contained HTML)
+enclosure/   3D-printable parts and CAD source
+```
+
+`panel/` is a single source. The page is not duplicated for the device
+build, so a firmware update carries the panel with it.
+
+---
+
+## Hardware
+
+| Component | Notes |
+|---|---|
+| ESP32-S3 board, **N16R8** | 16 MB flash, 8 MB octal PSRAM. PSRAM is required. Boards sold under this name are often clones using a CH343 USB-UART bridge rather than a CP2102; the driver differs. |
+| INMP441 | I2S MEMS microphone. **Supply from 3.3 V** — 5 V destroys the part. |
+| MAX98357A | I2S class-D amplifier. Bridge-tied output; neither speaker terminal may be grounded. |
+| Speaker, 8 Ω | 5 cm, 5 W |
+| 1.3" IPS display, 240×240, ST7789 | 7-pin SPI variant; some modules expose no CS pin |
+| Dupont jumper wires, male header strips | 2.54 mm |
+
+Octal PSRAM occupies GPIO 35, 36 and 37 — present on the header, not
+usable. Pin assignments have a single source:
+[`firmware/main/pati_pinler.h`](firmware/main/pati_pinler.h).
+
+Wiring, step by step with a test after each stage:
+[`assembly/REHBER.html`](assembly/REHBER.html).
+
+---
+
+## Build
+
+Requires ESP-IDF v5.5. On Windows use PowerShell — `idf_tools.py`
+refuses to run under MSYS.
+
+```
+cp firmware/sdkconfig.defaults.local.ornek firmware/sdkconfig.defaults.local
+# fill in Wi-Fi credentials and a Gemini API key
+
+. "$IDF_PATH/export.ps1"
+cd firmware
+idf.py -p <PORT> flash monitor
+```
+
+`firmware/KARTA-YUKLE.bat` does the same on Windows and finds the
+serial port itself.
+
+---
+
+## Tests
+
+```
+firmware/test/derle.bat     C++ eye renderer vs. the browser renderer,
+                            pixel by pixel; C++ memory engine vs. Python
+python prototype/testler.py prototype behaviour
+```
+
+The host comparisons exist because a port that compiles is not a port
+that behaves identically. Generated headers are produced by
+`prompt_uret.py` and `goz_uret.mjs`, which read their output back and
+compare it to the source; they are not edited by hand.
+
+---
+
+## Operation
+
+With no reachable saved network the device opens its own access point
+and serves a captive portal for Wi-Fi setup. Once connected it
+advertises itself over mDNS and the panel is reachable at `pati.local`.
+
+The panel covers voice and rate, response latency, sleep threshold,
+usage and estimated cost, the robot's name, and the facts it has
+retained. The interface is Turkish only.
+
+---
+
+## Privacy
+
+No child data is committed here. API keys, Wi-Fi credentials, retained
+memory, usage counters and transcripts are excluded by `.gitignore`.
+
+On the device, memory is stored in NVS and written atomically, since
+the expected shutdown is a power cut. It can be cleared from the panel.
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE), which also lists third-party components.
