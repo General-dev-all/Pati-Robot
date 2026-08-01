@@ -3,17 +3,20 @@ menu "Pati"
     comment "Bu degerler sdkconfig.defaults.local dosyasina yazilir."
     comment "O dosya .gitignore'da — sifreler ve anahtar depoya GIRMEZ."
 
-    config PATI_WIFI_SSID
-        string "Ev wifi adi (SSID)"
-        default ""
-        help
-            Asama 2'de wifi bilgisi firmware'e gomuluyor cunku bu asamanin
-            tek amaci gecikme olcmek. Gercek robotta boyle OLMAYACAK:
-            SoftAP + captive portal ile telefondan girilecek (PLAN §4.3).
-
-    config PATI_WIFI_PASS
-        string "Ev wifi sifresi"
-        default ""
+    # -----------------------------------------------------------------------
+    # 🔴 PATI_WIFI_SSID ve PATI_WIFI_PASS KALDIRILDI — geri eklemeyin.
+    # -----------------------------------------------------------------------
+    #
+    # Asama 2'de wifi bilgisi firmware'e gomuluyordu ve o asamada
+    # dogruydu: tek amac gecikme olcmekti.
+    #
+    # Captive portal gelince wifi NVS'e tasindi (pati_ag.cpp) ama bu iki
+    # ayar burada unutuldu. Hicbir kaynak dosya okumuyordu; yalnizca
+    # uretilen sdkconfig.h'de goruunuyorlardi. Yani doldurulabilen,
+    # derlemeye giren, ama HICBIR SEY YAPMAYAN iki ayardilar.
+    #
+    # Olu ayar olmayan ayardan kotudur: birileri doldurur, kart yine
+    # baglanmaz ve sebebi dolduruIan yerde aranir.
 
     # -----------------------------------------------------------------------
     # 🔴 PATI_GEMINI_API_KEY BURADAN KALDIRILDI — geri EKLEMEYIN.

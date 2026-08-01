@@ -8,44 +8,28 @@
 
 cmake_minimum_required(VERSION 3.16)
 
-# Wifi sifresi ve API anahtari sdkconfig.defaults.local'dan geliyor.
-# O dosya .gitignore'da; depoya girmiyor. Yoksa derleme yine calisiyor
-# ama bos degerlerle — kart wifi'ye baglanamayip bunu soyluyor.
+# ---------------------------------------------------------------------------
+# 🔴 sdkconfig.defaults.local KALDIRILDI — geri eklemeyin.
+# ---------------------------------------------------------------------------
 #
-# ESP-IDF .local dosyasini KENDILIGINDEN okumuyor, zincire elle
-# ekleniyor. Sonda olmasi onemli: sonraki dosya oncekini eziyor.
-set(_pati_defaults "sdkconfig.defaults")
-if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/sdkconfig.defaults.local")
-    list(APPEND _pati_defaults "sdkconfig.defaults.local")
-    message(STATUS "Pati: sdkconfig.defaults.local bulundu, zincire eklendi")
-
-    # 🔴 SESSIZ TUZAK — bir kez ısırdı, bir daha ısırmasın.
-    #
-    # ESP-IDF, sdkconfig BIR KEZ olustuktan sonra defaults dosyalarina
-    # bakmiyor: eski (bos) degerler orada cakili kaliyor. Yani wifi
-    # sifresini .local'a yazip derlersen, sifre GECMEZ ve kart "sifre
-    # yanlis" der. Dosyaya bakan da "ama sifre burada yaziyor" der.
-    # Saatler yanar.
-    #
-    # Cozum tek satir: sdkconfig'i silmek. Burada zaman damgalarina
-    # bakip haber veriyoruz.
-    if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/sdkconfig")
-        if("${CMAKE_CURRENT_LIST_DIR}/sdkconfig.defaults.local"
-           IS_NEWER_THAN "${CMAKE_CURRENT_LIST_DIR}/sdkconfig")
-            message(WARNING
-                "Pati: sdkconfig.defaults.local, sdkconfig'den DAHA YENI. "
-                "Yeni degerler (wifi sifresi, API anahtari) BU DERLEMEYE "
-                "GIRMEYECEK. Duzeltmek icin: sdkconfig dosyasini sil ve "
-                "yeniden derle.")
-        endif()
-    endif()
-else()
-    message(WARNING
-        "Pati: sdkconfig.defaults.local YOK. Wifi ve API anahtari bos "
-        "kalacak. sdkconfig.defaults.local.ornek dosyasini kopyalayip "
-        "doldurun.")
-endif()
-set(SDKCONFIG_DEFAULTS "${_pati_defaults}")
+# Burada bir zincir vardi: sdkconfig.defaults + sdkconfig.defaults.local.
+# Ikinci dosya wifi bilgisini ve Gemini anahtarini tasiyordu ve
+# .gitignore'daydi.
+#
+# Ucu de gitti:
+#   anahtar   -> cihazda, panelden giriliyor (pati_anahtar.hpp)
+#   wifi      -> cihazda, captive portal'dan giriliyor (pati_ag.cpp)
+#   dosyanin kendisi -> tasiyacak bir sey kalmadigi icin islevsiz
+#
+# CONFIG_PATI_WIFI_SSID/PASS hala Kconfig'de duruyordu ama HICBIR kaynak
+# dosya okumuyordu: yalnizca uretilen sdkconfig.h'de goruniyorlardi. Olu
+# ayar, olmayan ayardan kotudur — birileri doldurur ve calistigini sanir.
+#
+# Dosya yokken CMake her derlemede "wifi ve API anahtari bos kalacak"
+# diye UYARIYORDU. GitHub'in sunucusunda o dosya hicbir zaman yok, yani
+# uyari her CI kosusunda cikiyordu ve soyledigi sey dogru DEGILDI. Her
+# yayimda goruunen yanlis bir uyari, insani uyarilara bakmamaya alistirir.
+set(SDKCONFIG_DEFAULTS "sdkconfig.defaults")
 
 # ---------------------------------------------------------------------------
 # SURUM — panelin "guncelleme var mi" sorusunun dayanagi

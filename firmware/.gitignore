@@ -22,8 +22,10 @@ managed_components/
 # Anneye giden ikili dosya, burada test edilenle AYNI olmali. Kilit
 # dosyasi bunu garanti eden tek sey.
 
-# API anahtari ve wifi bilgisi ASLA depoya girmez.
-# Bunlar sdkconfig.defaults.local'a yazilip oradan okunuyor.
+# Artik hicbir sey okumuyor: anahtar da wifi de cihazin NVS'inde ve
+# panelden giriliyor. Listede KALIYOR cunku eski kurulumlarda bu dosya
+# hala duruyor ve icinde gercek bir wifi sifresi var — silmek, o
+# sifrenin bir sonraki commit'te depoya girmesi demek olurdu.
 sdkconfig.defaults.local
 
 # Konak testinin uretttikleri: derlenmis exe, ara nesneler ve ham

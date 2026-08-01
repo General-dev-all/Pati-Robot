@@ -55,13 +55,14 @@ Requires ESP-IDF v5.5. On Windows use PowerShell — `idf_tools.py`
 refuses to run under MSYS.
 
 ```
-cp firmware/sdkconfig.defaults.local.ornek firmware/sdkconfig.defaults.local
-# fill in Wi-Fi credentials
-
 . "$IDF_PATH/export.ps1"
 cd firmware
 idf.py -p <PORT> flash monitor
 ```
+
+Nothing to fill in first. The Wi-Fi credentials and the Gemini key are
+both entered on the device — the first through the captive portal, the
+second through the panel.
 
 `firmware/KARTA-YUKLE.bat` does the same on Windows and finds the
 serial port itself.
