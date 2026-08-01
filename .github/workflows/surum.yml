@@ -59,9 +59,23 @@ on:
     # yuzden dosya yoluyla degil, commit mesajindaki [skip ci] ile
     # disarida birakiliyor — yoksa her yayim bir sonrakini tetikler ve
     # dongu elle durdurulana kadar surer.
+    #
+    # `!` ile eleme AYNI listede yapilabiliyor (paths-ignore'un aksine).
+    # Elenenler ikili dosyaya GIRMEYEN seyler: belgeler, .bat dosyalari,
+    # konak testleri. Bunlar degisince yayimlamak, anneye bit bit ayni
+    # firmware'i yeniden indirtmek olurdu.
+    #
+    # Fazla tetiklemek eksik tetiklemekten iyi: fazlasi bir sürüm
+    # numarası harcar, eksigi anneyi eski Pati'yle birakir ve hicbir
+    # yerde gorunmez. Suphede kalinan sey listede BIRAKILIYOR.
     paths:
       - 'firmware/**'
       - 'panel/**'
+      - '!**.md'
+      - '!**.bat'
+      - '!firmware/test/**'
+      - '!panel/panel_test.mjs'
+      - '!panel/gozler_test.mjs'
   # Elle de calistirilabilsin: derleme bir kez basarisiz olursa
   # hicbir dosyaya dokunmadan tekrar denenebilmeli.
   workflow_dispatch:
