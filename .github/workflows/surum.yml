@@ -43,12 +43,27 @@ name: surum
 on:
   push:
     branches: [main]
-    # SADECE surum.txt degisince. Her push'ta derlemek hem gereksiz hem
-    # de her seferinde ayni surum numarasiyla Release acmaya calisip
-    # basarisiz olurdu.
-    paths: ['firmware/surum.txt']
+    # ROBOTA GIREN HER SEY. Mert'in Sync'e basmasi "bu hal yayina
+    # gitsin" demek — yedekleme icin push etmiyor. O yuzden surum
+    # numarasini beklemiyoruz, asagida kendimiz uretiyoruz.
+    #
+    # panel/ de burada cunku sayfa firmware'e GOMULUYOR (EMBED_FILES):
+    # paneldeki bir yazi degisikligi de yeni bir ikili dosya demek.
+    #
+    # Belge degisiklikleri (README, PLAN) LISTEDE YOK: ikili dosyaya
+    # girmiyorlar, yani yayimlamak anneye ayni firmware'i yeniden
+    # indirtmekten baska bir sey yapmazdi.
+    #
+    # ⚠️ `paths` ile `paths-ignore` AYNI OLAYDA KULLANILAMAZ (GitHub
+    # reddediyor). CI'nin kendi geri yazdigi surum.txt commit'i bu
+    # yuzden dosya yoluyla degil, commit mesajindaki [skip ci] ile
+    # disarida birakiliyor — yoksa her yayim bir sonrakini tetikler ve
+    # dongu elle durdurulana kadar surer.
+    paths:
+      - 'firmware/**'
+      - 'panel/**'
   # Elle de calistirilabilsin: derleme bir kez basarisiz olursa
-  # surum.txt'ye dokunmadan tekrar denenebilmeli.
+  # hicbir dosyaya dokunmadan tekrar denenebilmeli.
   workflow_dispatch:
 
 permissions:
@@ -59,21 +74,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # fetch-depth: 0 — sonda surum.txt geri yaziliyor ve sig bir
+      # kopyada `git pull --rebase` calismiyor.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Surumu ve notu oku
+      - name: Surumu belirle ve notu oku
         id: s
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          SURUM=$(head -n 1 firmware/surum.txt | tr -d '[:space:]')
+
+          DOSYA=$(head -n 1 firmware/surum.txt | tr -d '[:space:]')
           # Gerisi annenin panelde okuyacagi not. Bos satirlar atiliyor,
           # satirlar tek cumleye birlestiriliyor: panel bunu tek satirlik
           # bir kutuda gosteriyor.
           NOT=$(tail -n +2 firmware/surum.txt | sed '/^[[:space:]]*$/d' \
                 | paste -sd' ' - | cut -c1-300)
 
-          if ! [[ "$SURUM" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::surum.txt'nin ilk satiri '2.2.0' gibi olmali, '$SURUM' bulundu"
+          if ! [[ "$DOSYA" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::surum.txt'nin ilk satiri '2.2.0' gibi olmali, '$DOSYA' bulundu"
             exit 1
           fi
           # Not bos kalirsa panelde bos bir kutu gorunurdu. Sessizce bos
@@ -83,23 +105,42 @@ jobs:
             exit 1
           fi
 
-          echo "surum=$SURUM"  >> "$GITHUB_OUTPUT"
-          echo "etiket=v$SURUM" >> "$GITHUB_OUTPUT"
-          echo "not=$NOT"      >> "$GITHUB_OUTPUT"
-          echo "Surum $SURUM — $NOT"
+          # ---- SURUM NUMARASINI CI VERIYOR ------------------------------
+          #
+          # Mert'in Sync'e basmasi "bu hal yayina gitsin" demek; ayrica
+          # bir de numara yukseltmesi gerekmemeli. Unutulursa hicbir
+          # uyari cikmiyordu: yirmi commit push edilir, Release acilmaz,
+          # anne eski Pati'yle kalir ve kimse fark etmez.
+          #
+          # KURAL:
+          #   dosyadaki > en son yayimlanan  ->  dosyadakini kullan
+          #                                     (elle yukseltilmis, anlamli
+          #                                      bir surum: 2.2.x -> 2.3.0)
+          #   degilse                        ->  yamayi bir artir
+          #
+          # Yani numara elle de yukseltilebiliyor ama ZORUNLU degil.
+          SON=$(gh release list --limit 1 --json tagName \
+                --jq '.[0].tagName // ""' | sed 's/^v//')
 
-      - name: Bu surum zaten yayimlanmis mi
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          # Ayni etiketle ikinci bir Release acilamaz. Erken ve ANLASILIR
-          # bir hatayla duruyoruz; yoksa on dakika derleyip en sonda
-          # "tag already exists" ile patlardi.
-          if gh release view "${{ steps.s.outputs.etiket }}" >/dev/null 2>&1; then
-            echo "::error::${{ steps.s.outputs.etiket }} zaten var. firmware/surum.txt'de surumu yukselt."
-            exit 1
+          if [ -z "$SON" ]; then
+            YENI="$DOSYA"                       # ilk yayim
+          elif [ "$DOSYA" != "$SON" ] && \
+               [ "$(printf '%s\n%s\n' "$SON" "$DOSYA" | sort -V | tail -1)" = "$DOSYA" ]; then
+            YENI="$DOSYA"                       # elle yukseltilmis
+          else
+            YENI=$(echo "$SON" | awk -F. '{printf "%d.%d.%d", $1, $2, $3+1}')
           fi
+
+          echo "son yayimlanan : ${SON:-yok}"
+          echo "dosyada        : $DOSYA"
+          echo "yayimlanacak   : $YENI"
+
+          # Derleme bunu okuyacak: PROJECT_VER surum.txt'den geliyor.
+          printf '%s\n%s\n' "$YENI" "$NOT" > firmware/surum.txt
+
+          echo "surum=$YENI"   >> "$GITHUB_OUTPUT"
+          echo "etiket=v$YENI" >> "$GITHUB_OUTPUT"
+          echo "not=$NOT"      >> "$GITHUB_OUTPUT"
 
       - name: Derle
         uses: espressif/esp-idf-ci-action@v1
@@ -157,6 +198,34 @@ jobs:
             --title "${{ steps.s.outputs.etiket }}" \
             --notes "${{ steps.s.outputs.not }}" \
             --latest
+
+      - name: surum.txt'yi geri yaz
+        run: |
+          set -euo pipefail
+          # Dosya HER ZAMAN yayindaki surumu gostersin.
+          #
+          # Geri yazmasak numara yalnizca Release etiketlerinde yasardi
+          # ve surum.txt eskimis bir sayi tutardi — depoya bakan biri
+          # yanlis bilgi okur. Bu depo eskimis belgeyi belgesizlikten
+          # kotu sayiyor; ayni sey dosyalar icin de gecerli.
+          #
+          # [skip ci] SART: bu commit surum.txt'ye dokunuyor, yani is
+          # akisinin tetikleyicisine giriyor. Onsuz her yayim bir
+          # sonrakini baslatir ve dongu elle durdurulana kadar surer.
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add firmware/surum.txt
+          if git diff --cached --quiet; then
+            echo "surum.txt zaten guncel"
+            exit 0
+          fi
+          git commit -m "Publish ${{ steps.s.outputs.surum }} [skip ci]"
+          # Bu is kosarken Mert bir daha push etmis olabilir. Rebase ile
+          # ustune biniyoruz; yine de olmazsa YAYIMI BOZMUYORUZ —
+          # Release zaten acildi ve anne guncelleyebiliyor. Sadece dosya
+          # bir tur geride kalir ve bir sonraki yayimda duzelir.
+          git pull --rebase --autostash origin main || true
+          git push || echo "::warning::surum.txt geri yazilamadi; Release yayimlandi, dosya bir sonraki yayimda duzelir"
 
       - name: Ozet
         run: |

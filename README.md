@@ -74,13 +74,24 @@ written over USB — `idf.py flash`, not `app-flash`.
 
 ## Updates
 
-Raise the version in [`firmware/surum.txt`](firmware/surum.txt) — first
-line the number, the lines under it the sentence the parent reads — and
-push. GitHub builds the firmware and publishes a release holding
+Push. GitHub builds the firmware and publishes a release holding
 `pati.bin` and a generated `surum.json`; the device polls the latter and
 downloads the former. No update server, no companion app, nothing to
 upload by hand. Details in
 [`firmware/SURUM-NASIL-CIKARILIR.md`](firmware/SURUM-NASIL-CIKARILIR.md).
+
+CI picks the version rather than asking for it: the patch of the last
+release, plus one. A larger number written into
+[`firmware/surum.txt`](firmware/surum.txt) by hand is honoured, a
+smaller one ignored. The line under it is the single sentence the parent
+sees, and a release with no note is refused.
+
+Publishing on every push is deliberate here. Forgetting to raise a
+version produced no error and no release — the robot simply stayed
+behind and nothing said so. A push to this repository means the change
+was tested and is meant to reach the child's room, so that is what it
+does. Only `firmware/` and `panel/` trigger it, since only those end up
+in the image.
 
 The manifest is a release asset rather than a committed file because a
 push publishes a committed file immediately but does not build the

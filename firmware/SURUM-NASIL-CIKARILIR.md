@@ -1,33 +1,52 @@
 # Yeni sürüm nasıl çıkarılır
 
-**Tek dosya değiştir, push et. Bitti.**
+**Push et. Bitti.**
 
-```
-firmware/surum.txt
-```
-
-```
-2.3.0
-Gözler daha akıcı, uyku sayacı düzeltildi.
-```
-
-**İlk satır** sürüm numarası — `2.3.0` gibi üç sayı, başka biçim olmaz.
-**Altındaki satırlar** annenin panelde okuyacağı not.
-
-Sonra normal işini yap:
-
-```
-git add -A
-git commit -m "..."
-git push
-```
-
-Gerisini GitHub yapıyor: firmware'i kendi sunucusunda derliyor, bir
-Release açıyor, içine `pati.bin` ile `surum.json` koyuyor. Beş on dakika
-sürüyor.
+VS Code'da **Sync** düğmesine basmak yeterli. Sürüm numarasıyla
+uğraşman gerekmiyor — GitHub bir öncekinin yamasını bir artırıyor
+(`2.3.4` → `2.3.5`), firmware'i kendi sunucusunda derliyor, Release
+açıyor ve içine `pati.bin` ile `surum.json` koyuyor. Üç beş dakika.
 
 Bitince anne panelden **"Güncellemeleri kontrol et"** deyince yeni
 sürümü görüyor.
+
+> Sync **önce çeker, sonra gönderir.** GitHub yayımdan sonra
+> `surum.txt`'ye yeni numarayı yazıyor; bir sonraki Sync'te o satır
+> kendiliğinden sana geliyor. Bir şey yapman gerekmiyor.
+
+---
+
+## Annenin okuyacağı not
+
+Panelde güncelleme kutusunda **tek bir cümle** görünüyor. O cümle
+`firmware/surum.txt`'nin ilk satırının altında duruyor:
+
+```
+2.3.4
+Gözler daha akıcı, uyku sayacı düzeltildi.
+```
+
+İlk satır sürüm — **ona dokunmana gerek yok**, GitHub güncelliyor.
+Altındaki satır anneye ait ve onu Claude her değişiklikte tazeliyor.
+
+Not boşsa yayım **durur**: anneye gösterilecek tek metin o, boş
+kalamaz.
+
+---
+
+## Sürümü elle yükseltmek istersen
+
+Büyük bir değişiklikte numaranın anlamlı atlamasını istiyorsan ilk
+satıra kendin yaz:
+
+```
+2.4.0
+Pati artık şarkı söylüyor.
+```
+
+Yayımlanan sürümden büyükse GitHub ona saygı duyup onu kullanır.
+Küçükse yok sayar ve yamayı artırmaya devam eder — yani yanlışlıkla
+eski bir numara yazman bir şeyi bozmaz.
 
 ---
 
@@ -39,21 +58,14 @@ bir şey görmez, eski sürümde kalır.
 
 ---
 
-## Sürümü yükseltmeyi unutursan
+## Hangi push'lar yayımlıyor
 
-Hiçbir şey olmaz. İş akışı yalnızca `surum.txt` değişince çalışıyor;
-başka dosyaları push etmek Release açmıyor. Yani kod değişikliğini push
-edip sürümü unutursan, **anne güncellemeyi görmez** — sessizce yanlış
-bir şey yüklenmez.
+Yalnızca `firmware/` ya da `panel/` altında bir şey değişmişse. İkisi de
+robota giren şeyler — panel firmware'in içine gömülüyor.
 
-Fark ettiğinde `surum.txt`'yi yükseltip push etmen yeterli.
-
----
-
-## Aynı sürüm numarasını iki kez kullanırsan
-
-İş akışı daha derlemeye başlamadan durur ve *"v2.3.0 zaten var"* der.
-Yükselt, tekrar push et.
+README, PLAN gibi belgeleri push etmek Release açmıyor: ikili dosya
+değişmediği için anneye aynı firmware'i yeniden indirtmekten başka bir
+işe yaramazdı.
 
 ---
 
@@ -62,7 +74,7 @@ Yükselt, tekrar push et.
 **Derleme kırmızı yandı.** Actions sekmesinde hangi adımda durduğu
 yazıyor. En sık iki sebep:
 
-- `surum.txt`'nin ilk satırı `2.3.0` biçiminde değil
+- `surum.txt`'nin ilk satırı `2.3.4` biçiminde değil
 - İlk satırın altında not yok — anneye gösterilecek metin boş kalamaz
 
 **Anne güncelledi ama Pati açılmadı.** Kendiliğinden eski sürüme döner
