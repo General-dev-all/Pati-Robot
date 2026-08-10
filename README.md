@@ -44,8 +44,27 @@ Octal PSRAM occupies GPIO 35, 36 and 37 — present on the header, not
 usable. Pin assignments have a single source:
 [`firmware/main/pati_pinler.h`](firmware/main/pati_pinler.h).
 
-Wiring, step by step with a test after each stage:
-[`assembly/REHBER.html`](assembly/REHBER.html).
+### Wiring
+
+![Pati wiring diagram — ESP32-S3 with the microphone, amplifier, display and Type-C power socket, every wire named at both ends](assembly/wiring-diagram.svg)
+
+Every signal the project uses is on the left header (P1); the right one
+carries ground only. The board has exactly four ground pins and all four
+are taken, which is why the microphone's `L/R` is bridged to its own
+`GND` on the module rather than given a pin of its own.
+
+The amplifier runs from 5 V, so the socket's positive lead is split at a
+junction — one branch to the board's `5Vin`, one to the amplifier's
+`VIN`. The board's `IN-OUT` solder jumper stays open: bridged, an
+external supply would back-feed the USB bus.
+
+Pad order differs between modules — `LRC` comes before `BCLK` on the
+amplifier, for one. Identify a pad by its printed name rather than by
+counting along the row.
+
+Step by step, with a test after each stage:
+[`assembly/REHBER.html`](assembly/REHBER.html) (Turkish). The same
+diagram for the bench: [`assembly/SEMA.html`](assembly/SEMA.html).
 
 ---
 
