@@ -6,7 +6,7 @@
 // begenilmeden once gostermek ve begenilen sayilari C++'a tasinabilir
 // halde disari vermek.
 
-import { Gozler240, DURUMLAR, AYAR, EKRAN, butce } from './gozler240.js';
+import { Gozler240, DURUMLAR, AYAR, EKRAN, PIKSEL_MM, butce } from './gozler240.js';
 import * as Govde from './govde.js';
 
 const $ = (s) => document.querySelector(s);
@@ -42,14 +42,18 @@ function yerlestir() {
 
   if (sadeceEkran) {
     gv.hidden = true;
-    const boy = EKRAN.mm * olcek;
+    // Ekran ARTIK KARE DEGIL (240x135). Genislik EKRAN.mm; yukseklik
+    // ondan turetiliyor cunku piksel kare, yani iki eksende mm basina
+    // dusen piksel ayni.
+    const gen = EKRAN.mm * olcek;
+    const yuk = (EKRAN.y / PIKSEL_MM) * olcek;
     gz.style.position = 'static';
-    gz.style.width = boy + 'px';
-    gz.style.height = boy + 'px';
+    gz.style.width = gen + 'px';
+    gz.style.height = yuk + 'px';
     ort.style.left = '0px';
     ort.style.top = '0px';
-    ort.style.width = boy + 'px';
-    ort.style.height = boy + 'px';
+    ort.style.width = gen + 'px';
+    ort.style.height = yuk + 'px';
     ort.hidden = !akrilik;
   } else {
     gv.hidden = false;
@@ -57,12 +61,12 @@ function yerlestir() {
     gz.style.position = 'absolute';
     gz.style.left = (r.ekran.x * olcek) + 'px';
     gz.style.top = (r.ekran.y * olcek) + 'px';
-    gz.style.width = (r.ekran.boy * olcek) + 'px';
-    gz.style.height = (r.ekran.boy * olcek) + 'px';
+    gz.style.width = (r.ekran.gen * olcek) + 'px';
+    gz.style.height = (r.ekran.yuk * olcek) + 'px';
     ort.style.left = (r.pencere.x * olcek) + 'px';
     ort.style.top = (r.pencere.y * olcek) + 'px';
-    ort.style.width = (r.pencere.boy * olcek) + 'px';
-    ort.style.height = (r.pencere.boy * olcek) + 'px';
+    ort.style.width = (r.pencere.gen * olcek) + 'px';
+    ort.style.height = (r.pencere.yuk * olcek) + 'px';
     ort.hidden = !akrilik;
   }
 
@@ -150,9 +154,9 @@ const gozKaydiricilar = [];
   const bilgi = document.createElement('p');
   bilgi.className = 'ipucu';
   bilgi.innerHTML =
-    'Toplam genişlik <b id="toplamG">—</b> / 240 px. Taşarsa göz ekranın ' +
-    'kenarında kesilir — özellikle <b>şaşkın</b> ve <b>çok mutlu</b> ' +
-    'ifadelerinde göz büyüyor.';
+    `Toplam genişlik <b id="toplamG">—</b> / ${EKRAN.g} px. Taşarsa göz ekranın ` +
+    `kenarında kesilir — özellikle <b>şaşkın</b> (${EKRAN.y} px'lik ` +
+    'ekranda boyu 1,5 katına çıkıyor) ve <b>çok mutlu</b> ifadelerinde.';
   kap.appendChild(bilgi);
 }
 
@@ -197,11 +201,12 @@ $('#gozSifirla').addEventListener('click', () => {
 {
   const kap = $('#govdeAyarlari');
   const y = () => yerlestir();
-  kaydirici(kap, Govde.OLCU, 'kafaG', 'Kafa genişliği', 30, 110, 0.5, 'mm', y);
-  kaydirici(kap, Govde.OLCU, 'kafaY', 'Kafa yüksekliği', 28, 100, 0.5, 'mm', y);
-  kaydirici(kap, Govde.OLCU, 'kafaYaricap', 'Kafa köşe yarıçapı', 0, 40, 0.5, 'mm', y);
-  kaydirici(kap, Govde.OLCU, 'govdeG', 'Gövde genişliği', 40, 120, 0.5, 'mm', y);
-  kaydirici(kap, Govde.OLCU, 'govdeY', 'Gövde yüksekliği', 30, 120, 0.5, 'mm', y);
+  // Cubugun kendi olculeri SABIT — M5Stack'in urun sayfasindan geliyor
+  // ve degistirilecek bir sey degil. Kaydirici olan tek sey ekranin
+  // cubuk uzerindeki yeri, cunku o TAHMIN (kumpasla olculecek).
+  kaydirici(kap, Govde.OLCU, 'ekranSolBosluk', 'Ekranın sol boşluğu',
+            0, Govde.OLCU.cubukG - Govde.OLCU.ekranG, 0.1, 'mm', y);
+  kaydirici(kap, Govde.OLCU, 'cubukYaricap', 'Köşe yarıçapı', 0, 12, 0.1, 'mm', y);
 
   const kutu = document.createElement('div');
   kap.appendChild(kutu);
@@ -210,15 +215,16 @@ $('#gozSifirla').addEventListener('click', () => {
        'Eilik\'in "siyah cam" hissi ekrandan değil bundan geliyor', y);
   onay(kutu, { get ic() { return icGoster; }, set ic(v) { icGoster = v; } },
        'ic', 'İç parçaları göster',
-       'hoparlör Ø50, kart 28×57, ekran modülü 27×39 — sığıyor mu', y);
+       'hoparlör 20×11 (2011 kasa) — çubuğun içinde nereye düşüyor', y);
 
   const p = document.createElement('p');
   p.className = 'ipucu';
   p.innerHTML =
-    '🔴 Ekranın aktif alanı (23,35 mm) dışındaki <b>tüm mm değerleri ' +
-    'tahmin</b>. Kargo gelince kumpasla ölçülüp düzeltilecek. ' +
-    'Kafayı büyüttükçe gözlerin nasıl kaybolduğuna bak — gövde ' +
-    'ölçüsünü belirleyen şey estetik değil, <b>hoparlörün 50 mm çapı</b>.';
+    'Çubuğun ölçüleri <b>kesin</b> (48 × 24 × 15 mm) ve ekranın aktif ' +
+    'alanı da öyle (25,2 × 14,2 mm). Tahmin olan tek şey <b>ekranın ' +
+    'çubuk üzerindeki yeri</b> — kart gelince kumpasla düzeltilecek. ' +
+    '1:1 modunda gözler gerçekte bu kadar küçük: ekran bir kredi ' +
+    'kartının kısa kenarının yarısı kadar.';
   kap.appendChild(p);
 }
 
@@ -357,8 +363,8 @@ function ciktiYaz() {
 #define PATI_EGIM_RENK        ${AYAR.egimRenk ? 1 : 0}
 #define PATI_KENAR_YUMUSATMA  ${AYAR.kenarYumusatma ? 1 : 0}
 
-// Govde (mm) — KUMPASLA DOGRULANMADI, ekranin 23,35'i haric hepsi tahmin
-// kafa ${Govde.OLCU.kafaG} x ${Govde.OLCU.kafaY} · govde ${Govde.OLCU.govdeG} x ${Govde.OLCU.govdeY}`;
+// Govde (mm) — StickS3: ${Govde.OLCU.cubukG} x ${Govde.OLCU.cubukY} x ${Govde.OLCU.cubukD}
+// ekran aktif ${Govde.OLCU.ekranG} x ${Govde.OLCU.ekranY} · sol bosluk ${Govde.OLCU.ekranSolBosluk} (TAHMIN)`;
 }
 
 $('#ciktiKopyala').addEventListener('click', async () => {

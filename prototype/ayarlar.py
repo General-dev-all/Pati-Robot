@@ -247,10 +247,15 @@ CIKIS_HIZ = 1.30
 # katsayiyla carpiliyor. ESP32'de maliyeti saniyede 24.000 carpma — yok
 # sayilir, gecikmeye etkisi yok.
 #
-# DONANIM DEGIL YAZILIM: MAX98357'nin GAIN pini de 3-15 dB arasi
-# ayarlanabiliyor (bagli degilse 9 dB varsayilan) ama yazilim carpani
-# sifira kadar inebildigi icin donanimdan kismaya gerek kalmiyor. GAIN
-# pini hicbir seye baglanmayacak.
+# DONANIM DEGIL YAZILIM: ES8311 kodeginin kendi cikis kazanci da
+# ayarlanabiliyor ama firmware onu 0 dB'de birakiyor (pati_ses.cpp).
+# Sebep: bozulma sayisal tarafta yonetiliyor ve orada bir yumusak
+# sinirlayici var; kodekten kazanc almak o korumanin ONUNE gecerdi.
+#
+# ⚠️ Firmware'deki varsayilan burayla AYNI DEGIL. StickS3'te hoparlor
+# 1 W ve besleme 250 mAh'lik bir pil; yuksek seviyede cekilen akim
+# cihazi yeniden baslatabiliyor, o yuzden orada 1.00'den basliyor
+# (bkz. firmware/main/pati_ses.hpp). Buradaki deger PC prototipi icin.
 SES_SEVIYESI = 0.85
 
 # UST SINIR — cocuk bunun uzerine cikaramaz.

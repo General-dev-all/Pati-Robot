@@ -53,10 +53,11 @@ body {
   padding: 26px 16px 22px;
 }
 
-/* Kafa: 3D baskiyla cikacak govdenin on yuzu.
-   Olculer gercege oranli — ekranin aktif alani 23,35 mm, kafa ~54 mm.
-   Burada 1 tuval pikseli = 1 CSS pikseli olacak sekilde buyutulmus
-   (240 px yuz), yani gercekte oldugundan ~2,5 kat buyuk gorunuyor.
+/* Yuz: StickS3'un on yuzu.
+   Olculer gercege oranli — ekranin aktif alani 25,2 x 14,2 mm,
+   cubugun tamami 48 x 24 mm. Burada 1 tuval pikseli = 1 CSS pikseli
+   olacak sekilde buyutulmus (240 px genislik), yani gercekte
+   oldugundan ~2,5 kat buyuk gorunuyor.
    Bu bilincli bir secim: piksel yapisi gorunur kalsin ama telefonda
    yuz bakilabilir buyuklukte olsun. Gercek boyut gelistirici.html'de
    1:1 modunda gorulebiliyor. */
@@ -83,7 +84,7 @@ body {
   box-shadow: inset 0 0 22px rgba(0, 0, 0, .9), 0 0 0 3px rgba(0, 0, 0, .4);
 }
 
-/* Gozler 240x240 tampona piksel piksel ciziliyor; tarayici onu
+/* Gozler 240x135 tampona piksel piksel ciziliyor; tarayici onu
    yumusatmasin. `pixelated` burada DOGRU cunku 1:1 gosteriyoruz. */
 #gozler {
   display: block;

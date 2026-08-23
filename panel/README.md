@@ -20,7 +20,7 @@ apart. A firmware update carries the panel with it.
 | `mikrofon.js` | Browser microphone capture (development only) |
 | `ornek.js` | Sample data for bench mode |
 
-`gozler240.js` writes pixels into a 240×240 buffer rather than using
+`gozler240.js` writes pixels into a 240×135 buffer rather than using
 canvas drawing commands, because the device renders the same geometry
 without a graphics library. The two are compared pixel by pixel in the
 host tests.

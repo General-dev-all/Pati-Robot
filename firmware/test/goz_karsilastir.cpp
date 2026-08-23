@@ -68,7 +68,8 @@ std::int64_t test_saat_us = 0;
 // TAKLIT EKRAN
 // ---------------------------------------------------------------------------
 //
-// Gercek ekran yerine 240x240'lik bir RGB888 tampona yaziyor.
+// Gercek ekran yerine PATI_EKR_G x PATI_EKR_Y (240x135) bir RGB888
+// tampona yaziyor.
 //
 // ekran_renk() 565'e PAKETLIYOR (bayt cevirmeden — bu testte bayt
 // sirasinin onemi yok, karsilastirilan sey renk), ekran_serit_bas()

@@ -16,7 +16,7 @@
 //
 // Robot geldiginde: panel kismi OLDUGU GIBI ESP32'den servis edilecek,
 // gozler ise C++'a cevrilmis haliyle ekranda cizilecek. gozler240.js
-// zaten tarayicinin cizim komutlarini kullanmiyor — 240x240 tamponuna
+// zaten tarayicinin cizim komutlarini kullanmiyor — 240x135 tamponuna
 // piksel piksel yaziyor — o yuzden buradaki gorunum tasinabilir.
 //
 // ===========================================================================

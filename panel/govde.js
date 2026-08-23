@@ -1,96 +1,106 @@
 // -*- coding: utf-8 -*-
 //
-// Robotun govde siluetini MILIMETRE olcusunde cizer.
+// Pati'nin govdesini MILIMETRE olcusunde cizer.
 //
 // ===========================================================================
 // NEDEN BU DOSYA VAR
 // ===========================================================================
 //
 // "Gozler guzel mi" sorusunun cevabi gozlere bakarak verilemez, cunku
-// gozler 23,35 mm'lik bir karenin icinde duracak. Bilgisayar ekraninda
-// 600 piksele buyutulmus bir goz cifti harika gorunur; gercekte pul
-// buyuklugunde bir yuzeydir.
+// gozler 25 x 14 mm'lik bir yuzeyde duracak. Bilgisayar ekraninda 600
+// piksele buyutulmus bir goz cifti harika gorunur; gercekte tirnak
+// buyuklugunde bir alandir.
 //
-// Bu dosya o gercegi gosteriyor: govde, ekran, hoparlor ve kart AYNI
-// mm olceginde ciziliyor. Boylece iki sey aninda goruluyor:
-//
-//   1. Ekran, kafanin ne kadarini kapliyor. Kafa buyutulunce gozler
-//      koca bir yuzde kaybolan iki noktaya donusuyor — bu bir TASARIM
-//      KARARI ve simdi verilmesi gerekiyor, baski yapildiktan sonra
-//      degil.
-//   2. Hoparlor (cap 50 mm) ekrandan (23,35 mm) IKI KAT buyuk. Yani
-//      govdenin boyunu belirleyen sey yuz degil, hoparlor.
+// Bu dosya o gercegi gosteriyor: govde ve ekran AYNI mm olceginde
+// ciziliyor, yanina da kredi karti konabiliyor.
 //
 // ===========================================================================
-// OLCULER — hangisi kesin, hangisi tahmin
+// 🔴 BU DOSYA 23.08.2026'DA TAMAMEN DEGISTI
 // ===========================================================================
 //
-// KESIN olan tek sey ekranin aktif alani: 1.3" kosegen kare = 23,35 mm.
-// Geri kalan her sey PLAN.md'daki parametrik degiskenlerden geliyor
-// ve KARGO GELINCE KUMPASLA DUZELTILECEK. Bu yuzden hepsi tek yerde,
-// isimli ve degistirilebilir.
+// Onceden burada iki parcali bir robot vardi: kafa (54 x 50 mm), govde
+// (64 x 62 mm), icinde 5 cm'lik hoparlor, ayri ekran modulu ve dikey
+// duran bir ESP32-S3 DevKit karti. Hepsi 3D baskiyla yapilacak bir
+// kabuk icin cizilmisti.
 //
-// `?` isaretli olanlar tahmin — stuudyo bunlari ayri listeliyor ki
-// "olculdu" saniimasin.
+// O donanim emekli oldu. Pati artik tek bir parca: M5Stack StickS3,
+// 48 x 24 x 15 mm, ekrani ve hoparloru icinde. Baski yok, montaj yok.
+//
+// Eski cizim `devkit` dalinda duruyor:
+//     git show v2.2.8-devkit:panel/govde.js
+//
+// ⚠️ DIS GOVDE HENUZ YOK. Ileride cubugu icine alan bir kabuk
+// yapilabilir; yapilinca buraya gercek olculerle eklenir. Simdi
+// olmayan bir govdeyi cizmiyoruz — tahmini bir kabuk cizmek, karar
+// verilmis gibi gorunmesine yol acardi.
+
+// ===========================================================================
+// OLCULER
+// ===========================================================================
+//
+// KESIN olanlar M5Stack'in urun sayfasindan (docs.m5stack.com/en/core/
+// StickS3, "Specifications" ve "Model Size"). `?` isaretliler tahmin —
+// stuudyo bunlari ayri listeliyor ki "olculdu" saniilmasin.
+//
+// Cubuk YATAY tutuluyor: 48 mm genislik, 24 mm yukseklik. Ekran da
+// yatay, cunku iki goz yan yana ancak boyle sigiyor (bkz. gozler240.js).
 
 export const OLCU = {
-  // --- ekran modulu
-  ekranModulG: 27,        // ? tipik 1.3" ST7789 modul karti
-  ekranModulY: 39,        // ?
-  ekranAktif: 23.35,      // kesin: 1.3" kosegen / V2
-  aktifUstBosluk: 6,      // ? modul ustunden aktif alanin ustune
+  // --- cubugun kendisi (kesin)
+  cubukG: 48.0,
+  cubukY: 24.0,
+  cubukD: 15.0,           // derinlik — cizimde gorunmuyor, olcu icin
+  cubukYaricap: 3.5,      // ? kose yuvarlamasi, fotograftan
 
-  // --- kafa
-  kafaG: 54,
-  kafaY: 50,
-  kafaYaricap: 16,
+  // --- ekranin AKTIF alani (kesin: 1.14" kosegen, 135x240 piksel)
+  //
+  // Kosegen 1.14 inc = 28,96 mm. 135:240 oraniyla kisa kenar 14,2 mm,
+  // uzun kenar 25,2 mm. Yatay kullandigimiz icin uzun kenar genislik.
+  ekranG: 25.2,
+  ekranY: 14.2,
 
-  // --- govde
-  govdeG: 64,
-  govdeY: 62,
-  govdeYaricap: 14,
+  // Ekranin cubugun sol kenarina uzakligi.
+  //
+  // ? TAHMIN. Fotografta ekran ortada degil, bir uca dogru kaymis
+  // duruyor. Kumpasla olculecek — kart gelince duzeltilecek tek sayi
+  // burasi.
+  ekranSolBosluk: 8.0,
 
-  // --- ic parcalar (yerlestirme dogru mu diye gosteriliyor)
-  hoparlorCap: 50,        // satici sayfasi: 5 cm
-  kartG: 28,              // ? ESP32-S3-DevKitC-1 govde genisligi
-  kartU: 57,              // ?
-  duvar: 2,               // 3D baski et kalinligi
+  // --- ic parcalar (yerlesim gostergesi)
+  hoparlorG: 20.0,        // 2011 kasa: 20 x 11 mm
+  hoparlorY: 11.0,
+  usbG: 9.2,              // ? USB-C disi yuva
+  usbY: 3.4,
 };
 
 // Kredi karti: ISO/IEC 7810 ID-1 = 85,60 x 53,98 mm.
 // Hem ekran olcegini kalibre etmek hem "ne kadar kucuk" hissini
-// vermek icin kullaniliyor.
+// vermek icin kullaniliyor. Cubuk kartin YARISINDAN kisa.
 export const KART_MM = { g: 85.60, y: 53.98 };
 
 const RENK = {
-  kabuk:      '#e9edf1',
-  kabukKoyu:  '#c6ccd3',
-  cerceve:    '#2b3238',
-  govde:      '#dfe4e9',
-  govdeKoyu:  '#bcc3ca',
+  kabuk:      '#3a4046',
+  kabukKoyu:  '#23282d',
+  kabukKenar: '#14181b',
   ic:         'rgba(23, 196, 196, .22)',
   icCizgi:    'rgba(23, 196, 196, .75)',
-  golge:      'rgba(0, 0, 0, .30)',
+  golge:      'rgba(0, 0, 0, .35)',
 };
 
-
-// Ekranin aktif alaninin, kafanin sol-ust kosesine gore yeri (mm).
+// Ekranin aktif alaninin, cubugun sol-ust kosesine gore yeri (mm).
 // Stuudyo goz tuvalini tam buraya oturtuyor.
 export function ekranYeri() {
   return {
-    x: (OLCU.kafaG - OLCU.ekranAktif) / 2,
-    y: (OLCU.kafaY - OLCU.ekranAktif) / 2,
-    boy: OLCU.ekranAktif,
+    x: OLCU.ekranSolBosluk,
+    y: (OLCU.cubukY - OLCU.ekranY) / 2,
+    gen: OLCU.ekranG,
+    yuk: OLCU.ekranY,
   };
 }
 
 export function toplamOlcu() {
-  return {
-    g: Math.max(OLCU.kafaG, OLCU.govdeG),
-    y: OLCU.kafaY + OLCU.govdeY,
-  };
+  return { g: OLCU.cubukG, y: OLCU.cubukY };
 }
-
 
 function yuvarlakYol(c, x, y, g, y2, r) {
   r = Math.min(r, g / 2, y2 / 2);
@@ -107,11 +117,12 @@ function yuvarlakYol(c, x, y, g, y2, r) {
   c.closePath();
 }
 
-
-// Govdeyi cizer. `olcek` = piksel / mm.
+// Cubugu cizer. `olcek` = piksel / mm.
 //
-// icGoster: hoparlor, kart ve ekran modulunu seffaf gosterir — "sigiyor
-// mu" sorusunun cevabi. Kapaliyken robot dısardan nasil gorunuyorsa o.
+// icGoster: hoparlor ve USB yuvasini seffaf gosterir.
+// akrilik: ekranin onunde koyu bir pencere varmis gibi gosterir —
+//          cubugun kendi cami zaten koyu, bu daha cok ileride bir dis
+//          govde yapilirsa nasil gorunecegini denemek icin.
 export function ciz(tuval, olcek, secenek = {}) {
   const { icGoster = false, akrilik = true } = secenek;
   const c = tuval.getContext('2d');
@@ -126,74 +137,47 @@ export function ciz(tuval, olcek, secenek = {}) {
   tuval.height = Math.round(Y * dpr);
   tuval.style.width = G + 'px';
   tuval.style.height = Y + 'px';
-  c.setTransform(dpr * olcek, 0, 0, dpr * olcek, dpr * kenar * olcek, dpr * kenar * olcek);
+  c.setTransform(dpr * olcek, 0, 0, dpr * olcek,
+                 dpr * kenar * olcek, dpr * kenar * olcek);
   c.clearRect(-kenar, -kenar, T.g + kenar * 2, T.y + kenar * 2);
 
-  const kafaX = (T.g - OLCU.kafaG) / 2;
-  const govdeX = (T.g - OLCU.govdeG) / 2;
-  const govdeY = OLCU.kafaY;
-
-  // --- govde (once, kafanin arkasinda kalsin)
+  // --- cubugun govdesi
   c.save();
   c.shadowColor = RENK.golge;
   c.shadowBlur = 3;
   c.shadowOffsetY = 1.2;
-
-  const gGrad = c.createLinearGradient(0, govdeY, 0, govdeY + OLCU.govdeY);
-  gGrad.addColorStop(0, RENK.govde);
-  gGrad.addColorStop(1, RENK.govdeKoyu);
+  const gGrad = c.createLinearGradient(0, 0, 0, T.y);
+  gGrad.addColorStop(0, RENK.kabuk);
+  gGrad.addColorStop(1, RENK.kabukKoyu);
   c.fillStyle = gGrad;
-  yuvarlakYol(c, govdeX, govdeY, OLCU.govdeG, OLCU.govdeY, OLCU.govdeYaricap);
+  yuvarlakYol(c, 0, 0, T.g, T.y, OLCU.cubukYaricap);
   c.fill();
   c.restore();
 
-  // Hoparlor izgarasi — capi gercek hoparlorun capi.
-  const hopX = T.g / 2;
-  const hopY = govdeY + OLCU.govdeY * 0.42;
   c.save();
-  c.strokeStyle = 'rgba(0,0,0,.22)';
-  c.lineWidth = 0.35;
-  for (let r = 3; r <= OLCU.hoparlorCap / 2 - 4; r += 3.2) {
-    c.beginPath();
-    c.arc(hopX, hopY, r, 0, Math.PI * 2);
-    c.stroke();
-  }
+  c.strokeStyle = RENK.kabukKenar;
+  c.lineWidth = 0.3;
+  yuvarlakYol(c, 0, 0, T.g, T.y, OLCU.cubukYaricap);
+  c.stroke();
   c.restore();
 
-  // --- kafa
-  c.save();
-  c.shadowColor = RENK.golge;
-  c.shadowBlur = 3.5;
-  c.shadowOffsetY = 1.5;
-  const kGrad = c.createLinearGradient(0, 0, 0, OLCU.kafaY);
-  kGrad.addColorStop(0, RENK.kabuk);
-  kGrad.addColorStop(1, RENK.kabukKoyu);
-  c.fillStyle = kGrad;
-  yuvarlakYol(c, kafaX, 0, OLCU.kafaG, OLCU.kafaY, OLCU.kafaYaricap);
-  c.fill();
-  c.restore();
-
-  // Yuz penceresi: fume akrilik ya da ciplak ekran.
-  //
-  // PLAN v1 §10b'nin bulgusu: Eilik'in "siyah cam" hissi ekrandan
-  // degil onundeki koyu seffaf akrilikten geliyor. Akrilik olmadan
-  // ekranin kenari ve modul karti goruluyor — robot "ekran yapistirilmis
-  // kutu" gibi duruyor. Bu anahtar o farki gosteriyor.
+  // --- ekran penceresi
   const e = ekranYeri();
-  const pencereBosluk = akrilik ? 3.5 : 0.6;
-  const pX = kafaX + e.x - pencereBosluk;
-  const pY = e.y - pencereBosluk;
-  const pB = e.boy + pencereBosluk * 2;
+  const pay = akrilik ? 1.6 : 0.5;
+  const pX = e.x - pay;
+  const pY = e.y - pay;
+  const pG = e.gen + pay * 2;
+  const pY2 = e.yuk + pay * 2;
 
   c.save();
-  const camGrad = c.createLinearGradient(pX, pY, pX, pY + pB);
-  camGrad.addColorStop(0, akrilik ? '#141b20' : '#0a0d10');
-  camGrad.addColorStop(1, akrilik ? '#05080a' : '#05080a');
+  const camGrad = c.createLinearGradient(pX, pY, pX, pY + pY2);
+  camGrad.addColorStop(0, '#141b20');
+  camGrad.addColorStop(1, '#05080a');
   c.fillStyle = camGrad;
-  yuvarlakYol(c, pX, pY, pB, pB, akrilik ? 5 : 1.2);
+  yuvarlakYol(c, pX, pY, pG, pY2, akrilik ? 1.8 : 0.6);
   c.fill();
   c.strokeStyle = 'rgba(0,0,0,.55)';
-  c.lineWidth = 0.4;
+  c.lineWidth = 0.3;
   c.stroke();
   c.restore();
 
@@ -202,56 +186,41 @@ export function ciz(tuval, olcek, secenek = {}) {
     c.save();
     c.fillStyle = RENK.ic;
     c.strokeStyle = RENK.icCizgi;
-    c.lineWidth = 0.3;
-    c.setLineDash([1.2, 0.8]);
+    c.lineWidth = 0.25;
+    c.setLineDash([1.0, 0.7]);
 
-    // ekran modul karti
-    const mX = T.g / 2 - OLCU.ekranModulG / 2;
-    const mY = e.y - OLCU.aktifUstBosluk;
+    // Hoparlor — ekranin sag tarafinda kalan bosluga.
+    const hX = e.x + e.gen + (T.g - e.x - e.gen - OLCU.hoparlorG) / 2;
+    const hY = (T.y - OLCU.hoparlorY) / 2;
     c.beginPath();
-    c.rect(mX, mY, OLCU.ekranModulG, OLCU.ekranModulY);
-    c.fill(); c.stroke();
-
-    // hoparlor
-    c.beginPath();
-    c.arc(hopX, hopY, OLCU.hoparlorCap / 2, 0, Math.PI * 2);
-    c.fill(); c.stroke();
-
-    // ESP32 karti — dikey, govdenin arkasinda
-    const kX = T.g / 2 - OLCU.kartG / 2;
-    const kY = govdeY + OLCU.govdeY - OLCU.kartU - OLCU.duvar;
-    c.beginPath();
-    c.rect(kX, Math.max(kY, govdeY + OLCU.duvar), OLCU.kartG, OLCU.kartU);
+    c.rect(hX, hY, OLCU.hoparlorG, OLCU.hoparlorY);
     c.fill(); c.stroke();
 
     c.restore();
 
-    // Uyari: kart 57 mm, govde ic yuksekligi buna yetiyor mu
-    const icY = OLCU.govdeY - OLCU.duvar * 2;
-    if (OLCU.kartU > icY) {
-      c.save();
-      c.fillStyle = '#f85149';
-      c.font = '3px sans-serif';
-      c.fillText(`kart ${OLCU.kartU} mm > ic ${icY.toFixed(0)} mm`, govdeX + 2, govdeY + OLCU.govdeY - 2);
-      c.restore();
-    }
+    c.save();
+    c.fillStyle = 'rgba(255,255,255,.55)';
+    c.font = '2.2px sans-serif';
+    c.fillText('hoparlör', hX + 1, hY + OLCU.hoparlorY / 2 + 0.8);
+    c.restore();
   }
 
-  // USB-C yuvasi — cocuk kabloyu kendisi takip cikaracak (PLAN.md/5).
+  // USB-C yuvasi — cubugun sag ucunda (yatay tutulunca).
   c.save();
-  c.fillStyle = '#3a4147';
-  const uG = 9.2, uY = 3.4;                // USB-C disi yuva olculeri (?)
-  yuvarlakYol(c, T.g / 2 - uG / 2, govdeY + OLCU.govdeY - uY - 3, uG, uY, 1.6);
+  c.fillStyle = '#181c20';
+  yuvarlakYol(c, T.g - OLCU.usbY - 1.2, T.y / 2 - OLCU.usbG / 2,
+              OLCU.usbY, OLCU.usbG, 1.4);
   c.fill();
   c.restore();
 
-  // Donen olculer MM cinsinden ve kafa kosesine gore degil TUVAL
-  // kosesine gore (kenar payi dahil) — stuudyo goz tuvalini ve akrilik
-  // ortusunu buna gore oturtuyor. Iki yerde ayni hesabi yapmamak icin
-  // burada bir kez hesaplaniyor.
+  // Donen olculer MM cinsinden ve TUVAL kosesine gore (kenar payi
+  // dahil) — stuudyo goz tuvalini ve ortuyu buna gore oturtuyor.
+  //
+  // ⚠️ EKRAN ARTIK KARE DEGIL. Onceden tek bir `boy` doniyordu ve iki
+  // eksende de o kullaniliyordu; 240x135'te bu gozleri ezerdi.
   return {
     G, Y, olcek,
-    ekran:   { x: kenar + kafaX + e.x, y: kenar + e.y, boy: e.boy },
-    pencere: { x: kenar + pX,          y: kenar + pY,  boy: pB },
+    ekran:   { x: kenar + e.x, y: kenar + e.y, gen: e.gen, yuk: e.yuk },
+    pencere: { x: kenar + pX,  y: kenar + pY,  gen: pG,    yuk: pY2 },
   };
 }

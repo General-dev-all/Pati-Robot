@@ -29,9 +29,13 @@ panel/       Parent panel — one web page, served from disk during
              development and compiled into the firmware for the device
 prototype/   Python reference implementation; the host tests compare
              firmware behaviour against it
-assembly/    Electronics assembly guide (self-contained HTML)
-enclosure/   3D-printable parts and CAD source
+enclosure/   Notes for a future outer shell — there is no enclosure yet,
+             and the board does not need one
 ```
+
+The devkit's assembly guide, wiring diagram and printed parts are not
+here. They describe hardware that no longer exists, so they live with
+it on the `devkit` branch rather than misleading anyone on `main`.
 
 `panel/` is a single source. The page is not duplicated for the device
 build, so a firmware update carries the panel with it.
@@ -88,8 +92,9 @@ and is kept, not deleted:
 git switch --detach v2.2.8-devkit     # source
 ```
 
-Its built `pati.bin` is in the `v2.2.8` release, and the assembly guide
-for it is [`assembly/REHBER.html`](assembly/REHBER.html) (Turkish).
+Its built `pati.bin` is in the `v2.2.8` release. The branch also carries
+what `main` no longer does: `assembly/REHBER.html` (the soldering guide,
+Turkish), the wiring diagram, and the printed enclosure parts.
 
 ⚠️ **Do not run this firmware on that board.** Same chip family, so it
 flashes and boots, and the update manifest carries no hardware field. It

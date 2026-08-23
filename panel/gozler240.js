@@ -16,9 +16,12 @@
 //
 // 1. ESKI DOSYA GENIS TUVAL VARSAYIYOR.
 //    Orada olcu birimi `Math.min(G, Y * 1.6)` idi — yani yatay bir
-//    pencere icin ayarlanmis. 240x240 KARE ekranda ayni sayilar gozleri
-//    ekranin ortasinda kucuk bir seride birakiyor, ust ve alt ucta
-//    kocaman siyah bosluk kaliyor. Ayni mantik, yanlis kadraj.
+//    pencere icin ayarlanmis. Kucuk bir gomulu ekranda ayni sayilar
+//    kadraji bozuyor: gozler ortada kucuk bir seride kaliyor, kenarlarda
+//    kocaman bosluk. Ayni mantik, yanlis kadraj.
+//
+//    (Bu dosya ilk yazildiginda ekran 240x240'ti; simdi 240x135. Sayilar
+//    o zaman da simdi de ekrana gore ayri ayri secildi — devralinmadi.)
 //
 // 2. TARAYICI, ESP32'NIN YAPAMADIGI SEYLERI BEDAVA YAPIYOR.
 //    Eski dosya `shadowBlur` (gercek bulanik parlama), `clip()`,
@@ -29,7 +32,7 @@
 //    denenmedi").
 //
 // COZUM: bu dosya tarayicinin cizim yeteneklerini KULLANMIYOR.
-// 240x240 piksel tamponuna kendi elimizle yaziyor — satir satir,
+// EKRAN.g x EKRAN.y piksel tamponuna kendi elimizle yaziyor — satir satir,
 // tamsayi piksel, kendi alfa karistirmasi. Yani burada gorulen sey
 // C++'in yapmasi gereken isin birebir taslagi. Tuval sadece hazir
 // tamponu ekrana basmak icin (`putImageData`) kullaniliyor.
