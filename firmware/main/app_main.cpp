@@ -280,6 +280,12 @@ extern "C" void app_main()
     // BLOKLAMIYOR: baglanma denemeleri saniyeler suruyor ve o sure
     // boyunca gozler olu kalmamali.
     pati::ayar_baslat();
+
+    // Calma hizi ancak AYARLAR OKUNDUKTAN sonra kurulabiliyor:
+    // hoparlor_baslat() bundan once kosuyor ve NVS'teki degeri henuz
+    // bilmiyor. Pati'nin afacan sesi buna bagli — bkz. pati_ses.hpp.
+    pati::hoparlor_hiz_ayarla(pati::ayar_hiz());
+
     pati::kullanim_baslat();
     if (pati::ag_baslat() != ESP_OK) {
         ESP_LOGE(ETIKET, "ag katmani baslatilamadi. Sebep yukarida.");

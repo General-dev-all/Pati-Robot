@@ -56,6 +56,27 @@ esp_err_t hoparlor_baslat();
 size_t hoparlor_yaz(std::span<const std::int16_t> kaynak,
                     uint32_t timeout_ms = 200);
 
+// Hoparlorun CALMA hizini ayarlar. 1.30 -> 24 kHz'lik ses 31,2 kHz'de
+// calinir: %30 daha hizli ve ~%30 daha tiz.
+//
+// 🔴 PATI'NIN SESI BUNA BAGLI. Live API'de tizlik ve hiz ayarlanamiyor
+// (SpeechConfig semasinda sadece voiceConfig / languageCode var), o
+// yuzden prototype eski bir hileye basvuruyor: sesi oldugundan hizli
+// caliyor. Puck'in ham sesi bir yetiskin erkegi; afacan cocuk sesi
+// tamamen bu carpandan geliyor.
+//
+// Gerekcesi ve 1.30 degerinin nasil secildigi prototype/ayarlar.py
+// icindeki CIKIS_HIZ blogunda — panelden DINLENEREK secilmis, olculerek
+// degil.
+//
+// ⚠️ Carpan yukseldikce ses HEM tizlesiyor HEM aceleci oluyor; ikisi
+// ayrilamiyor. v1 uretimi ayri yavaslatabildigi icin 1.52 kullaniyordu,
+// burada o deger robotu aceleci yapar.
+//
+// Kanali kisa sureligine kapatip saati yeniden kuruyor, yani calan sesi
+// keser. Acilista ve panelden ayar degisince cagriliyor.
+esp_err_t hoparlor_hiz_ayarla(float carpan);
+
 // Bekleyen sesi at — cocuk robotun sozunu kesti (barge-in).
 //
 // Atmazsak robot susmus gorunup birkac saniye sonra eski cumlesine

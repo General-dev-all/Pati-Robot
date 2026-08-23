@@ -284,6 +284,10 @@ esp_err_t ayar_isle(httpd_req_t* r)
         ses_seviyesi_ayarla(static_cast<float>(json_sayi(k, "deger", 0.85)));
     } else if (alan == "hiz") {
         ayar_hiz_yaz(static_cast<float>(json_sayi(k, "deger", 1.30)));
+        // HEMEN uygula. Ayari yalnizca kaydetmek, ebeveynin kaydirdigi
+        // cubugun hicbir sey yapmamasi demekti — 23.08.2026'ya kadar
+        // tam olarak boyleydi.
+        hoparlor_hiz_ayarla(ayar_hiz());
     } else if (alan == "ses") {
         ayar_ses_adi_yaz(json_dize(k, "deger"));
     } else if (alan == "uyku") {

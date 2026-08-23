@@ -18,6 +18,10 @@ i2s_chan_handle_t g_hop = nullptr;
 
 float g_seviye = SES_SEVIYESI_BASLANGIC;
 
+// Hoparlorun SU ANKI calma frekansi. Kaynak her zaman 24 kHz;
+// bu ondan buyukse ses tiz ve hizli caliyor (bkz. hoparlor_hiz_ayarla).
+std::uint32_t g_cikis_hz = PATI_HOP_HZ;
+
 // INMP441'in ham 32 bitlik verisi icin tampon.
 //
 // Neden static ve neden bu boyutta: her okuma cagrisinda yigitta 1.3 KB
@@ -135,10 +139,14 @@ esp_err_t hoparlor_baslat()
     // duzgun aralikli paket vermiyor; 60 ms'lik bir gecikme tamponu
     // kurutuyor ve konusmanin ortasinda bosluk duyuluyor.
     //
-    // 8 x 480 = 160 ms. Ilk sesin gecikmesini ARTIRMIYOR — tampon bir
-    // ust sinir, sabit bir bekleme degil; ilk parca DMA'ya verilir
-    // verilmez calmaya basliyor. Bedeli 7.680 bayt ic RAM.
-    kanal.dma_desc_num = 8;
+    // 10 x 480 = 4.800 kare, yani 200 ms KAYNAK zamani. Calma hizi
+    // 1.30x oldugu icin gercekte ~154 ms tasiyor: tampon kaynak
+    // orneklerini tutuyor ama onlari %30 hizli tuketiyoruz.
+    //
+    // Ilk sesin gecikmesini ARTIRMIYOR — tampon bir ust sinir, sabit
+    // bir bekleme degil; ilk parca DMA'ya verilir verilmez calmaya
+    // basliyor. Bedeli 9.600 bayt ic RAM.
+    kanal.dma_desc_num = 10;
     kanal.dma_frame_num = 480;
 
     esp_err_t hata = i2s_new_channel(&kanal, &g_hop, nullptr);
@@ -177,6 +185,53 @@ esp_err_t hoparlor_baslat()
     ESP_LOGI(ETIKET, "hoparlor hazir: %d Hz, 16 bit, BCLK=%d LRC=%d DIN=%d",
              PATI_HOP_HZ, PATI_AMFI_BCLK, PATI_AMFI_LRC, PATI_AMFI_DIN);
     return ESP_OK;
+}
+
+esp_err_t hoparlor_hiz_ayarla(float carpan)
+{
+    if (g_hop == nullptr) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    // Sinirlar panelinkiyle ayni olsun diye burada da kirpiliyor: panel
+    // bozulsa bile robot anlasilmaz bir hizda konusmasin.
+    const float c = std::clamp(carpan, 0.80f, 1.60f);
+    const std::uint32_t hz =
+        static_cast<std::uint32_t>(PATI_HOP_HZ * c + 0.5f);
+    if (hz == g_cikis_hz) {
+        return ESP_OK;
+    }
+
+    // Saat yeniden kurulurken kanal KAPALI olmak zorunda (IDF sarti).
+    // Bu, o an calan sesi kesiyor — acilista sorun degil, panelden
+    // ayar degistiginde de bir kerelik.
+    esp_err_t hata = i2s_channel_disable(g_hop);
+    if (hata != ESP_OK) {
+        ESP_LOGW(ETIKET, "hiz icin kanal kapatilamadi: %s",
+                 esp_err_to_name(hata));
+        return hata;
+    }
+
+    i2s_std_clk_config_t saat = I2S_STD_CLK_DEFAULT_CONFIG(hz);
+    hata = i2s_channel_reconfig_std_clock(g_hop, &saat);
+    if (hata == ESP_OK) {
+        g_cikis_hz = hz;
+    } else {
+        ESP_LOGW(ETIKET, "calma hizi kurulamadi: %s", esp_err_to_name(hata));
+    }
+
+    // Basarisiz olsa bile kanali GERI ACIYORUZ: eski hizla calmak,
+    // hic calmamaktan iyi.
+    const esp_err_t acma = i2s_channel_enable(g_hop);
+    if (acma != ESP_OK) {
+        ESP_LOGE(ETIKET, "kanal geri acilamadi: %s", esp_err_to_name(acma));
+        return acma;
+    }
+
+    ESP_LOGI(ETIKET, "calma hizi: %.2fx -> %lu Hz (kaynak %d Hz)",
+             static_cast<double>(c), static_cast<unsigned long>(g_cikis_hz),
+             PATI_HOP_HZ);
+    return hata;
 }
 
 size_t hoparlor_yaz(std::span<const std::int16_t> kaynak, uint32_t timeout_ms)
