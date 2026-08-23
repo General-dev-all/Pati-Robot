@@ -74,6 +74,10 @@ resampled — see [Voice](#voice).
 codec's side.** The codec's `DOUT` is the ESP32's input. Copy the table
 literally and the microphone and speaker end up swapped, both silent.
 
+First boot, step by step, with the symptom-to-line mapping for
+everything that cannot be checked without the board:
+[`firmware/ILK-ACILIS.md`](firmware/ILK-ACILIS.md) (Turkish).
+
 ### The previous Pati
 
 Until August 2026 this was a hand-wired ESP32-S3 devkit with an INMP441,
