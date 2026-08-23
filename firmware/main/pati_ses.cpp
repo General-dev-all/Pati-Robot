@@ -130,6 +130,17 @@ esp_err_t hoparlor_baslat()
     // Kapali olsa robot sustugunda son parca vizilti gibi tekrarliyor.
     kanal.auto_clear_after_cb = true;
 
+    // DMA TAMPONU — varsayilan 6 x 240 kare, yani 24 kHz'de yalnizca
+    // 60 ms. Ses wifi uzerinden gercek zamanli akiyor ve ag her zaman
+    // duzgun aralikli paket vermiyor; 60 ms'lik bir gecikme tamponu
+    // kurutuyor ve konusmanin ortasinda bosluk duyuluyor.
+    //
+    // 8 x 480 = 160 ms. Ilk sesin gecikmesini ARTIRMIYOR — tampon bir
+    // ust sinir, sabit bir bekleme degil; ilk parca DMA'ya verilir
+    // verilmez calmaya basliyor. Bedeli 7.680 bayt ic RAM.
+    kanal.dma_desc_num = 8;
+    kanal.dma_frame_num = 480;
+
     esp_err_t hata = i2s_new_channel(&kanal, &g_hop, nullptr);
     if (hata != ESP_OK) {
         ESP_LOGE(ETIKET, "hoparlor kanali acilamadi: %s", esp_err_to_name(hata));
@@ -185,24 +196,55 @@ size_t hoparlor_yaz(std::span<const std::int16_t> kaynak, uint32_t timeout_ms)
         hata = i2s_channel_write(g_hop, kaynak.data(),
                                  kaynak.size() * sizeof(std::int16_t),
                                  &yazilan_bayt, timeout_ms);
-    } else {
-        // Olcekleme icin gecici tampon. Parca boyu kucuk (Gemini ~20-40 ms
-        // gonderiyor), yigitta tutmak sorun degil.
-        std::array<std::int16_t, 1024> olcekli{};
-        const size_t n = std::min(kaynak.size(), olcekli.size());
-        for (size_t i = 0; i < n; ++i) {
-            olcekli[i] = static_cast<std::int16_t>(
-                static_cast<float>(kaynak[i]) * g_seviye);
+        if (hata != ESP_OK && hata != ESP_ERR_TIMEOUT) {
+            ESP_LOGW(ETIKET, "hoparlor yazma: %s", esp_err_to_name(hata));
+            return 0;
         }
-        hata = i2s_channel_write(g_hop, olcekli.data(), n * sizeof(std::int16_t),
-                                 &yazilan_bayt, timeout_ms);
+        return yazilan_bayt / sizeof(std::int16_t);
     }
 
-    if (hata != ESP_OK && hata != ESP_ERR_TIMEOUT) {
-        ESP_LOGW(ETIKET, "hoparlor yazma: %s", esp_err_to_name(hata));
-        return 0;
+    // 🔴 PARCANIN TAMAMI YAZILIYOR — DONGU SART.
+    //
+    // 23.08.2026'da bulundu: onceki surum tek bir 1024 ornekli tampon
+    // dolduruyor, `std::min` ile kirpiyor ve GERISINI SESSIZCE ATIYORDU.
+    // Cagiran (pati_sohbet.cpp) donus degerine bakmadigi icin kayip
+    // hicbir yere yazilmiyordu da.
+    //
+    // 1024 ornek = 24 kHz'de 42 ms. Yorum "Gemini ~20-40 ms gonderiyor"
+    // diyordu ve tam sinirdaydi — bir tik uzun gelen her parcanin kuyrugu
+    // kayboluyordu. Varsayilan ses seviyesi 0.85, yani bu yol HER ZAMAN
+    // calisiyor; sorun 1.0'da gorunmuyor ve o yuzden olcumlerde de
+    // gorunmemisti.
+    //
+    // Belirti: Pati konusurken cumlenin icinde kucuk bosluklar.
+    std::array<std::int16_t, 1024> olcekli{};
+    size_t toplam_bayt = 0;
+
+    for (size_t bas = 0; bas < kaynak.size(); bas += olcekli.size()) {
+        const size_t n = std::min(olcekli.size(), kaynak.size() - bas);
+        for (size_t i = 0; i < n; ++i) {
+            olcekli[i] = static_cast<std::int16_t>(
+                static_cast<float>(kaynak[bas + i]) * g_seviye);
+        }
+
+        size_t bayt = 0;
+        hata = i2s_channel_write(g_hop, olcekli.data(), n * sizeof(std::int16_t),
+                                 &bayt, timeout_ms);
+        toplam_bayt += bayt;
+
+        if (hata != ESP_OK && hata != ESP_ERR_TIMEOUT) {
+            ESP_LOGW(ETIKET, "hoparlor yazma: %s", esp_err_to_name(hata));
+            break;
+        }
+        // Zaman asimi: kuyruk dolu ve bekleme suresi doldu. Kalan
+        // parcayi zorlamak gecikmeyi buyutur, birakmak daha dogru —
+        // ama artik SESSIZCE degil, donus degerinde gorunerek.
+        if (bayt < n * sizeof(std::int16_t)) {
+            break;
+        }
     }
-    return yazilan_bayt / sizeof(std::int16_t);
+
+    return toplam_bayt / sizeof(std::int16_t);
 }
 
 esp_err_t hoparlor_temizle()

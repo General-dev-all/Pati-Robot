@@ -277,6 +277,21 @@ void ag_gorevi(void*)
     sta_ayarla(ad, sifre);
     ESP_ERROR_CHECK(esp_wifi_start());
 
+    // 🔴 GUC TASARRUFU KAPALI — sesin kesilmemesi icin.
+    //
+    // ESP-IDF varsayilani WIFI_PS_MIN_MODEM: radyo, yonlendiricinin DTIM
+    // beacon'lari arasinda UYUYOR. Yonlendiriciye gore bu 100-300 ms
+    // demek ve paketler o araliklarla toplu geliyor.
+    //
+    // Gemini'nin sesi gercek zamanli akiyor ve hoparlorun DMA tamponu
+    // 60 ms tasiyor (6 x 240 kare @ 24 kHz). Yani radyo bir DTIM
+    // araligi uyudugunda tampon KURUYOR ve konusmanin ortasinda bosluk
+    // duyuluyor.
+    //
+    // Bedeli: ortalama ~30 mA fazla akim. Priz beslemeli bir masa robotu
+    // icin bedava; pil olsaydi burasi tartisilirdi.
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_ps(WIFI_PS_NONE));
+
     while (true) {
         const EventBits_t b = xEventGroupWaitBits(
             g_olaylar, BAGLI_BIT | BASARISIZ_BIT, pdTRUE, pdFALSE,

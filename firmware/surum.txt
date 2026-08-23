@@ -1,2 +1,2 @@
 2.2.4
-Küçük düzeltmeler.
+Pati konuşurken duyulan kısa kesintiler giderildi.
