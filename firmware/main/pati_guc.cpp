@@ -83,7 +83,50 @@ esp_err_t pm1_cikis(int pin, bool seviye)
     hata = pm1_bit(PATI_PM1_GPIO_OUT, pin, seviye);
     if (hata != ESP_OK) return hata;
 
-    return pm1_bit(PATI_PM1_GPIO_MODE, pin, true);  // cikis
+    hata = pm1_bit(PATI_PM1_GPIO_MODE, pin, true);  // cikis
+    if (hata != ESP_OK) return hata;
+
+    // ---- GERI OKUYUP DOGRULA --------------------------------------------
+    //
+    // 🔴 BURADAKI BIT DUZENI BIR VARSAYIM.
+    //
+    // M5PM1'in register haritasi surucu kutuphanesinin basligindan
+    // alindi (adresler ve enum degerleri kesin) ama FUNC0'in pin basina
+    // IKI BIT tuttugu ve pin N'in [2N+1:2N] bitlerinde oldugu
+    // CIKARIMDIR — dort pin, sekiz bit, dogal yerlesim. Yonga elimize
+    // gelmeden dogrulanamiyor.
+    //
+    // Yanlissa olacak sey sessizlik: yazma I2C'de basarili doner, bit
+    // baska yere gider, L3B ya da amfi acilmaz ve hicbir hata cikmaz.
+    // Sonra saatlerce "ses neden yok" diye ses koduna bakilir.
+    //
+    // Geri okuma bunu goruunur yapiyor: yongaya ne yazdigimizi degil,
+    // yonganin ne ANLADIGINI soruyoruz. Bedeli iki I2C okumasi, bir
+    // kez, acilista.
+    std::uint8_t mod = 0, cikis = 0;
+    if (pm1_oku(PATI_PM1_GPIO_MODE, mod) != ESP_OK ||
+        pm1_oku(PATI_PM1_GPIO_OUT, cikis) != ESP_OK) {
+        ESP_LOGW(ETIKET, "PYG%d geri okunamadi — yazildi ama dogrulanmadi",
+                 pin);
+        return ESP_OK;  // yazma basariliydi; okuyamamak baska bir sorun
+    }
+
+    const std::uint8_t maske = static_cast<std::uint8_t>(1u << pin);
+    const bool mod_ok = (mod & maske) != 0;
+    const bool seviye_ok = ((cikis & maske) != 0) == seviye;
+
+    if (!mod_ok || !seviye_ok) {
+        ESP_LOGE(ETIKET,
+                 "PYG%d BEKLENEN GIBI AYARLANMADI — mode=0x%02X out=0x%02X "
+                 "(cikis %s, seviye %s)",
+                 pin, mod, cikis,
+                 mod_ok ? "tamam" : "YANLIS",
+                 seviye_ok ? "tamam" : "YANLIS");
+        ESP_LOGE(ETIKET, "  M5PM1 register bit duzeni varsayimi yanlis "
+                         "olabilir — pati_pinler.h, PATI_PM1_*");
+        return ESP_ERR_INVALID_STATE;
+    }
+    return ESP_OK;
 }
 
 // Hatta kim var — YALNIZCA bir sey ters gidince basiliyor.

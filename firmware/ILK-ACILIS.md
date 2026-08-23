@@ -41,7 +41,18 @@ ekran siyah. Üçü birden.
 |---|---|
 | `M5PM1 (0x6E) cevap vermiyor` + `I2C hattinda HIC KIMSE yok` | I2C hattı sorunu — pin ya da güç |
 | `M5PM1 (0x6E) cevap vermiyor` + başka adresler listeleniyor | hat sağlam, M5PM1'in adresi farklı |
+| `PYG2 BEKLENEN GIBI AYARLANMADI` | **register bit düzeni varsayımı yanlış** — aşağı bak |
 | `L3B acilamadi` | register yazımı başarısız → `PATI_PM1_*` (`pati_pinler.h`) |
+
+**`BEKLENEN GIBI AYARLANMADI` çıkarsa:** M5PM1'e yazıp geri okuyoruz ve
+yonga bizim yazdığımızı anlamamış. Bu depoda `FUNC0` register'ının pin
+başına iki bit tuttuğu ve pin N'in `[2N+1:2N]` bitlerinde olduğu
+**varsayılıyor** — sürücü kütüphanesinin başlığında adresler var ama bit
+yerleşimi yazmıyor. Log satırı `mode=0x..` ve `out=0x..` değerlerini
+basıyor; hangi bitin oynadığına bakılıp `pm1_cikis` (`pati_guc.cpp`)
+düzeltilir.
+
+Bu satır çıkmıyorsa varsayım doğrudur ve konu kapanmıştır.
 
 Kod: [`main/pati_guc.cpp`](main/pati_guc.cpp)
 
@@ -109,9 +120,21 @@ Test geçiyorsa sorun örnekleyicide değil, kodek register'larında.
 **Mikrofon duymuyor** → `set_mic_gain` 30 dB (`main/pati_ses.cpp`).
 MEMS mikrofonun sinyali zayıf; 36 veya 42 dB denenebilir.
 
-**Ses kesik kesik** → DMA tamponu. `DMA_TANIM` (`main/pati_ses.cpp`)
-24 ve bu ~512 ms tutuyor. Açılışta
-`DMA icin ic RAM yetmedi` uyarısı varsa tampon yarıya inmiş demektir.
+**Ses kesik kesik** → DMA tamponu. Açılışta seri porta yazılıyor:
+
+```
+pati.ses:   DMA tamponu 16 x 1024 = 341 ms, ~64 KB (iki yön)
+```
+
+341 ms, ölçülen en uzun Gemini parçasının çalma süresinin (215 ms) bir
+buçuk katı. Takılma olursa `DMA_TANIM` (`main/pati_ses.cpp`) 20'ye,
+sonra 24'e çıkarılabilir — her adım ~8 KB iç RAM yiyor ve o RAM'i wifi
+ile TLS de kullanıyor.
+
+⚠️ Açılışta `ic RAM yetmedi` uyarısı varsa tampon kendiliğinden
+küçülmüştür; o zaman **artırmak değil**, `DMA_TANIM`'ı kalıcı olarak
+indirmek gerekiyor — yer, çalışırken başka bir şeyi açlıkta bırakıyor
+demektir.
 
 ---
 
@@ -149,10 +172,16 @@ Gemini anahtarı panelden giriliyor; yazılımın içinde anahtar yok.
 | Hafıza motoru ↔ Python | 1008 kontrol |
 | Derleme, bölüm tablosu | `pati.bin` 1,46 MB / 3,94 MB yuva |
 
-| Doğrulanmadı — kart gerekiyor |
-|---|
-| ES8311 register dizisi (sesin gerçekten çıkması) |
-| M5PM1 register bit düzeni (L3B ve amfi) |
-| Ekran yönü, aynalama ve piksel kayması |
-| Pil ömrü ve güvenli ses seviyesi |
-| Mikrofon kazancı |
+| Doğrulanmadı — kart gerekiyor | Yanlışsa nasıl anlaşılır |
+|---|---|
+| ES8311 register dizisi | ses hiç çıkmaz; `derle.bat` geçiyorsa örnekleyicide değil kodekte |
+| M5PM1 register bit düzeni | **kendi kendini denetliyor** — `BEKLENEN GIBI AYARLANMADI` yazar |
+| Ekran yönü ve aynalama | test deseni yatay/ters çıkar, seri port hangi ayar olduğunu söyler |
+| Ekranın piksel kayması | kenarda ince çöp şeridi |
+| Ekranın çubuk üzerindeki yeri (stüdyo) | sadece görsel; firmware'i etkilemiyor |
+| Pil ömrü ve güvenli ses seviyesi | Pati cümle ortasında kapanıp açılır |
+| Mikrofon kazancı | Pati duymaz ya da her sesi konuşma sanır |
+| DMA tamponunun yeterliliği | konuşurken kısa takılmalar |
+
+Bunların hiçbiri sessiz değil: her birinin ya bir log satırı var ya da
+kulakla/gözle anında belli olan bir belirtisi.

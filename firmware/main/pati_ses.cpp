@@ -63,24 +63,43 @@ std::array<std::int16_t, PATI_OKUMA_ORNEK * 3> g_ham{};
 // buyutulunce bosluklar bitti; calisan yapilandirma 525 ms'lik CALMA
 // suresine denk geliyordu.
 //
-// Burada da hedef ayni 525 ms. Aradaki fark hesapta:
+// 🔴 AMA BURADA 525 ms'YI KARSILAYAMIYORUZ VE BU BILINCLI BIR TAVIZ.
 //
-//   Onceki kart : mono 16 bit, DMA saati 31,2 kHz (hiz hilesi saatteydi)
-//   StickS3     : mono 16 bit, DMA saati 48 kHz sabit
+// Onceki kartta tampon yalnizca CIKIS icindi: mikrofon ayri bir yongada,
+// ayri bir kanaldaydi. Burada tam dupleks tek kanal cifti kullaniliyor
+// ve `i2s_new_channel` ikisini TEK cagriyla aciyor — TX ile RX ayni
+// yapilandirmayi paylasmak zorunda, ayri boyut verilemiyor. Yani
+// istenen her milisaniye IKI KEZ odeniyor.
 //
-//   24 x 1024 = 24.576 cerceve / 48.000 = 512 ms
+// Ustune DMA tamponu IC RAM'de olmak zorunda; PSRAM'den DMA yapilamiyor.
+// Olculdu (idf.py size, 23.08.2026): duragan kullanimdan sonra iç
+// RAM'de 184 KB kaliyor ve o 184 KB'yi wifi, TLS, websocket, gorev
+// yiginlari ve ekranin serit tamponlari da paylasiyor.
 //
-// Tanimlayici basina 1024 x 2 = 2048 bayt; IDF'in tanimlayici basina
-// siniri 4092 bayt, yani rahat geciyoruz.
+//   525 ms istesek : 24 x 1024 x 2 bayt x 2 yon = ~98 KB
+//   secilen        : 16 x 1024 x 2 bayt x 2 yon = ~65 KB  (341 ms)
 //
-// BEDELI BELLEK. DMA tamponu IC RAM'de olmak zorunda (PSRAM'den DMA
-// yapilamiyor) ve tam dupleks kurulumda TX ile RX AYNI yapilandirmayi
-// paylasiyor — i2s_new_channel ikisini tek cagriyla aciyor, ayri
-// boyut verilemiyor. Yani 24.576 x 2 bayt x 2 yon = ~98 KB.
+// NEDEN KUCUK OLANI: iki basarisizligin bedeli esit degil.
 //
-// Mikrofon tarafinin bu kadarina ihtiyaci yok ama secenek yok. Yer
-// yetmezse asagidaki geri cekilme devreye giriyor.
-constexpr int DMA_TANIM = 24;
+//   Tampon buyuk olursa ayirma BASARILI olur ama arkasindan gelen
+//   wifi/TLS bellek bulamaz. Pati hic baglanamaz ve sebebi "ses
+//   tamponu" oldugu akla gelmez.
+//
+//   Tampon kucuk olursa en kotu ihtimalle konusma sirasinda kisa bir
+//   takilma duyulur — tek sabitle duzeltilir ve nereye bakilacagi
+//   bellidir.
+//
+// 341 ms hala olculen en uzun parcanin (280 ms kaynak = 215 ms calma)
+// bir buçuk kati. Ayrica bu kartta rakip is de azaldi: ekran 57.600
+// yerine 32.400 piksel ve parlama katmani inceldi, yani ses gorevi
+// daha az aç kaliyor.
+//
+// SES TAKILIRSA ILK YAPILACAK: DMA_TANIM'i 20'ye, sonra 24'e cikar.
+// Her adim ~8 KB ic RAM yiyor. Acilista "ic RAM yetmedi" uyarisi
+// cikarsa geri dusulmustur; o zaman deger kalici olarak dusurulmeli.
+//
+// Tanimlayici basina 1024 x 2 = 2048 bayt; IDF'in siniri 4092.
+constexpr int DMA_TANIM = 16;
 constexpr int DMA_CERCEVE = 1024;
 
 esp_err_t i2s_kur(int tanim, int cerceve)
@@ -107,16 +126,32 @@ esp_err_t ses_kur()
 
     // ---- I2S kanallari ---------------------------------------------------
     esp_err_t hata = i2s_kur(DMA_TANIM, DMA_CERCEVE);
-    if (hata == ESP_ERR_NO_MEM) {
-        // IC RAM yetmedi. Sessiz kalmaktansa daha kucuk tamponla
-        // calismak iyidir: ses biraz kesilebilir ama Pati konusur.
-        //
-        // Bu satiri gunlukte gorurseniz DMA_TANIM kalici olarak
-        // dusurulmeli — yer, calisma sirasinda baska bir seyi
-        // aclikta birakiyor demektir.
-        ESP_LOGW(ETIKET, "DMA icin ic RAM yetmedi (%d x %d) — yariya "
-                         "dusuruluyor", DMA_TANIM, DMA_CERCEVE);
-        hata = i2s_kur(DMA_TANIM / 2, DMA_CERCEVE);
+    int tanim = DMA_TANIM;
+
+    // IC RAM yetmezse kademe kademe kucul. Sessiz kalmaktansa daha kucuk
+    // tamponla calismak iyidir: ses takilabilir ama Pati konusur.
+    //
+    // 🔴 KADEMELER 12'DE DURUYOR VE BU ONEMLI. 12 x 1024 = 256 ms, yani
+    // olculen en uzun parcanin calma suresinin (215 ms) hala ustunde.
+    // Daha asagisi — mesela yariya inmek, 8 x 1024 = 170 ms — o esigin
+    // ALTINA duserdi ve takilmayi azaltmak yerine GARANTI ederdi.
+    // "Calisan ama kotu" ile "calismiyor" arasinda secim yapiyorsak
+    // ucuncu bir secenek olan "calisiyor gorunup surekli takilan"
+    // en kotusu.
+    //
+    // Buraya dusuluyorsa DMA_TANIM kalici olarak indirilmeli: yer,
+    // calisma sirasinda baska bir seyi aclikta birakiyor demektir.
+    for (int daha_az : {14, 12}) {
+        if (hata != ESP_ERR_NO_MEM) break;
+        ESP_LOGW(ETIKET, "DMA icin ic RAM yetmedi (%d x %d) — %d deneniyor",
+                 tanim, DMA_CERCEVE, daha_az);
+        tanim = daha_az;
+        hata = i2s_kur(tanim, DMA_CERCEVE);
+    }
+    if (hata == ESP_OK && tanim != DMA_TANIM) {
+        ESP_LOGW(ETIKET, "ses tamponu %d ms (hedef %d ms) — takilma olabilir",
+                 tanim * DMA_CERCEVE * 1000 / PATI_SES_HZ,
+                 DMA_TANIM * DMA_CERCEVE * 1000 / PATI_SES_HZ);
     }
     if (hata != ESP_OK) {
         ESP_LOGE(ETIKET, "I2S kanallari acilamadi: %s", esp_err_to_name(hata));
@@ -249,6 +284,12 @@ esp_err_t ses_kur()
              "ses hazir — ES8311 %d Hz mono, mik %d Hz, hoparlor %d Hz x %.2f",
              PATI_SES_HZ, PATI_GEMINI_GIRIS_HZ, PATI_GEMINI_CIKIS_HZ,
              static_cast<double>(g_hiz));
+    // Tampon suresi ILK ACILISTA gorulmeli: ses takilirsa bakilacak ilk
+    // sayi bu ve gunlukte yoksa tahmin edilmesi gerekir.
+    ESP_LOGI(ETIKET, "  DMA tamponu %d x %d = %d ms, ~%d KB (iki yon)",
+             tanim, DMA_CERCEVE,
+             tanim * DMA_CERCEVE * 1000 / PATI_SES_HZ,
+             tanim * DMA_CERCEVE * 2 * 2 / 1024);
     return ESP_OK;
 }
 
