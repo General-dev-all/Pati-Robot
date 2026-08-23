@@ -239,20 +239,31 @@
     </div>
 
     <div class="kutu dikkat">
-      <b>GND pinleri sayılı: toplam 4 tane</b>
-      <p>Üçünü kullanacağız, biri yedek kalacak. Karışmasın diye şimdiden dağıtıldı:</p>
+      <b>GND pinleri sayılı: toplam 4 tane, dördü de dolu</b>
+      <p>Karışmasın diye şimdiden dağıtıldı:</p>
     </div>
 
     <div class="kaydir">
       <table>
         <thead><tr><th>GND pini</th><th>Nerede</th><th>Kime</th></tr></thead>
         <tbody>
-          <tr><td class="pin">P1 · en alt</td><td>sol header, 5V'un altında</td><td>Mikrofon (+ L/R)</td></tr>
+          <tr><td class="pin">P1 · en alt</td><td>sol header, 5V'un altında</td><td>Mikrofon <code>GND</code></td></tr>
+          <tr><td class="pin">P2 · en üst</td><td>sağ header, TX'in üstünde</td><td>Mikrofon <code>L/R</code></td></tr>
           <tr><td class="pin">P2 · en alt</td><td>sağ header, en altta</td><td>Amfi</td></tr>
           <tr><td class="pin">P2 · sondan 2.</td><td>sağ header</td><td>Ekran</td></tr>
-          <tr><td class="pin">P2 · en üst</td><td>sağ header, TX'in üstünde</td><td><b>yedek</b></td></tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="kutu bilgi">
+      <b>Yedek GND yok — <code>L/R</code> onu kullanıyor</b>
+      <p>
+        Bu rehber önce <code>L/R</code>'yi modülün üzerinde <code>GND</code>'ye
+        köprülemeyi söylüyordu ve dördüncü pini yedekte bırakıyordu. Tezgahta
+        (01.08.2026) tersi yapıldı: <b>köprü yok, ayrı bir kablo var.</b> Köprü
+        bir lehim noktası daha demekti, boşta duran pin ise zaten hiçbir işe
+        yaramıyordu. Elektriksel olarak ikisi aynı şey.
+      </p>
     </div>
   </section>
 
@@ -274,7 +285,7 @@
         <tbody>
           <tr><td>ESP32-S3 kartı</td><td>İki adet Type-C port var mı?</td></tr>
           <tr><td>INMP441 mikrofon</td><td><b>Yuvarlak</b> modül (~10 mm), 6 delik <b>iki sıra × üç</b>. Delikler boş, header lehimlenecek</td></tr>
-          <tr><td>MAX98357 amfi</td><td>7 pin tek sıra. Hoparlör çıkışı <b>lehim pad'i</b> (⊕ ⊖)</td></tr>
+          <tr><td>MAX98357 amfi</td><td>7 pin tek sıra + poşette <b>yeşil vidalı klemens</b>. Hoparlör çıkışı klemense vidalanıyor</td></tr>
           <tr><td>Hoparlör 5cm 8Ω</td><td><b>Kablosuz</b> — dupont kesip lehimleyeceğiz</td></tr>
           <tr><td>1.3" ekran 240×240</td><td>7 pin, <b>CS yok</b>. 🔴 Delikler <b>boş</b> — header lehimlenecek</td></tr>
           <tr><td>Dupont kablo 40 pin</td><td>Dişi-dişi, 20cm. Birkaç teli hoparlöre feda edeceğiz</td></tr>
@@ -435,7 +446,7 @@ I (18921) panel: panel hazir: http://192.168.4.1/</code></pre>
       <div class="no">2</div>
       <div>
         <h2>Mikrofon — INMP441</h2>
-        <p>Çocuğun sesi buradan giriyor. İki 3'lü header (6 nokta), karta 5 kablo.</p>
+        <p>Çocuğun sesi buradan giriyor. İki 3'lü header (6 nokta), karta 6 kablo.</p>
         <div class="sure">40 dakika · 6 lehim</div>
       </div>
     </header>
@@ -448,11 +459,30 @@ I (18921) panel: panel hazir: http://192.168.4.1/</code></pre>
     <div class="kutu bilgi">
       <b>Önce header'ları lehimle</b>
       <p>
-        Modül lehimsiz geldi ama poşetinde <b>iki adet 3'lü header</b> var —
-        pinler iki sıra × üç olduğu için. Her sıraya bir header, toplam
-        <b>6 nokta</b>. Pinler modülün <b>arkasından</b> çıkacak şekilde tak;
-        yazıların olduğu yüz açıkta kalsın ki lehimlerken hangi pin
-        olduğunu görebilesin.
+        Modül lehimsiz geliyor. 40'lık çubuktan <b>iki adet 3'lü parça kır</b> —
+        delikler iki sıra × üç olduğu için. Her sıraya bir header, toplam
+        <b>6 nokta</b>.
+      </p>
+      <p>
+        <b>Kısa uçlar yazıların olduğu yüzden çıkacak</b>, uzun pinler arkada
+        kalacak. Lehimi yazı tarafında yapıyorsun: hangi pin olduğunu okuyarak
+        çalışıyorsun, modülü çevirip aynada gibi ters saymıyorsun. Dupont
+        kabloları sonra arkadaki uzun pinlere takılıyor.
+      </p>
+      <p>
+        <b>Tutturma numarası:</b> iki header'ı modüle geçir, sonra hepsini
+        birlikte bir köpüğe sapla ve siyah plastikler köpüğe değene kadar
+        bastır. Altı pin de aynı derinlikte olur, modül düz oturur, elinle
+        tutman gerekmez.
+      </p>
+    </div>
+
+    <div class="kutu dur">
+      <b>Ortadaki delik ses girişi — kapatma</b>
+      <p>
+        Yuvarlak modülün tam ortasında küçük bir delik var: mikrofonun sesi
+        oradan alıyor. Lehim, flux ya da tutkal oraya değmeyecek. Tıkanırsa
+        modül sağlam görünür ama duymaz.
       </p>
     </div>
 
@@ -460,16 +490,18 @@ I (18921) panel: panel hazir: http://192.168.4.1/</code></pre>
       <div class="sema"><svg id="svgMik" role="img"
         aria-label="INMP441 mikrofonun ESP32-S3 kartına bağlantısı, kartın gerçek pin sırasıyla"></svg></div>
       <div class="siraKutu">
-        <label for="siraMik">Modülünde yazan sıra:</label>
-        <input id="siraMik" value="SCK WS L/R SD VDD GND"
-               aria-label="INMP441 pin sırası, boşlukla ayır">
+        <label for="siraMik">Modülünde yazan sıra (önce sol sütun, sonra sağ):</label>
+        <input id="siraMik" value="L/R WS SCK GND VDD SD"
+               aria-label="INMP441 pin sırası: sol sütun üstten alta, sonra sağ sütun üstten alta">
       </div>
       <figcaption>
-        🔴 <b>Bu modülde pinler tek sıra DEĞİL: iki sıra × üç.</b> Bir sırada
-        <code>SCK WS L/R</code>, diğerinde <code>SD VDD GND</code> — poşetten
-        çıkan <b>iki adet 3'lü header</b> tam bunun için. Şema sırayı değil
-        <b>etiketi</b> gösteriyor: hangi yazı hangi GPIO'ya, ona bak.
-        L/R ile GND <b>ayrı sıralarda</b>, yani aradaki köprü kısa bir tel.
+        🔴 <b>Modül YUVARLAK ve delikler tek sıra değil: iki sütun × üç.</b>
+        Yazılar yukarı bakarken sol sütun üstten alta <code>L/R WS SCK</code>,
+        sağ sütun <code>GND VDD SD</code>, ortadaki küçük delik ise
+        <b>ses girişi</b>. Gerçek hâli:
+        <a href="../hardware/mikrafon.jpeg">hardware/mikrafon.jpeg</a>.
+        Şema sırayı değil <b>etiketi</b> gösteriyor: hangi yazı hangi GPIO'ya,
+        ona bak.
       </figcaption>
     </figure>
 
@@ -478,7 +510,8 @@ I (18921) panel: panel hazir: http://192.168.4.1/</code></pre>
         <thead><tr><th>Mikrofon</th><th>Kablo</th><th>Karta</th><th>Neden önemli</th></tr></thead>
         <tbody>
           <tr><td class="pin">VDD</td><td><span class="tel t3v3">turuncu</span></td><td class="pin">3V3 <span style="color:var(--ink-faint)">(P1 üst)</span></td><td>5V = yanar</td></tr>
-          <tr><td class="pin">GND + L/R</td><td><span class="tel tgnd">siyah</span></td><td class="pin">GND <span style="color:var(--ink-faint)">(P1 alt)</span></td><td><b>L/R boşta kalırsa veri gelmez</b></td></tr>
+          <tr><td class="pin">GND</td><td><span class="tel tgnd">siyah</span></td><td class="pin">GND <span style="color:var(--ink-faint)">(P1 alt)</span></td><td>—</td></tr>
+          <tr><td class="pin">L/R</td><td><span class="tel tgnd">siyah</span></td><td class="pin">GND <span style="color:var(--ink-faint)">(P2 üst)</span></td><td><b>Boşta kalırsa veri gelmez</b> — ayrı kablo, köprü değil</td></tr>
           <tr><td class="pin">SCK</td><td><span class="tel ts1">mavi</span></td><td class="pin">GPIO 4</td><td>bit saati</td></tr>
           <tr><td class="pin">WS</td><td><span class="tel ts2">yeşil</span></td><td class="pin">GPIO 5</td><td>kanal seçimi</td></tr>
           <tr><td class="pin">SD</td><td><span class="tel ts3">mor</span></td><td class="pin">GPIO 6</td><td>veri: mikrofon → kart</td></tr>
@@ -487,10 +520,33 @@ I (18921) panel: panel hazir: http://192.168.4.1/</code></pre>
     </div>
 
     <h3>Test</h3>
-    <p>USB'yi tak, <code>KARTA-YUKLE.bat</code> çalıştır, mikrofona konuş.</p>
+    <div class="kutu dikkat">
+      <b>Ölçüm TEK ATIŞ — açılışta alınıyor, sürekli değil</b>
+      <p>
+        Kart, açılıştan ~1 saniye sonra <b>20 milisaniyelik tek bir örnek</b>
+        alıp genliği yazıyor, sonra bir daha ölçmüyor. Yani "konuş, sayı
+        büyüsün" olmuyor: <b>ıslık çalarken RESET'e basmak</b> gerekiyor.
+        Sesin ölçüm anında devam ediyor olması şart.
+      </p>
+      <p>
+        Bunu bilmeden bakan, sessiz odada sıfır görüp lehimi söker.
+        Kodda yeri: <code>ses_hattini_dene()</code>, <code>app_main.cpp</code>.
+      </p>
+    </div>
+    <p>USB'yi tak, seri ekranı aç, ıslık çalarken <code>RESET</code>'e bas.</p>
     <div class="kutu iyi">
       <b>Geçti</b>
-      <p><code>mikrofon N ornek verdi, en yuksek genlik 1234</code> — sayı konuşunca büyüyor, sessizken küçülüyor.</p>
+      <p>
+        <code>mikrofon 320 ornek verdi, en yuksek genlik 20265</code> — sıfırdan
+        büyük her sayı geçer. 01.08.2026'da ilk yapımda, mikrofona yakından
+        ıslıkla dört denemede <b>10.614 · 17.838 · 20.234 · 20.265</b>
+        ölçüldü (tam ölçek 32.767).
+      </p>
+      <p>
+        Bu tek satır <b>altı lehimin altısını birden</b> sınıyor: besleme,
+        iki toprak ve üç sinyalden biri bile tutmamış olsa sayı çıkmaz.
+        Lehimlerin çirkin görünmesi bu yüzden önemli değil.
+      </p>
     </div>
     <div class="kutu dur">
       <b>Genlik TAM SIFIR</b><p>Veri hattı yok: <code>SD → GPIO 6</code>.</p>
@@ -506,8 +562,8 @@ I (18921) panel: panel hazir: http://192.168.4.1/</code></pre>
       <div class="no">3</div>
       <div>
         <h2>Amfi ve hoparlör — MAX98357</h2>
-        <p>Pati'nin sesi. 7'li header + hoparlör telleri.</p>
-        <div class="sure">40 dakika · 11 lehim</div>
+        <p>Pati'nin sesi. 7'li header + klemens + hoparlör telleri.</p>
+        <div class="sure">40 dakika · 11 lehim · 2 vida</div>
       </div>
     </header>
 
@@ -518,22 +574,54 @@ I (18921) panel: panel hazir: http://192.168.4.1/</code></pre>
     </div>
 
     <div class="kutu bilgi">
+      <b>Önce header'ı ve klemensi lehimle</b>
+      <p>
+        Modül lehimsiz geliyor ve poşetinde <b>iki parça</b> var: 7'li sarı
+        header ve <b>yeşil vidalı klemens</b>. İkisi de lehimlenecek —
+        7 + 2 = <b>9 nokta</b>.
+      </p>
+      <p>
+        <b>Header:</b> mikrofondaki gibi, kısa uçlar yazıların olduğu yüzden
+        çıksın, sarı plastik altta kalsın. Köpüğe sapla, önce tek pin, sonra
+        gerisi.
+      </p>
+      <p>
+        🔴 <b>Klemens, <code>⊕</code> ve <code>⊖</code> işaretli iki KÜÇÜK
+        deliğe girer.</b> Köşelerdeki iki büyük delik montaj deliği, oraya
+        girmez. <b>Vida ağızları kartın dışına baksın</b> — ters takılırsa
+        telleri kartın üzerinden getirmek gerekir.
+      </p>
+      <p>
+        Klemens yazı yüzüne oturur, ayakları alttan çıkar — yani onun 2 lehimi
+        <b>alt yüzde</b>. Köpükteyken oraya ulaşılmaz: önce 7'yi bitir, sonra
+        kartı çıkar, ters çevir, <b>klemens masaya değsin</b> (kendi ağırlığıyla
+        yaslanır) ve öbür kenarın altına köpüğü koy. O iki pad header'ınkinden
+        büyük, <b>4-5 saniye</b> normal.
+      </p>
+    </div>
+
+    <div class="kutu bilgi">
       <b>Hoparlör kablosu: dupont kesip kullan</b>
       <p>
-        Hoparlör kablosuz geldi, amfi çıkışı da lehim pad'i (⊕ ⊖). Dupont
-        kablodan iki tel kes — kesiti fazlasıyla yeterli: bu hoparlör en
-        yüksekte ~0,5 A çekiyor, dupont teli bunun katını taşıyor.
+        Hoparlör kablosuz geliyor. Dupont kablodan iki tel kes — kesiti
+        fazlasıyla yeterli: bu hoparlör en yüksekte ~0,5 A çekiyor, dupont
+        teli bunun katını taşıyor.
       </p>
       <ul>
         <li><b>İki farklı renk</b> seç, karışmasın. (Tek hoparlörde artı/eksi
             ters olsa da ses değişmez — ama düzen kaybolur.)</li>
-        <li>Uçları 3-4 mm soy, <b>önce kalaylayın</b> (teli lehimle ıslat).
-            Çok telli kablo kalaylanmadan pad'e oturmuyor, saçaklanıyor.</li>
         <li>Boyu <b>kısa</b> tut — 8-10 cm yeter. Uzun tel gövdenin içinde
             dolaşır.</li>
+        <li><b>Hoparlör ucu:</b> 3-4 mm soy ve <b>kalayla</b>. Çok telli kablo
+            kalaylanmadan kulakçığa oturmuyor, saçaklanıyor.</li>
+        <li><b>Klemens ucu: KALAYLAMA.</b> Sadece telleri burup toparla.
+            Vidalı klemenste kalaylı tel, vidanın altında zamanla ezilip
+            gevşiyor — bağlantı aylar sonra kendiliğinden kopuyor.</li>
       </ul>
       <p>
-        Lehim <b>4 nokta</b>: hoparlörün iki kulakçığı + amfinin iki pad'i.
+        Yani hoparlör tarafı <b>2 lehim</b>, amfi tarafı <b>2 vida</b>.
+        Vidaladıktan sonra her teli hafifçe çek: çıkıyorsa sıkmamışsın.
+        Soyulan kısım tamamen klemensin içinde kalsın, çıplak tel görünmesin.
       </p>
     </div>
 
@@ -546,9 +634,15 @@ I (18921) panel: panel hazir: http://192.168.4.1/</code></pre>
                aria-label="MAX98357 pin sırası, boşlukla ayır">
       </div>
       <figcaption>
-        <b>VIN 5V'a gidiyor — mikrofondan farklı.</b> GAIN ve SD hiçbir yere
+        <b>VIN de 3V3'e gidiyor</b> — kartın <code>5Vin</code> pini çıkış
+        vermiyor (aşağıdaki kırmızı kutu). GAIN ve SD hiçbir yere
         bağlanmıyor. GND kablosu kartın üzerinden geçip <b>sağ header'ın en alt</b>
         GND'sine gidiyor.
+        <br>
+        Hoparlörün iki teli <b>klemensin iki ayrı ağzına</b> gidiyor ve karta
+        hiç uğramıyor. Bu şema önce tek bir tel çiziyordu ve tezgahta
+        "hoparlör VIN'e mi bağlanıyor" diye okundu — çıkışın <b>iki uçlu</b>
+        olduğu görünmeden anlaşılmıyor.
       </figcaption>
     </figure>
 
@@ -556,7 +650,7 @@ I (18921) panel: panel hazir: http://192.168.4.1/</code></pre>
       <table>
         <thead><tr><th>Amfi</th><th>Kablo</th><th>Karta</th><th>Neden önemli</th></tr></thead>
         <tbody>
-          <tr><td class="pin">VIN</td><td><span class="tel t5v">kırmızı</span></td><td class="pin">5V <span style="color:var(--ink-faint)">(P1 alt)</span></td><td>Mikrofondan <b>farklı</b></td></tr>
+          <tr><td class="pin">VIN</td><td><span class="tel t3v3">turuncu</span></td><td class="pin">3V3 <span style="color:var(--ink-faint)">(P1 üst, 2.)</span></td><td>🔴 <b>5Vin DEĞİL</b> — aşağıya bak</td></tr>
           <tr><td class="pin">GND</td><td><span class="tel tgnd">siyah</span></td><td class="pin">GND <span style="color:var(--ink-faint)">(P2 en alt)</span></td><td>—</td></tr>
           <tr><td class="pin">BCLK</td><td><span class="tel ts1">mavi</span></td><td class="pin">GPIO 15</td><td>bit saati</td></tr>
           <tr><td class="pin">LRC</td><td><span class="tel ts2">yeşil</span></td><td class="pin">GPIO 16</td><td>kanal seçimi</td></tr>
@@ -568,10 +662,58 @@ I (18921) panel: panel hazir: http://192.168.4.1/</code></pre>
       </table>
     </div>
 
+    <div class="kutu dur">
+      <b>Amfi 3V3'ten besleniyor — kartın <code>5Vin</code> pini çıkış vermiyor</b>
+      <p>
+        Bu rehber önce <code>VIN → 5V</code> diyordu. <b>Bu kartta çalışmıyor.</b>
+        01.08.2026'da ölçüldü: amfi <code>5Vin</code>'e bağlıyken hiç ses yok,
+        <b>aynı kablo aynı soketle</b> <code>3V3</code>'e alınınca ses geliyor.
+        Her iki USB portunda da aynı sonuç.
+      </p>
+      <p>
+        Pinin adı zaten ipucu: kartta <code>5V</code> değil <b><code>5Vin</code></b>
+        yazıyor — kartı <b>dışarıdan beslemek</b> için, dışarı akım vermek için
+        değil.
+      </p>
+      <p>
+        MAX98357 2,5–5,5 V arası çalışıyor, yani 3,3 V geçerli bir besleme.
+        Bedeli ses gücünün yaklaşık yarıya inmesi (~1,7 W → ~0,7 W) — 5 cm
+        hoparlör için fazlasıyla yeterli.
+      </p>
+      <p>
+        ⚠️ <b>Henüz ölçülmedi:</b> amfi artık kartın küçük regülatörünü wifi
+        ile paylaşıyor. Aşama 5'teki 20 dakikalık sohbette <b>yeniden başlatma</b>
+        ya da <b>sese binen cızırtı</b> görülürse sebebi burasıdır; çare
+        panelden ses seviyesini kısmak.
+      </p>
+    </div>
+
+    <h3>Test</h3>
     <p>
-      Seri ekranda <code>hoparlor hazir: 24000 Hz</code> satırını gör. Ses hiç
-      gelmiyorsa önce <code>SD</code> pinini, sonra hoparlör uçlarını kontrol et.
+      Seri ekranda <code>hoparlor hazir: 24000 Hz</code> satırını gör — ama bu
+      satır yalnızca I2S kanalının açıldığını söylüyor, <b>kabloların doğru
+      olduğunu değil</b>. Asıl test kulakla: kart açılışta
+      <b>iki kısa bip</b> çalıyor (<code>hoparlor_bip()</code>,
+      <code>pati_ses.cpp</code>).
     </p>
+    <div class="kaydir">
+      <table>
+        <thead><tr><th>Duyduğun</th><th>Sırayla bak</th></tr></thead>
+        <tbody>
+          <tr><td><b>İki bip</b></td><td>Geçti. Aşama 4'e</td></tr>
+          <tr><td>Hiç ses yok</td><td><b>1.</b> <code>VIN</code> <code>3V3</code>'te mi (<code>5Vin</code> değil) · <b>2.</b> amfinin <code>SD</code> pini boş mu · <b>3.</b> klemens vidaları sıkı mı</td></tr>
+          <tr><td>Emin değilim</td><td>Hoparlörü telinden çıkar, uçlarını <b>1,5 V kalem pile</b> bir saniye değdir: "tık" gelmeli. Gelmiyorsa sorun hoparlör tarafında, amfide değil</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kutu bilgi">
+      <b>Pil testi neden işe yarıyor</b>
+      <p>
+        Ses yolu üç parça: kart → amfi → hoparlör. Pil testi ortadaki ikisini
+        atlayıp <b>sadece hoparlörü ve tellerini</b> sınıyor. 01.08.2026'da
+        arıza ararken teşhisin yarısını tek başına bu test kapattı.
+      </p>
+    </div>
   </section>
 
   <!-- ============ 4 ============ -->
@@ -798,10 +940,11 @@ I (18921) panel: panel hazir: http://192.168.4.1/</code></pre>
       <label><input type="checkbox"><span>Pin yazıları okundu, kart etiketlendi <i>(multimetre varsa 3V3/5V ölçüldü — şart değil)</i></span></label>
       <label><input type="checkbox"><span>Modüllerin pin sıraları okundu ve şemalara yazıldı</span></label>
       <label><input type="checkbox"><span>Firmware yüklendi, PSRAM 8 MB göründü</span></label>
-      <label><input type="checkbox"><span>Mikrofonun iki 3'lü header'ı lehimlendi, L/R–GND köprüsü atıldı</span></label>
+      <label><input type="checkbox"><span>Mikrofonun iki 3'lü header'ı lehimlendi (köprü yok — L/R kendi kablosuyla P2'nin üst GND'sine)</span></label>
       <label><input type="checkbox"><span>Konuşunca genlik büyüyor</span></label>
       <label><input type="checkbox"><span>Amfi header'i lehimlendi — VIN 5V, GAIN ve SD boş</span></label>
-      <label><input type="checkbox"><span>Hoparlör telleri kesildi, kalaylandı, amfi pad'lerine lehimlendi</span></label>
+      <label><input type="checkbox"><span>Klemens <code>⊕ ⊖</code> deliklerine lehimlendi, ağızları dışa bakıyor</span></label>
+      <label><input type="checkbox"><span>Hoparlör telleri: kulakçıklara lehim, klemense vida (kalaysız), çek testi geçti</span></label>
       <label><input type="checkbox"><span>Ekranın 7'li header'ı lehimlendi</span></label>
       <label><input type="checkbox"><span>Ekran takıldı, BLK bağlandı</span></label>
       <label><input type="checkbox"><span>Altı renk çubuğu doğru sırada göründü</span></label>
@@ -820,12 +963,14 @@ I (18921) panel: panel hazir: http://192.168.4.1/</code></pre>
       ve DeepWiki'den <b>iki bağımsız kaynakla</b> doğrulandı; GND×4 / 3V3×2 / 5V×1
       sayısı PLAN'daki kayıtla tutuyor. GPIO numaraları
       <code>firmware/main/pati_pinler.h</code>'den, test mesajları firmware'in kendi
-      çıktısından. Modüllerin pin sırası <b>doğrulanmadı</b> — üreticiye göre değişiyor,
-      o yüzden düzeltilebilir bırakıldı.
+      çıktısından. Modüllerin pin sırası kutu açılıp <b>tek tek okundu</b>
+      (31.07.2026, fotoğrafları <code>hardware/</code> klasöründe) — yine de
+      şemaların altındaki kutular duruyor: başka bir modül gelirse oraya yaz,
+      şema kendini düzeltir.
     </p>
     <p>
-      🔴 Firmware bugüne kadar <b>hiç donanımda çalıştırılmadı</b>. Beklenmeyen bir
-      şey görülüyorsa hata bu rehberde değil, kodda olabilir.
+      Firmware gerçek kartta çalışıyor (ilk kez 31.07.2026). Aşama 1 ve 2
+      tezgahta yapıldı ve geçti; 3, 4, 5 henüz yapılmadı.
     </p>
   </footer>
 </div>
@@ -980,16 +1125,25 @@ function kablo(g, x1, y1, hdr, i, renk) {
 }
 
 /*  cfg: { svg, baslik, girdi, varsayilan, bagli:{PAD:[hdr,i,renk]},
-           bos:[], kopru:{PAD:HEDEF_PAD}, hoparlor }
+           bos:[], hoparlor, yuvarlak }
 
-    kopru: modul UZERINDE birlesen padler (INMP441'in L/R'si GND'ye).
-    Karta ikinci bir kablo GITMIYOR — birlesme modulde oluyor ve kartin
-    GND pinleri zaten sayili.                                        */
+    yuvarlak: INMP441 gibi YUVARLAK govdeli, delikleri IKI SUTUN x UC olan
+    moduller. Sira yine tek dizi olarak giriliyor: ilk yarisi SOL sutun
+    (yukaridan asagi), ikinci yarisi SAG sutun.
+
+    NEDEN AYRI BICIM VAR: modul once dikdortgen ve tek sira ciziliyordu.
+    Tezgahta (01.08.2026) bu, "hangi delik hangisi" sorusuna yanlis cevap
+    verdi — gelen parca yuvarlak ve bir pad'in hangi SUTUNDA oldugu,
+    sirasi kadar onemli. Gercek hali: hardware/mikrafon.jpeg.
+
+    KOPRU DESTEGI KALDIRILDI. Modul uzerinde iki pad'i birlestirmek
+    (L/R -> GND) bir zamanlar buradaydi; artik L/R karta kendi kablosuyla
+    gidiyor. Kullanilmayan bir cizim yolunu birakmak, ilerideki bir
+    modulde yanlislikla kullanilmasi demek olurdu.                     */
 function semaKur(cfg) {
   const s = document.getElementById(cfg.svg);
-  const kopru = cfg.kopru || {};
-  const bilinen = new Set(
-    Object.keys(cfg.bagli).concat(cfg.bos || [], Object.keys(kopru)));
+  const bilinen = new Set(Object.keys(cfg.bagli).concat(cfg.bos || []));
+  const yuvarlak = !!cfg.yuvarlak;
 
   const ciz = () => {
     while (s.firstChild) s.removeChild(s.firstChild);
@@ -997,11 +1151,16 @@ function semaKur(cfg) {
     let sira = (girdi.value || '').trim().split(/\s+/).filter(Boolean);
     /* Tanimadigimiz bir pad adi varsa varsayilana donuyoruz: yarim ya da
        hatali girilmis bir sira SESSIZCE yanlis sema uretirdi.
-       Eksik pad serbest — bazi modullerde CS ya da BLK hic yok. */
-    const gecerli = sira.length >= 3 && sira.every(p => bilinen.has(p));
+       Eksik pad serbest — bazi modullerde CS ya da BLK hic yok.
+       Yuvarlakta tek sayi da reddediliyor: sutunlara bolunemez. */
+    const gecerli = sira.length >= 3 && sira.every(p => bilinen.has(p))
+                    && (!yuvarlak || sira.length % 2 === 0);
     if (!gecerli) sira = cfg.varsayilan.slice();
 
-    const modH = Math.max(sira.length * 24 + 34, 120);
+    /* hoparlor varsa kutu uzuyor: klemens en alta, etiketlerin bittigi
+       yere ciziliyor ve ustlerine binmemesi gerekiyor. */
+    const modH = (yuvarlak ? 152 : Math.max(sira.length * 24 + 34, 120))
+                 + (cfg.hoparlor ? 58 : 0);
     const H = Math.max(KY + 60, modH + 60) + (cfg.hoparlor ? 76 : 0);
     const W = 470;
     s.setAttribute('viewBox', `0 0 ${W} ${H}`);
@@ -1011,51 +1170,69 @@ function semaKur(cfg) {
     /* --- modul --- */
     const mY = 30;
     const mg = el('g');
-    mg.appendChild(el('rect', { x:MODUL_X, y:mY, width:MODUL_W, height:modH, rx:6,
-      fill:'var(--pcb-ust)', stroke:'var(--pcb)', 'stroke-width':1.5 }));
-    mg.appendChild(yazi(MODUL_X + MODUL_W/2, mY + 20, cfg.baslik,
-      { 'text-anchor':'middle', 'font-size':11, fill:'var(--silk)', 'font-weight':'bold' }));
-
     const vurgu = { p1:{}, p2:{} };
-    const px = MODUL_X + MODUL_W - 10;
-    const yOf = {};
-    sira.forEach((pad, i) => { yOf[pad] = mY + 34 + i * 24; });
+    const konum = {};                       // pad -> {x, y, sol}
+    const cx = MODUL_X + MODUL_W / 2;
+    const cy = mY + modH / 2 + 8;
 
-    /* Once modul ustundeki koprular — kablolarin ALTINDA kalsinlar. */
-    for (const kaynak in kopru) {
-      const hedef = kopru[kaynak];
-      if (yOf[kaynak] === undefined || yOf[hedef] === undefined) continue;
-      mg.appendChild(el('path', {
-        d:`M ${px} ${yOf[kaynak]} C ${px-26} ${yOf[kaynak]}, ${px-26} ${yOf[hedef]}, ${px} ${yOf[hedef]}`,
-        fill:'none', stroke:'var(--w-gnd)', 'stroke-width':2.6,
-        'stroke-linecap':'round', 'stroke-dasharray':'5 3' }));
+    if (yuvarlak) {
+      mg.appendChild(el('circle', { cx, cy, r:50,
+        fill:'var(--pcb-ust)', stroke:'var(--pcb)', 'stroke-width':1.5 }));
+      mg.appendChild(yazi(cx, mY + 16, cfg.baslik, { 'text-anchor':'middle',
+        'font-size':11, fill:'var(--silk)', 'font-weight':'bold' }));
+      const yari = sira.length / 2;
+      sira.forEach((pad, i) => {
+        const sol = i < yari;
+        const k = sol ? i : i - yari;
+        konum[pad] = { x: cx + (sol ? -21 : 21),
+                       y: cy - ((yari - 1) / 2) * 27 + k * 27, sol };
+      });
+    } else {
+      mg.appendChild(el('rect', { x:MODUL_X, y:mY, width:MODUL_W, height:modH, rx:6,
+        fill:'var(--pcb-ust)', stroke:'var(--pcb)', 'stroke-width':1.5 }));
+      mg.appendChild(yazi(cx, mY + 20, cfg.baslik, { 'text-anchor':'middle',
+        'font-size':11, fill:'var(--silk)', 'font-weight':'bold' }));
+      sira.forEach((pad, i) => {
+        konum[pad] = { x: MODUL_X + MODUL_W - 10, y: mY + 34 + i * 24, sol:false };
+      });
     }
 
     sira.forEach(pad => {
-      const y = yOf[pad];
+      const { x, y, sol } = konum[pad];
       const b = cfg.bagli[pad];
-      const k = kopru[pad];
-      mg.appendChild(el('rect', { x:px - PADW/2, y:y - PADW/2,
+      mg.appendChild(el('rect', { x:x - PADW/2, y:y - PADW/2,
         width:PADW, height:PADW, rx:2,
-        fill: b ? b[2] : (k ? 'var(--w-gnd)' : '#7d8991'),
-        stroke:'var(--pcb)', 'stroke-width':1 }));
-      mg.appendChild(yazi(MODUL_X + 10, y + 3.5, pad,
-        { 'font-size':10.5, fill:'var(--silk)',
-          'font-weight': (b || k) ? 'bold' : 'normal',
-          opacity: (b || k) ? 1 : .55 }));
-      if (k) {
-        mg.appendChild(yazi(px + 12, y + 3.5, '→ ' + k + ' (modül üstünde)',
-          { 'font-size':9, fill:'var(--w-gnd)' }));
-        return;
+        fill: b ? b[2] : '#7d8991', stroke:'var(--pcb)', 'stroke-width':1 }));
+      if (yuvarlak) {
+        /* Etiket pad'in DISINDA: ortayi bos birakiyoruz, ses girisi orada. */
+        mg.appendChild(yazi(x + (sol ? -9 : 9), y + 3.5, pad + (b ? '' : ' (boş)'),
+          { 'font-size':9.5, fill:'var(--silk)',
+            'text-anchor': sol ? 'end' : 'start',
+            'font-weight': b ? 'bold' : 'normal', opacity: b ? 1 : .55 }));
+      } else {
+        mg.appendChild(yazi(MODUL_X + 10, y + 3.5, pad,
+          { 'font-size':10.5, fill:'var(--silk)',
+            'font-weight': b ? 'bold' : 'normal', opacity: b ? 1 : .55 }));
+        if (!b) {
+          mg.appendChild(yazi(x + 12, y + 3.5, 'boş',
+            { 'font-size':9.5, fill:'var(--ink-faint)' }));
+        }
       }
-      if (!b) {
-        mg.appendChild(yazi(px + 12, y + 3.5, 'boş',
-          { 'font-size':9.5, fill:'var(--ink-faint)' }));
-        return;
-      }
+      if (!b) return;
       vurgu[b[0]][b[1]] = b[2];
-      kablo(mg, px, y, b[0], b[1], b[2]);
+      kablo(mg, x, y, b[0], b[1], b[2]);
     });
+
+    /* Ses girisi EN SON ciziliyor. Sol sutunun kablolari modulun uzerinden
+       gectigi icin, once cizilseydi tam da "kapatma" denen delik kablonun
+       altinda kalirdi. */
+    if (yuvarlak) {
+      mg.appendChild(el('circle', { cx, cy, r:8, fill:'var(--pcb-ust)' }));
+      mg.appendChild(el('circle', { cx, cy, r:3.6, fill:'var(--pcb)',
+        stroke:'var(--metal)', 'stroke-width':1.4 }));
+      mg.appendChild(yazi(cx, cy + 22, 'ses girişi', { 'text-anchor':'middle',
+        'font-size':8.5, fill:'var(--metal)' }));
+    }
     s.appendChild(mg);
 
     /* --- kart --- */
@@ -1063,23 +1240,56 @@ function semaKur(cfg) {
     kartCiz(kg, vurgu);
     s.appendChild(kg);
 
-    /* --- hoparlor --- */
+    /* --- klemens + hoparlor ---
+       Gelen modulde hoparlor cikisi lehim padi DEGIL, yesil vidali
+       klemens (01.08.2026, tezgahta gorulendir). Onceki cizim tek bir
+       kablo gosteriyordu ve "hoparlor VIN'e mi gidiyor" diye okundu:
+       cikisin IKI AYRI UCLU oldugu, iki tel cizilmeden anlasilmiyor. */
     if (cfg.hoparlor) {
-      const hy = mY + modH + 26;
+      const hy = mY + modH + 30;
       const hg = el('g');
-      hg.appendChild(el('rect', { x:MODUL_X, y:hy, width:MODUL_W, height:52, rx:8,
+
+      /* klemens — modulun sol kenarinda, agizlari disari bakiyor */
+      const kx = MODUL_X + 14, ky = mY + modH - 50;
+      hg.appendChild(el('rect', { x:kx, y:ky, width:34, height:40, rx:4,
+        fill:'#2f7d5b', stroke:'#1b4d3a', 'stroke-width':1.5 }));
+      hg.appendChild(yazi(kx + 17, ky - 6, 'KLEMENS', { 'text-anchor':'middle',
+        'font-size':7.5, fill:'var(--ink-soft)' }));
+      const ucu = [[ky + 12, '⊕', 'var(--w-sig4)'], [ky + 28, '⊖', 'var(--w-sig5)']];
+      ucu.forEach(([uy, ad]) => {
+        hg.appendChild(el('circle', { cx:kx + 12, cy:uy, r:5.5,
+          fill:'#0d211a', stroke:'var(--metal)', 'stroke-width':1.3 }));
+        hg.appendChild(yazi(kx + 24, uy + 3.5, ad,
+          { 'font-size':10, fill:'var(--silk)', 'font-weight':'bold' }));
+      });
+
+      /* hoparlor govdesi, iki kulakcigiyla */
+      hg.appendChild(el('rect', { x:MODUL_X, y:hy, width:MODUL_W, height:56, rx:8,
         fill:'var(--pcb-ust)', stroke:'var(--pcb)', 'stroke-width':1.5 }));
-      hg.appendChild(el('circle', { cx:MODUL_X + 30, cy:hy + 26, r:17,
+      hg.appendChild(el('circle', { cx:MODUL_X + 30, cy:hy + 28, r:18,
         fill:'none', stroke:'var(--metal)', 'stroke-width':2 }));
-      hg.appendChild(el('circle', { cx:MODUL_X + 30, cy:hy + 26, r:7, fill:'var(--metal)' }));
-      hg.appendChild(yazi(MODUL_X + 58, hy + 22, 'HOPARLÖR', { 'font-size':9.5, fill:'var(--silk)' }));
-      hg.appendChild(yazi(MODUL_X + 58, hy + 36, '5cm · 8Ω', { 'font-size':9, fill:'var(--silk)', opacity:.7 }));
-      hg.appendChild(el('path', {
-        d:`M ${MODUL_X + MODUL_W} ${hy + 26} C ${MODUL_X + MODUL_W + 40} ${hy + 26}, ${MODUL_X + MODUL_W + 30} ${mY + modH - 20}, ${MODUL_X + MODUL_W - 10} ${mY + modH - 20}`,
-        fill:'none', stroke:'var(--w-sig4)', 'stroke-width':3.2, 'stroke-linecap':'round' }));
-      hg.appendChild(yazi(MODUL_X + MODUL_W + 46, hy + 20, 'İki ucu da amfi çıkışına.',
-        { 'font-size':10, fill:'var(--danger)' }));
-      hg.appendChild(yazi(MODUL_X + MODUL_W + 46, hy + 34, 'GND\'ye ASLA.',
+      hg.appendChild(el('circle', { cx:MODUL_X + 30, cy:hy + 28, r:7, fill:'var(--metal)' }));
+      hg.appendChild(yazi(MODUL_X + 56, hy + 24, 'HOPARLÖR', { 'font-size':9.5, fill:'var(--silk)' }));
+      hg.appendChild(yazi(MODUL_X + 56, hy + 38, '5cm · 8Ω', { 'font-size':9, fill:'var(--silk)', opacity:.7 }));
+
+      /* iki tel: klemensin iki agzindan hoparlorun iki kulakcigina.
+         Karta UGRAMIYORLAR — bu sema tam da bunu gostermek icin var. */
+      const kulak = [[MODUL_X + MODUL_W - 12, hy + 18], [MODUL_X + MODUL_W - 12, hy + 38]];
+      ucu.forEach(([uy, , renk], i) => {
+        const [sx, sy] = kulak[i];
+        hg.appendChild(el('rect', { x:sx - 4, y:sy - 4, width:8, height:8, rx:1.5,
+          fill:'var(--metal)' }));
+        hg.appendChild(el('path', {
+          d:`M ${kx + 12} ${uy} C ${kx - 22} ${uy + 26}, ${sx - 30} ${sy - 40}, ${sx} ${sy}`,
+          fill:'none', stroke:renk, 'stroke-width':3.2, 'stroke-linecap':'round' }));
+        hg.appendChild(el('circle', { cx:kx + 12, cy:uy, r:3, fill:renk }));
+      });
+
+      hg.appendChild(yazi(MODUL_X + MODUL_W + 22, hy + 16, 'Kulakçıklara LEHİM,',
+        { 'font-size':10, fill:'var(--ink-soft)' }));
+      hg.appendChild(yazi(MODUL_X + MODUL_W + 22, hy + 30, 'klemense VİDA.',
+        { 'font-size':10, fill:'var(--ink-soft)' }));
+      hg.appendChild(yazi(MODUL_X + MODUL_W + 22, hy + 48, 'Karta gitmez · GND\'ye ASLA.',
         { 'font-size':10, fill:'var(--danger)', 'font-weight':'bold' }));
       s.appendChild(hg);
     }
@@ -1097,13 +1307,22 @@ function semaKur(cfg) {
   ciz();
 }
 
+/* Gelen modul YUVARLAK, delikleri iki sutun x uc — 31.07.2026'da kutu
+   acilip GORULDU, fotografi hardware/mikrafon.jpeg. Yazilar yukari
+   bakarken sol sutun ustten alta L/R WS SCK, sag sutun GND VDD SD,
+   ortada ses girisi.
+
+   L/R karta KENDI KABLOSUYLA gidiyor (P2'nin ust GND'si). Modul uzerine
+   kopru atmak bir lehim noktasi daha demekti; o pin zaten yedekte
+   bekliyordu ve yedek pinin tek isi buydu. 01.08.2026'da boyle yapildi
+   ve mikrofon ilk denemede veri verdi. */
 semaKur({
-  svg:'svgMik', girdi:'siraMik', baslik:'INMP441',
-  varsayilan:['L/R','WS','SCK','SD','VDD','GND'],
-  kopru:{ 'L/R':'GND' },
+  svg:'svgMik', girdi:'siraMik', baslik:'INMP441', yuvarlak:true,
+  varsayilan:['L/R','WS','SCK','GND','VDD','SD'],
   bagli:{
     'VDD':['p1', 0, 'var(--w-3v3)'],
     'GND':['p1', 21,'var(--w-gnd)'],
+    'L/R':['p2', 0, 'var(--w-gnd)'],
     'SCK':['p1', 3, 'var(--w-sig1)'],
     'WS' :['p1', 4, 'var(--w-sig2)'],
     'SD' :['p1', 5, 'var(--w-sig3)'],
@@ -1114,8 +1333,10 @@ semaKur({
   svg:'svgAmfi', girdi:'siraAmfi', baslik:'MAX98357',
   varsayilan:['LRC','BCLK','DIN','GAIN','SD','GND','VIN'],
   bos:['GAIN','SD'],
+  /* VIN 3V3'e gidiyor, 5Vin'e DEGIL: o pin bu kartta cikis vermiyor
+     (01.08.2026'da olculdu, bkz. semanin altindaki kirmizi kutu). */
   bagli:{
-    'VIN' :['p1', 20,'var(--w-5v)'],
+    'VIN' :['p1', 1, 'var(--w-3v3)'],
     'GND' :['p2', 21,'var(--w-gnd)'],
     'BCLK':['p1', 7, 'var(--w-sig1)'],
     'LRC' :['p1', 8, 'var(--w-sig2)'],
