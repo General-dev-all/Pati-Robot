@@ -1,6 +1,12 @@
 // -*- coding: utf-8 -*-
 //
-// Pati'nin gozleri — 240x240 ST7789VW icin.
+// Pati'nin gozleri — 240x135 ST7789P3 icin (M5Stack StickS3).
+//
+// ⚠️ DOSYA ADINDAKI "240" GENISLIGI ANLATIYOR, KARE EKRANI DEGIL.
+// Onceki kartta ekran 240x240'ti; StickS3'te panel 135x240 (dikey) ama
+// Pati onu YATAY kullaniyor, yani 240x135. Genislik degismedi, o yuzden
+// gozlerin yatay olculeri de degismedi — yalnizca dikey daraldi.
+// Ad korundu cunku firmware onu gomulu dosya olarak adiyla tanıyor.
 //
 // ===========================================================================
 // BU DOSYA NEDEN VAR — prototype/arayuz/gozler.js zaten calisiyordu
@@ -47,12 +53,14 @@
 // EKRAN — gercek sayilar, tahmin degil
 // ---------------------------------------------------------------------------
 //
-// 1.3" kosegen kare panel: 1.3 inc = 33,02 mm; kare kenar = 33,02/V2.
-// Bu, ekranin AKTIF alani — modul karti (~27x39 mm) daha buyuk.
+// 1.14" kosegen panel, 135x240 piksel. Kosegen 28,96 mm; en-boy
+// oraniyla kisa kenar 14,2 mm, uzun kenar 25,2 mm.
+//
+// Pati YATAY kullaniyor: uzun kenar genislik oluyor.
 export const EKRAN = {
   g: 240,
-  y: 240,
-  mm: 23.35,          // aktif alan kenari
+  y: 135,
+  mm: 25.2,           // aktif alanin genisligi (uzun kenar)
   spiMhz: 40,         // ST7789 guvenli hizi; 80'e cikarilabiliyor
 };
 
@@ -65,21 +73,56 @@ export const PIKSEL_MM = EKRAN.g / EKRAN.mm;   // ~10,3 px/mm
 // Hepsi PIKSEL. Sebep: C++'a birebir gececek. Oran kullansak
 // ("ekranin %31'i") ESP32'de her karede carpma yapmak gerekirdi ve
 // yuvarlama farki iki taraf arasinda goruntu kaymasi uretirdi.
+// ---------------------------------------------------------------------------
+// 🔴 BU SAYILAR 240x135 ICIN YENIDEN OLCULDU (23.08.2026)
+// ---------------------------------------------------------------------------
+//
+// Onceki kart 240x240'ti ve degerler soyleydi:
+//   gozG 76 · gozY 96 · aralik 26 · yaricap 26 · merkezY 120
+//   bakisY 10 · parlamaKalinlik 5
+//
+// Ekran 240x135 olunca YATAY hicbir sey degismek zorunda degildi ama
+// DIKEY yer neredeyse yariya indi. Sadece merkezY'yi 67 yapmak
+// yetmiyor, cunku ifadeler gozu OLCEKLIYOR: en buyugu `saskin`, taban
+// yuksekligi 1,50 ile carpiyor. Ustune parlama katmanlari biniyor.
+//
+// Degerler tahminle degil OLCULEREK secildi: 16 ifadenin hepsi
+// cizilip en ust ve en alt dolu piksel bulundu, ustune en buyuk bakis
+// kaymasi eklendi. Secilen takim, hicbir ifadenin kenara DEGMEDIGI en
+// buyuk goz:
+//
+//   gozY 76 -> 6 piksel tasiyor
+//   gozY 72 -> 3 piksel tasiyor
+//   gozY 68 -> tam kenarda (pay 0)
+//   gozY 64 -> pay 3/4 piksel   <-- secilen
+//
+// Gozler ekranin %68'ini (164/240) kapliyor, dinlenme halinde
+// yuksekligin %47'sini.
+//
+// ⚠️ Bunlar GORUNUM kararlari ve tek dogrusu yok. panel/studyo.html
+// kaydiricilarla canli deneme icin duruyor; begenilen degerler buraya
+// yazilip `node goz_uret.mjs` calistirilinca firmware'e geciyor.
 export const AYAR = {
-  gozG: 76,           // goz taban genisligi
-  gozY: 96,           // goz taban yuksekligi
-  aralik: 26,         // iki goz arasi bosluk
-  yaricap: 26,        // kose yaricapi
-  merkezY: 120,       // gozlerin dikey merkezi
+  gozG: 68,           // goz taban genisligi
+  gozY: 64,           // goz taban yuksekligi
+  aralik: 28,         // iki goz arasi bosluk
+  yaricap: 22,        // kose yaricapi
+  merkezY: 67,        // gozlerin dikey merkezi (135 / 2)
 
   bakisX: 14,         // en fazla yatay bakis kaymasi
-  bakisY: 10,         // en fazla dikey bakis kaymasi
+  bakisY: 7,          // en fazla dikey bakis kaymasi (240x240'ta 10'du)
 
   // Parlama: gercek bulanik golge ESP32'de YOK. Onun yerine ana
   // seklin biraz buyugu, dusuk alfayla, birkac kat halinde ciziliyor.
   // Bedeli katman basina ~birkac bin piksel — olculebilir, karsilanabilir.
+  //
+  // Kalinlik 5'ten 3'e indi. Sebep once yer: 5'te parlama her yonde 15
+  // piksel tasiyor ve 135 piksellik bir ekranda bu, yuksekligin
+  // %11'i — gozun kendisinden calinan yer. Yan faydasi islemci:
+  // harmanlanan piksel sayisi belirgin dusuyor ve o islemci ses
+  // cozumune kaliyor.
   parlamaKat: 3,
-  parlamaKalinlik: 5,
+  parlamaKalinlik: 3,
   parlamaAlfa: 0.16,
 
   camParlamasi: true, // gozun ust solundaki isik lekesi

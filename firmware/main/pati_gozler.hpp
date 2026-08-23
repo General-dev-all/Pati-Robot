@@ -1,4 +1,4 @@
-// Pati'nin gozleri — 240x240 ekranda.
+// Pati'nin gozleri — 240x135 ekranda.
 //
 // ===========================================================================
 // BU DOSYA panel/gozler240.js'IN PORTU

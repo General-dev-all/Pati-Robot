@@ -30,9 +30,18 @@ CONFIG_SPIRAM_SPEED_80M=y
 CONFIG_SPIRAM_USE_MALLOC=y
 
 # ---------------------------------------------------------------------------
-# Flash — 16 MB
+# Flash — 8 MB (StickS3: ESP32-S3-PICO-1-N8R8)
 # ---------------------------------------------------------------------------
-CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+#
+# ⚠️ BURAYI DEGISTIRMEK YETMIYOR. Yerel `sdkconfig` zaten varsa bu dosya
+# OKUNMAZ — sdkconfig.defaults yalnizca sdkconfig HENUZ YOKKEN
+# uygulaniyor. Degisiklikten sonra `idf.py reconfigure` sart.
+#
+# 23.08.2026'da tam bu tuzaga dusuldu: PATI_EKRAN_VAR'in varsayilani
+# degistirildi, kart yeniden derlendi, olcum alindi ve olcum ANLAMSIZDI
+# — eski sdkconfig hala yururlukteydi. CI'da boyle bir sorun yok cunku
+# temiz bir kopyada derliyor ve sdkconfig hic olusmamis oluyor.
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
 CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
 CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
 

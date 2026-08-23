@@ -7,6 +7,7 @@ idf_component_register(
         "pati_cikarim.cpp"
         "pati_ekran.cpp"
         "pati_gozler.cpp"
+        "pati_guc.cpp"
         "pati_guncelleme.cpp"
         "pati_hafiza.cpp"
         "pati_kullanim.cpp"
@@ -17,7 +18,8 @@ idf_component_register(
     INCLUDE_DIRS "."
     REQUIRES
         conversation      # stackchan-idf'ten alindi (BSL-1.0): Gemini Live istemcisi
-        driver            # I2S, GPIO, SPI master
+        driver            # I2S, GPIO, SPI master, I2C master
+        espressif__esp_codec_dev  # ES8311'in register kurulumu (bkz. idf_component.yml)
         json              # cJSON — hafizanin NVS bicimi ve panel API'si
         esp_lcd           # ST7789 paneli — ESP-IDF'in KENDI bileseni, ucuncu parti yok
         esp_timer         # olcumun mikrosaniye damgasi

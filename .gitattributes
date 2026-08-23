@@ -1,0 +1,33 @@
+# Satir sonlari
+#
+# ===========================================================================
+# NEDEN VAR — bu dosya bir hatadan sonra eklendi
+# ===========================================================================
+#
+# `.bat` dosyalari cmd.exe'de CRLF ISTIYOR. LF ile durursa cmd her
+# satirin ILK HARFINI yiyor:
+#
+#     cd /d "%~dp0"      ->  '/d' is not recognized...
+#     rem aciklama       ->  'em' is not recognized...
+#     if defined X       ->  'defined' is not recognized...
+#
+# Belirti hicbir sey anlatmiyor: dosya dogru gorunuyor, komutlar dogru
+# yazilmis, ama hicbiri calismiyor. firmware/test/derle.bat'in icinde bu
+# uyari zaten YAZILIYDI ve yine de 23.08.2026'da bir kez daha yasandi —
+# bir duzenleme sirasinda dosya LF'e dondu ve butun konak testleri
+# "MSVC bulunamadi" diyerek sessizce atlandi.
+#
+# Uyari yeterli olmadi cunku uyari INSANA bakiyordu. Burasi ARACA
+# bakiyor: git artik bu dosyalari her zaman CRLF ile teslim ediyor,
+# kimin makinesinde hangi ayar olursa olsun.
+#
+# Onceden bu davranis yalnizca `core.autocrlf=true` ayarina bagliydi ve
+# o ayar kisiye ozel — depoya bakan baska biri ayni tuzaga duserdi.
+
+*.bat text eol=crlf
+
+# Konak testlerinin dokum dosyalari IKILI. Metin sanilip satir sonu
+# cevrilirse karsilastirma anlamsiz sekilde basarisiz olur.
+*.ham binary
+*.pcm binary
+*.wav binary

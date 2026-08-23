@@ -7,8 +7,17 @@ Live API over a raw WebSocket and returns to the speaker the same way.
 No companion app, no intermediate server, no pairing step. Settings are
 managed from a web panel served by the robot itself.
 
-Firmware is complete and verified on hardware. Electronics assembly and
-enclosure integration are in progress.
+The hardware is one part — an M5Stack StickS3 — with the microphone,
+speaker, display and battery already inside it. Nothing is soldered.
+
+**Status.** The firmware is complete and builds, and everything that can
+be checked without the board has been: the eye renderer matches the
+browser pixel for pixel at 240×135, and the resampler that gives Pati
+its voice is verified against a real Gemini capture. What has *not* been
+checked is anything that needs the device — the codec registers, the
+display orientation, the power rails. Boards arrive September 2026.
+Points that will need confirming there are marked `⚠️` in the source
+with the symptom to look for.
 
 ---
 
@@ -31,40 +40,59 @@ build, so a firmware update carries the panel with it.
 
 ## Hardware
 
-| Component | Notes |
-|---|---|
-| ESP32-S3 board, **N16R8** | 16 MB flash, 8 MB octal PSRAM. PSRAM is required. Boards sold under this name are often clones using a CH343 USB-UART bridge rather than a CP2102; the driver differs. |
-| INMP441 | I2S MEMS microphone. **Supply from 3.3 V** — 5 V destroys the part. |
-| MAX98357A | I2S class-D amplifier. Bridge-tied output; neither speaker terminal may be grounded. |
-| Speaker, 8 Ω | 5 cm, 5 W |
-| 1.3" IPS display, 240×240, ST7789 | 7-pin SPI variant; some modules expose no CS pin |
-| Dupont jumper wires, male header strips | 2.54 mm |
+One part. **M5Stack StickS3** (SKU K150) — nothing is wired, nothing is
+soldered.
 
-Octal PSRAM occupies GPIO 35, 36 and 37 — present on the header, not
-usable. Pin assignments have a single source:
+| Inside it | |
+|---|---|
+| ESP32-S3-PICO-1-N8R8 | 8 MB flash, 8 MB octal PSRAM |
+| ES8311 | mono audio codec, configured over I2C, one shared I2S bus |
+| MEMS microphone | 65 dB SNR |
+| AW8737 + 8 Ω 1 W speaker | amplifier enabled through the M5PM1, not from a GPIO |
+| ST7789P3 | 135×240 display, used in landscape as 240×135 |
+| M5PM1 | power management, battery charging, the power button |
+| 250 mAh battery, 2 buttons, BMI270 IMU, IR | 48 × 24 × 15 mm |
+
+Pin assignments have a single source:
 [`firmware/main/pati_pinler.h`](firmware/main/pati_pinler.h).
 
-### Wiring
+Three things about this board are not obvious and each one fails
+silently:
 
-![Pati wiring diagram — ESP32-S3 with the microphone, amplifier, display and Type-C power socket, every wire named at both ends](assembly/wiring-diagram.svg)
+**The microphone, the speaker and the display backlight are not powered
+at boot.** They sit on the M5PM1's `L3B` rail, which the Arduino library
+turns on during its own init. On bare ESP-IDF nothing turns it on for
+you. Miss it and all three are dead while every call still returns
+`ESP_OK`. [`pati_guc.cpp`](firmware/main/pati_guc.cpp) does it.
 
-Every signal the project uses is on the left header (P1); the right one
-carries ground only. The board has exactly four ground pins and all four
-are taken, which is why the microphone's `L/R` is bridged to its own
-`GND` on the module rather than given a pin of its own.
+**The microphone and the speaker share one I2S bus, so they share one
+sample rate.** Gemini wants 16 kHz in and gives 24 kHz out; neither is
+possible directly. The bus runs at 48 kHz and both directions are
+resampled — see [Voice](#voice).
 
-The amplifier runs from 5 V, so the socket's positive lead is split at a
-junction — one branch to the board's `5Vin`, one to the amplifier's
-`VIN`. The board's `IN-OUT` solder jumper stays open: bridged, an
-external supply would back-feed the USB bus.
+**The pin table in M5Stack's documentation labels `DIN`/`DOUT` from the
+codec's side.** The codec's `DOUT` is the ESP32's input. Copy the table
+literally and the microphone and speaker end up swapped, both silent.
 
-Pad order differs between modules — `LRC` comes before `BCLK` on the
-amplifier, for one. Identify a pad by its printed name rather than by
-counting along the row.
+### The previous Pati
 
-Step by step, with a test after each stage:
-[`assembly/REHBER.html`](assembly/REHBER.html) (Turkish). The same
-diagram for the bench: [`assembly/SEMA.html`](assembly/SEMA.html).
+Until August 2026 this was a hand-wired ESP32-S3 devkit with an INMP441,
+a MAX98357A and a 240×240 display — thirteen soldered wires. It works
+and is kept, not deleted:
+
+```
+git switch --detach v2.2.8-devkit     # source
+```
+
+Its built `pati.bin` is in the `v2.2.8` release, and the assembly guide
+for it is [`assembly/REHBER.html`](assembly/REHBER.html) (Turkish).
+
+⚠️ **Do not run this firmware on that board.** Same chip family, so it
+flashes and boots, and the update manifest carries no hardware field. It
+refuses to run instead: at boot it probes for the ES8311 and, if absent,
+declines to mark itself valid so the bootloader rolls back. That
+recovery only exists for an image that arrived over the air — one
+flashed by cable has nothing to roll back to.
 
 ---
 
@@ -132,15 +160,59 @@ far is reverted by the bootloader on the next power cycle.
 
 ---
 
+## Voice
+
+Pati sounds like a child. That is not a Gemini setting — the Live API
+exposes no pitch or rate control, only a voice name. Puck's raw voice is
+an adult man's. The character comes entirely from **playing the reply
+1.30× fast**, which raises the pitch by about the same amount.
+
+On the old board this was one line: run the speaker's I2S clock at
+31 200 Hz instead of 24 000. The StickS3 cannot do that — the speaker
+shares its clock with the microphone, and moving it would break capture.
+
+So the multiplier moved into software. The bus runs at 48 kHz and every
+output sample steps `çarpan / 2` through the 24 kHz source — 0.65 at
+1.30× — interpolating between samples. The step is always below 1
+across the whole adjustable range (0.80–1.60 → 0.40–0.80), which is the
+point: below 1 you interpolate and nothing aliases. Above 1 you would be
+decimating, and Pati would rasp.
+
+Capture goes the other way: 48 kHz down to the 16 kHz Gemini wants, an
+exact 3:1 ratio, averaging each group of three. The averaging is also a
+crude low-pass, which plain decimation would not be.
+
+[`pati_ornekleyici.hpp`](firmware/main/pati_ornekleyici.hpp) holds the
+maths, and it is a header rather than part of `pati_ses.cpp` because the
+host test includes the same file — the test measures the real code, not
+a copy. It found two real defects: output drifting apart depending on
+how the audio was sliced, and phase loss over a long stream. Both came
+from accumulating position in a single `float`, whose precision decays
+as the value grows. Position is now an integer index plus a fraction
+kept in `[0, 1)`.
+
+---
+
 ## Tests
 
 ```
 firmware/test/derle.bat     C++ eye renderer vs. the browser renderer,
-                            pixel by pixel; C++ memory engine vs. Python
+                            pixel by pixel; C++ memory engine vs. Python;
+                            the resampler that produces Pati's voice
 python prototype/testler.py prototype behaviour
 node panel/panel_test.mjs   the panel loads against a stub DOM, in each
                             of the four sample data sets
 ```
+
+`ses_karsilastir` also writes two WAVs from a raw 24 kHz Gemini capture,
+for listening rather than asserting:
+
+```
+firmware/test/ses_karsilastir.exe --pcm kayit.pcm --cikti .
+```
+
+One is what the old board played, the other is what the new path
+produces. They have to sound the same.
 
 The panel check exists because a missing element makes `querySelector`
 return null, and the resulting throw stops the module — so the failure

@@ -2,10 +2,15 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 
 #include <driver/i2s_std.h>
 #include <esp_log.h>
 
+#include "es8311_codec.h"
+#include "esp_codec_dev_defaults.h"
+#include "pati_guc.hpp"
+#include "pati_ornekleyici.hpp"
 #include "pati_pinler.h"
 
 namespace pati {
@@ -13,49 +18,238 @@ namespace {
 
 constexpr const char* ETIKET = "pati.ses";
 
-i2s_chan_handle_t g_mik = nullptr;
-i2s_chan_handle_t g_hop = nullptr;
+// TEK I2S KANAL CIFTI, TEK SAAT. Onceki kartta iki ayri yonga ve iki
+// ayri kanal vardi; burada ikisi de ES8311'in icinde ve ayni hatti
+// paylasiyorlar. Gerekce pati_pinler.h'de (PATI_SES_HZ).
+i2s_chan_handle_t g_tx = nullptr;
+i2s_chan_handle_t g_rx = nullptr;
+
+const audio_codec_if_t* g_kodek = nullptr;
+bool g_hazir = false;
 
 float g_seviye = SES_SEVIYESI_BASLANGIC;
 
-// Hoparlorun SU ANKI calma frekansi. Kaynak her zaman 24 kHz;
-// bu ondan buyukse ses tiz ve hizli caliyor (bkz. hoparlor_hiz_ayarla).
-std::uint32_t g_cikis_hz = PATI_HOP_HZ;
+// Calma hizi carpani. 1.30 -> Pati'nin afacan sesi.
+//
+// Onceki kartta bu bir I2S SAAT ayariydi; burada saat sabit (48 kHz,
+// mikrofonla paylasildigi icin degistirilemez) ve carpan ORNEK
+// uzerinde calisiyor. Ayrintili gerekce hoparlor_hiz_ayarla'da.
+float g_hiz = 1.30f;
 
-// INMP441'in ham 32 bitlik verisi icin tampon.
-//
-// Neden static ve neden bu boyutta: her okuma cagrisinda yigitta 1.3 KB
-// ayirmak istemiyoruz — bu fonksiyon saniyede 50 kez cagriliyor. Tek
-// gorevden cagrildigi icin paylasimi guvenli (ses gorevi birden fazla
-// olmayacak; olursa burasi kilitlenmeli).
-std::array<std::int32_t, PATI_OKUMA_ORNEK> g_ham{};
+// Yeniden ornekleyici. Matematigi pati_ornekleyici.hpp'de duruyor
+// cunku KONAKTA SINANIYOR — test/ses_karsilastir.cpp ayni basligi ice
+// alip gercek kodu olcuyor.
+YenidenOrnekleyici g_ornek;
 
-// YUMUSAK SINIRLAYICI — 1.0 ustu ses seviyesini mumkun kilan sey.
+// Mikrofonun 48 kHz ham verisi. 320 ornek (20 ms) uretmek icin 960 ham
+// ornek gerekiyor — birebir uc kati.
 //
-// Esigin ALTINDA hicbir sey yapmiyor: sesin buyuk kismi dokunulmadan
-// geciyor. Ustunde artan bir oranla sikisip 32767'ye ASIMPTOT olarak
-// yaklasiyor, yani girdi ne kadar buyurse buyusun cikti tavani ASMIYOR.
-//
-// NEDEN DUZ KIRPMA DEGIL: kirpma dalga tepesini duz keser ve bu, kulaga
-// catirti gibi gelir — cocuk icin en rahatsiz edici bozulma bicimi.
-// Asimptotik sikisma tepeyi YUVARLAR; yuksek seviyede hafif bir
-// tokluk birakir, catirti birakmaz.
-//
-// Esik 28000 (~0,85 tam genlik) bilincli: konusmanin buyuk bolumu
-// bunun altinda kaliyor ve hic sekillendirilmiyor.
-constexpr float SINIR_ESIK  = 28000.0f;
-constexpr float SINIR_TAVAN = 32767.0f;
+// Neden static: bu fonksiyon saniyede 50 kez cagriliyor, her seferinde
+// yigitta 2 KB ayirmak istemiyoruz. Tek gorevden cagrildigi icin
+// paylasimi guvenli.
+std::array<std::int16_t, PATI_OKUMA_ORNEK * 3> g_ham{};
 
-inline std::int16_t yumusak_sinirla(float v)
+// ---------------------------------------------------------------------------
+// I2S ve kodek kurulumu — tek sefer, ilk cagirana
+// ---------------------------------------------------------------------------
+
+// DMA tamponu — kac tanimlayici, her birinde kac cerceve.
+//
+// 🔴 BU SAYILAR OLCUMLE SECILDI, TAHMINLE DEGIL.
+//
+// 23.08.2026'da onceki kartta olculdu: Gemini sesi 200-280 ms'lik
+// parcalar halinde gonderiyor. O kartta tampon 200 ms tutuyordu, yani
+// PAY SIFIRDI ve Pati konusurken kisa bosluklar duyuluyordu. Tampon
+// buyutulunce bosluklar bitti; calisan yapilandirma 525 ms'lik CALMA
+// suresine denk geliyordu.
+//
+// Burada da hedef ayni 525 ms. Aradaki fark hesapta:
+//
+//   Onceki kart : mono 16 bit, DMA saati 31,2 kHz (hiz hilesi saatteydi)
+//   StickS3     : mono 16 bit, DMA saati 48 kHz sabit
+//
+//   24 x 1024 = 24.576 cerceve / 48.000 = 512 ms
+//
+// Tanimlayici basina 1024 x 2 = 2048 bayt; IDF'in tanimlayici basina
+// siniri 4092 bayt, yani rahat geciyoruz.
+//
+// BEDELI BELLEK. DMA tamponu IC RAM'de olmak zorunda (PSRAM'den DMA
+// yapilamiyor) ve tam dupleks kurulumda TX ile RX AYNI yapilandirmayi
+// paylasiyor — i2s_new_channel ikisini tek cagriyla aciyor, ayri
+// boyut verilemiyor. Yani 24.576 x 2 bayt x 2 yon = ~98 KB.
+//
+// Mikrofon tarafinin bu kadarina ihtiyaci yok ama secenek yok. Yer
+// yetmezse asagidaki geri cekilme devreye giriyor.
+constexpr int DMA_TANIM = 24;
+constexpr int DMA_CERCEVE = 1024;
+
+esp_err_t i2s_kur(int tanim, int cerceve)
 {
-    const float a = (v < 0.0f) ? -v : v;
-    if (a <= SINIR_ESIK) {
-        return static_cast<std::int16_t>(v);
+    i2s_chan_config_t kanal =
+        I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
+    kanal.dma_desc_num = tanim;
+    kanal.dma_frame_num = cerceve;
+    kanal.auto_clear = true;  // bosalinca sessizlik bas, eski veriyi tekrarlama
+
+    // TEK CAGRI, IKI TUTAMAK = TAM DUPLEKS. Ayri cagrilarla acilsalardi
+    // ayni portu paylasamazlardi.
+    const esp_err_t hata = i2s_new_channel(&kanal, &g_tx, &g_rx);
+    if (hata != ESP_OK) {
+        g_tx = nullptr;
+        g_rx = nullptr;
     }
-    constexpr float PAY = SINIR_TAVAN - SINIR_ESIK;
-    const float fazla = a - SINIR_ESIK;
-    const float y = SINIR_ESIK + PAY * (fazla / (fazla + PAY));
-    return static_cast<std::int16_t>((v < 0.0f) ? -y : y);
+    return hata;
+}
+
+esp_err_t ses_kur()
+{
+    if (g_hazir) return ESP_OK;
+
+    // ---- I2S kanallari ---------------------------------------------------
+    esp_err_t hata = i2s_kur(DMA_TANIM, DMA_CERCEVE);
+    if (hata == ESP_ERR_NO_MEM) {
+        // IC RAM yetmedi. Sessiz kalmaktansa daha kucuk tamponla
+        // calismak iyidir: ses biraz kesilebilir ama Pati konusur.
+        //
+        // Bu satiri gunlukte gorurseniz DMA_TANIM kalici olarak
+        // dusurulmeli — yer, calisma sirasinda baska bir seyi
+        // aclikta birakiyor demektir.
+        ESP_LOGW(ETIKET, "DMA icin ic RAM yetmedi (%d x %d) — yariya "
+                         "dusuruluyor", DMA_TANIM, DMA_CERCEVE);
+        hata = i2s_kur(DMA_TANIM / 2, DMA_CERCEVE);
+    }
+    if (hata != ESP_OK) {
+        ESP_LOGE(ETIKET, "I2S kanallari acilamadi: %s", esp_err_to_name(hata));
+        return hata;
+    }
+
+    // MONO. ES8311'in kendisi tek kanalli ve set_fs kanal sayisina hic
+    // bakmiyor — yalnizca bit derinligi ve orneklem hizi onemli.
+    // Stereo kursaydik ayni sureyi tamponlamak IKI KATI ic RAM ister,
+    // ustune her ornekte serpistirme/ayirma isi eklenirdi.
+    i2s_std_config_t std_cfg = {
+        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(PATI_SES_HZ),
+        .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(
+            I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO),
+        .gpio_cfg = {
+            .mclk = PATI_SES_MCLK,
+            .bclk = PATI_SES_BCLK,
+            .ws   = PATI_SES_LRCK,
+            .dout = PATI_SES_DOUT,
+            .din  = PATI_SES_DIN,
+            .invert_flags = {false, false, false},
+        },
+    };
+    // MCLK'i ES8311'e BIZ veriyoruz (kodek kole). 256 x 48 kHz =
+    // 12,288 MHz — standart bir deger.
+    std_cfg.clk_cfg.mclk_multiple = I2S_MCLK_MULTIPLE_256;
+
+    hata = i2s_channel_init_std_mode(g_tx, &std_cfg);
+    if (hata != ESP_OK) {
+        ESP_LOGE(ETIKET, "I2S cikis kurulamadi: %s", esp_err_to_name(hata));
+        return hata;
+    }
+    hata = i2s_channel_init_std_mode(g_rx, &std_cfg);
+    if (hata != ESP_OK) {
+        ESP_LOGE(ETIKET, "I2S giris kurulamadi: %s", esp_err_to_name(hata));
+        return hata;
+    }
+
+    // ---- ES8311 ----------------------------------------------------------
+    //
+    // I2C hatti pati_guc.cpp'de aciliyor ve UC aygit paylasiyor. Kodek
+    // kendi hattini acmiyor, hazir hatti aliyor.
+    i2c_master_bus_handle_t yol = i2c_yolu();
+    if (yol == nullptr) {
+        ESP_LOGE(ETIKET, "I2C hatti yok — guc_baslat() cagrilmamis");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    audio_codec_i2c_cfg_t i2c = {};
+    i2c.port = I2C_NUM_0;
+    // 🔴 SEKIZ BITLIK ADRES. Bilesen icerde `addr >> 1` yapiyor
+    // (platform/audio_codec_ctrl_i2c.c). Buraya 0x18 yazsaydik kodek
+    // 0x0C'de aranir, kimse cevap vermez ve ses SESSIZCE hic gelmezdi.
+    i2c.addr = ES8311_CODEC_DEFAULT_ADDR;  // 0x30 = 0x18 << 1
+    i2c.bus_handle = yol;
+    i2c.clock_speed_hz = PATI_I2C_HZ;
+
+    const audio_codec_ctrl_if_t* denetim = audio_codec_new_i2c_ctrl(&i2c);
+    if (denetim == nullptr) {
+        ESP_LOGE(ETIKET, "kodek I2C arayuzu kurulamadi");
+        return ESP_FAIL;
+    }
+
+    es8311_codec_cfg_t kodek = {};
+    kodek.ctrl_if = denetim;
+    kodek.codec_mode = ESP_CODEC_DEV_WORK_MODE_BOTH;  // mikrofon + hoparlor
+    kodek.master_mode = false;  // saati ESP32 veriyor, kodek kole
+    kodek.use_mclk = true;      // MCLK ayri telden (G18)
+    kodek.mclk_div = PATI_SES_MCLK_KAT;
+    kodek.digital_mic = false;  // MEMS analog cikisli, kodegin ADC'sine giriyor
+    // Amfiyi ESP32'nin bir pini degil M5PM1 aciyor (pati_guc.cpp), yani
+    // burada verilecek bir pin yok.
+    kodek.pa_pin = -1;
+    // 🔴 Kayitta SAG kanala DAC cikisini KOYMA.
+    //
+    // Varsayilan davranis sag kanali hoparlore giden sesle dolduruyor;
+    // bu bir yanki iptali kolayligi. Pati'de yanki YARIM DUPLEKSLE
+    // cozuluyor (robot konusurken mikrofon gonderilmiyor) ve mono
+    // okudugumuz icin o kanal zaten okunmuyor.
+    kodek.no_dac_ref = true;
+
+    g_kodek = es8311_codec_new(&kodek);
+    if (g_kodek == nullptr) {
+        ESP_LOGE(ETIKET, "ES8311 kurulamadi — kart StickS3 mi?");
+        return ESP_FAIL;
+    }
+
+    esp_codec_dev_sample_info_t bicim = {};
+    bicim.sample_rate = PATI_SES_HZ;
+    bicim.channel = 1;
+    bicim.bits_per_sample = 16;
+    if (g_kodek->set_fs(g_kodek, &bicim) != ESP_CODEC_DEV_OK) {
+        ESP_LOGE(ETIKET, "kodek %d Hz'e ayarlanamadi", PATI_SES_HZ);
+        return ESP_FAIL;
+    }
+
+    // Kodegin KENDI analog kazanci. Sayisal seviye (g_seviye) ve
+    // sinirlayici bizde kaliyor; burasi yalnizca cikis yolunun temel
+    // kazanci.
+    //
+    // 0 dB secildi: bozulmayi sayisal tarafta yonetiyoruz ve orada
+    // sinirlayici var. Kodekten kazanc almak o korumanin ONUNE gecerdi.
+    g_kodek->set_vol(g_kodek, 0.0f);
+
+    // Mikrofon kazanci 30 dB. MEMS mikrofonun sinyali zayif; onceki
+    // karttaki INMP441'de bu kazanc yonganin icinde sabitti, burada
+    // ayarlanabiliyor. Cocuk robotun bir kol boyu uzaginda konusuyor.
+    g_kodek->set_mic_gain(g_kodek, 30.0f);
+
+    if (g_kodek->enable(g_kodek, true) != ESP_CODEC_DEV_OK) {
+        ESP_LOGE(ETIKET, "kodek etkinlestirilemedi");
+        return ESP_FAIL;
+    }
+
+    // Kanallari kodekten SONRA aciyoruz: saat, kodek dinlemeye hazir
+    // olmadan akmaya baslamasin.
+    hata = i2s_channel_enable(g_tx);
+    if (hata != ESP_OK) {
+        ESP_LOGE(ETIKET, "I2S cikis acilamadi: %s", esp_err_to_name(hata));
+        return hata;
+    }
+    hata = i2s_channel_enable(g_rx);
+    if (hata != ESP_OK) {
+        ESP_LOGE(ETIKET, "I2S giris acilamadi: %s", esp_err_to_name(hata));
+        return hata;
+    }
+
+    g_hazir = true;
+    ESP_LOGI(ETIKET,
+             "ses hazir — ES8311 %d Hz mono, mik %d Hz, hoparlor %d Hz x %.2f",
+             PATI_SES_HZ, PATI_GEMINI_GIRIS_HZ, PATI_GEMINI_CIKIS_HZ,
+             static_cast<double>(g_hiz));
+    return ESP_OK;
 }
 
 }  // namespace
@@ -64,69 +258,20 @@ inline std::int16_t yumusak_sinirla(float v)
 // Mikrofon
 // ---------------------------------------------------------------------------
 
-esp_err_t mikrofon_baslat()
-{
-    i2s_chan_config_t kanal = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
-    // Kuyruk derinligi: 6 x 240 kare varsayilan. 16 kHz'de ~90 ms tampon
-    // demek. Wifi yuzunden bir gorev geciktiginde ses kaybetmemek icin
-    // varsayilan yeterli; artirirsak gecikme artar.
-    esp_err_t hata = i2s_new_channel(&kanal, nullptr, &g_mik);
-    if (hata != ESP_OK) {
-        ESP_LOGE(ETIKET, "mikrofon kanali acilamadi: %s", esp_err_to_name(hata));
-        return hata;
-    }
-
-    // ⚠️ 32 BIT isteniyor, 16 degil. INMP441 24 bitlik veriyi 32 bitlik
-    // yuvanin soluna yaziyor. 16 bit istenirse ses ya cok kisik ya
-    // gurultu cikiyor — I2S mikrofonlarinda en sik hata bu.
-    i2s_std_config_t std_cfg = {
-        .clk_cfg  = I2S_STD_CLK_DEFAULT_CONFIG(PATI_MIK_HZ),
-        .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_32BIT,
-                                                        I2S_SLOT_MODE_MONO),
-        .gpio_cfg = {
-            .mclk = I2S_GPIO_UNUSED,   // INMP441 ana saat istemiyor
-            .bclk = PATI_MIK_SCK,
-            .ws   = PATI_MIK_WS,
-            .dout = I2S_GPIO_UNUSED,   // mikrofon sadece okunuyor
-            .din  = PATI_MIK_SD,
-            .invert_flags = { .mclk_inv = false, .bclk_inv = false, .ws_inv = false },
-        },
-    };
-
-    // SOL kanal: modulun L/R pini GND'ye bagli oldugu icin veri solda.
-    // L/R bosta kalirsa bu esleme tutmaz ve hic veri gelmez — kablolama
-    // tuzagi #3 tam bu.
-    std_cfg.slot_cfg.slot_mask = I2S_STD_SLOT_LEFT;
-
-    hata = i2s_channel_init_std_mode(g_mik, &std_cfg);
-    if (hata != ESP_OK) {
-        ESP_LOGE(ETIKET, "mikrofon std kurulumu: %s", esp_err_to_name(hata));
-        return hata;
-    }
-
-    hata = i2s_channel_enable(g_mik);
-    if (hata != ESP_OK) {
-        ESP_LOGE(ETIKET, "mikrofon etkinlestirilemedi: %s", esp_err_to_name(hata));
-        return hata;
-    }
-
-    ESP_LOGI(ETIKET, "mikrofon hazir: %d Hz, 32 bit yuva -> int16, "
-                     "SCK=%d WS=%d SD=%d",
-             PATI_MIK_HZ, PATI_MIK_SCK, PATI_MIK_WS, PATI_MIK_SD);
-    return ESP_OK;
-}
+esp_err_t mikrofon_baslat() { return ses_kur(); }
 
 size_t mikrofon_oku(std::span<std::int16_t> hedef, uint32_t timeout_ms)
 {
-    if (g_mik == nullptr || hedef.empty()) {
+    if (!g_hazir || hedef.empty()) {
         return 0;
     }
 
-    const size_t istenen = std::min(hedef.size(), g_ham.size());
+    // Kac 16 kHz ornek istiyoruz, kac 48 kHz ornek okumamiz gerekiyor.
+    const size_t istenen = std::min(hedef.size(), g_ham.size() / 3);
     size_t okunan_bayt = 0;
 
     const esp_err_t hata = i2s_channel_read(
-        g_mik, g_ham.data(), istenen * sizeof(std::int32_t),
+        g_rx, g_ham.data(), istenen * 3 * sizeof(std::int16_t),
         &okunan_bayt, timeout_ms);
 
     if (hata != ESP_OK && hata != ESP_ERR_TIMEOUT) {
@@ -134,19 +279,26 @@ size_t mikrofon_oku(std::span<std::int16_t> hedef, uint32_t timeout_ms)
         return 0;
     }
 
-    const size_t ornek = okunan_bayt / sizeof(std::int32_t);
+    // ---- 48 kHz -> 16 kHz ------------------------------------------------
+    //
+    // Oran TAM UC. Ucer ornegin ORTALAMASI aliniyor, "her ucuncuyu al"
+    // degil.
+    //
+    // Fark onemli ve duyulur: dogrudan secmek SEYRELTME olur ve 8 kHz
+    // ustundeki her sey bandin icine KATLANIR — tiz sesler cizirtiya
+    // doner. Ortalama almak, ilk sifiri tam 16 kHz'de olan kucuk bir
+    // alcak geciren suzgec demek; katlanacak enerjinin buyuk kismini
+    // once bastiriyor, sonra seyreltiyor.
+    //
+    // Duzgun bir FIR suzgec daha temiz olurdu ama konusma icin bu
+    // yeterli ve ornek basina iki toplama bir bolme tutuyor.
+    const size_t ham_ornek = okunan_bayt / sizeof(std::int16_t);
+    const size_t ornek = ham_ornek / 3;
 
-    // 32 bitlik yuvadan int16'ya indir.
-    //
-    // INMP441'in 24 bitlik verisi yuvanin ust bitlerinde. 16 bit istiyoruz,
-    // yani 16 bit saga kaydirmak gerekiyor.
-    //
-    // NEDEN 11 DEGIL 16: bazi ornek kodlar 11-14 bit kaydirip "ses daha
-    // gur olsun" diyor — o kazanc degil KIRPMA. 16 bit kaydirmak orneklerin
-    // gercek genligini koruyor; ses kisikligi varsa cozumu amfinin GAIN
-    // pini ya da yazilim carpani, kaydirmayla oynamak degil.
     for (size_t i = 0; i < ornek; ++i) {
-        hedef[i] = static_cast<std::int16_t>(g_ham[i] >> 16);
+        const std::int32_t toplam = static_cast<std::int32_t>(g_ham[i * 3]) +
+                                    g_ham[i * 3 + 1] + g_ham[i * 3 + 2];
+        hedef[i] = static_cast<std::int16_t>(toplam / 3);
     }
     return ornek;
 }
@@ -155,206 +307,83 @@ size_t mikrofon_oku(std::span<std::int16_t> hedef, uint32_t timeout_ms)
 // Hoparlor
 // ---------------------------------------------------------------------------
 
-esp_err_t hoparlor_baslat()
-{
-    i2s_chan_config_t kanal = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_1, I2S_ROLE_MASTER);
-    // auto_clear: kuyruk bosaldiginda DMA eski veriyi tekrar calmasin.
-    // Kapali olsa robot sustugunda son parca vizilti gibi tekrarliyor.
-    kanal.auto_clear_after_cb = true;
-
-    // DMA TAMPONU — varsayilan 6 x 240 kare, yani 24 kHz'de yalnizca
-    // 60 ms. Ses wifi uzerinden gercek zamanli akiyor ve ag her zaman
-    // duzgun aralikli paket vermiyor; 60 ms'lik bir gecikme tamponu
-    // kurutuyor ve konusmanin ortasinda bosluk duyuluyor.
-    //
-    // 🔴 TAMPON GEMINI'NIN PARCA BOYUNA GORE SECILDI, tahminle degil.
-    //
-    // 23.08.2026'da gercek kartta olculdu: Gemini ses parcalarini
-    // 200-280 ms'lik bloklar halinde gonderiyor (uc turda 24/4820,
-    // 27/7600, 40/11160 ms). Onceki 200 ms'lik tampon, TEK BIR PARCA
-    // kadardi — yani marj sifirdi ve bir parca gec kalinca aninda
-    // bosluk duyuluyordu. Olculen tur 1: parca arasi 404 ms, ses acigi
-    // 262 ms.
-    //
-    // 32 x 512 = 16.384 kare = 683 ms kaynak (calmada ~525 ms), yani
-    // yaklasik UC parcalik marj.
-    //
-    // Ilk sesin gecikmesini ARTIRMIYOR: tampon bir ust sinir, sabit bir
-    // bekleme degil — ilk parca DMA'ya verilir verilmez calmaya
-    // basliyor. Sozunu kesmeyi de bozmuyor: hoparlor_temizle() kanali
-    // kapatip aciyor ve tamponu boyu ne olursa olsun ANINDA bosaltiyor.
-    //
-    // Bedeli ~32 KB ic RAM. Olcumde bos dahili SRAM 289.791 bayt'ti.
-    kanal.dma_desc_num = 32;
-    kanal.dma_frame_num = 512;
-
-    esp_err_t hata = i2s_new_channel(&kanal, &g_hop, nullptr);
-    if (hata != ESP_OK) {
-        ESP_LOGE(ETIKET, "hoparlor kanali acilamadi: %s", esp_err_to_name(hata));
-        return hata;
-    }
-
-    // MAX98357 16 bit istiyor; Gemini de 24 kHz int16 gonderiyor, tam uyuyor.
-    i2s_std_config_t std_cfg = {
-        .clk_cfg  = I2S_STD_CLK_DEFAULT_CONFIG(PATI_HOP_HZ),
-        .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT,
-                                                        I2S_SLOT_MODE_MONO),
-        .gpio_cfg = {
-            .mclk = I2S_GPIO_UNUSED,
-            .bclk = PATI_AMFI_BCLK,
-            .ws   = PATI_AMFI_LRC,
-            .dout = PATI_AMFI_DIN,
-            .din  = I2S_GPIO_UNUSED,   // amfiden okuma yok
-            .invert_flags = { .mclk_inv = false, .bclk_inv = false, .ws_inv = false },
-        },
-    };
-
-    hata = i2s_channel_init_std_mode(g_hop, &std_cfg);
-    if (hata != ESP_OK) {
-        ESP_LOGE(ETIKET, "hoparlor std kurulumu: %s", esp_err_to_name(hata));
-        return hata;
-    }
-
-    hata = i2s_channel_enable(g_hop);
-    if (hata != ESP_OK) {
-        ESP_LOGE(ETIKET, "hoparlor etkinlestirilemedi: %s", esp_err_to_name(hata));
-        return hata;
-    }
-
-    ESP_LOGI(ETIKET, "hoparlor hazir: %d Hz, 16 bit, BCLK=%d LRC=%d DIN=%d",
-             PATI_HOP_HZ, PATI_AMFI_BCLK, PATI_AMFI_LRC, PATI_AMFI_DIN);
-    return ESP_OK;
-}
+esp_err_t hoparlor_baslat() { return ses_kur(); }
 
 esp_err_t hoparlor_hiz_ayarla(float carpan)
 {
-    if (g_hop == nullptr) {
-        return ESP_ERR_INVALID_STATE;
-    }
-
-    // Sinirlar panelinkiyle ayni olsun diye burada da kirpiliyor: panel
-    // bozulsa bile robot anlasilmaz bir hizda konusmasin.
-    const float c = std::clamp(carpan, 0.80f, 1.60f);
-    const std::uint32_t hz =
-        static_cast<std::uint32_t>(PATI_HOP_HZ * c + 0.5f);
-    if (hz == g_cikis_hz) {
-        return ESP_OK;
-    }
-
-    // Saat yeniden kurulurken kanal KAPALI olmak zorunda (IDF sarti).
-    // Bu, o an calan sesi kesiyor — acilista sorun degil, panelden
-    // ayar degistiginde de bir kerelik.
-    esp_err_t hata = i2s_channel_disable(g_hop);
-    if (hata != ESP_OK) {
-        ESP_LOGW(ETIKET, "hiz icin kanal kapatilamadi: %s",
-                 esp_err_to_name(hata));
-        return hata;
-    }
-
-    i2s_std_clk_config_t saat = I2S_STD_CLK_DEFAULT_CONFIG(hz);
-    hata = i2s_channel_reconfig_std_clock(g_hop, &saat);
-    if (hata == ESP_OK) {
-        g_cikis_hz = hz;
-    } else {
-        ESP_LOGW(ETIKET, "calma hizi kurulamadi: %s", esp_err_to_name(hata));
-    }
-
-    // Basarisiz olsa bile kanali GERI ACIYORUZ: eski hizla calmak,
-    // hic calmamaktan iyi.
-    const esp_err_t acma = i2s_channel_enable(g_hop);
-    if (acma != ESP_OK) {
-        ESP_LOGE(ETIKET, "kanal geri acilamadi: %s", esp_err_to_name(acma));
-        return acma;
-    }
-
-    ESP_LOGI(ETIKET, "calma hizi: %.2fx -> %lu Hz (kaynak %d Hz)",
-             static_cast<double>(c), static_cast<unsigned long>(g_cikis_hz),
-             PATI_HOP_HZ);
-    return hata;
+    // 🔴 ARTIK SAATE DOKUNMUYOR — ve bu bir kazanc.
+    //
+    // Onceki kartta bu fonksiyon I2S kanalini kapatip saati yeniden
+    // kuruyordu, yani panelden hiz degistirmek CALAN SESI KESIYORDU.
+    // Burada saat mikrofonla paylasildigi icin zaten degistirilemez:
+    // hizi degistirmek 48 kHz'i degistirmek olurdu ve o da mikrofonun
+    // orneklem hizini bozardi.
+    //
+    // Bu yuzden carpan ORNEK uzerine tasindi. Yan etkisi: degisiklik
+    // aninda ve sessizce uygulaniyor, hicbir sey kesilmiyor.
+    g_hiz = std::clamp(carpan, 0.80f, 1.60f);
+    ESP_LOGI(ETIKET, "calma hizi %.2fx (adim %.3f)",
+             static_cast<double>(g_hiz),
+             static_cast<double>(g_hiz * PATI_GEMINI_CIKIS_HZ / PATI_SES_HZ));
+    return ESP_OK;
 }
 
 size_t hoparlor_yaz(std::span<const std::int16_t> kaynak, uint32_t timeout_ms)
 {
-    if (g_hop == nullptr || kaynak.empty()) {
+    if (!g_hazir || kaynak.empty()) {
         return 0;
     }
 
-    // Ses seviyesi 1.0'da HIC IS YAPMIYORUZ — kaynagi oldugu gibi
-    // geciriyoruz. Olcum kosulari tam seviyede yapiliyor ve o kosularda
-    // buraya tek bir kopyalama bile eklenmesin (prototype/ses.py'de ayni
-    // gerekce yazili).
-    size_t yazilan_bayt = 0;
-    esp_err_t hata;
-
-    // 🔴 KOSUL "== 1.0", ">= 1.0" DEGIL. Tavan 1.0 iken ikisi ayni
-    // seydi; tavan 2.50 olunca ">=" seviyeyi TAMAMEN yok sayardi —
-    // panelden sesi acmak hicbir sey yapmazdi.
-    if (g_seviye > 0.999f && g_seviye < 1.001f) {
-        hata = i2s_channel_write(g_hop, kaynak.data(),
-                                 kaynak.size() * sizeof(std::int16_t),
-                                 &yazilan_bayt, timeout_ms);
-        if (hata != ESP_OK && hata != ESP_ERR_TIMEOUT) {
-            ESP_LOGW(ETIKET, "hoparlor yazma: %s", esp_err_to_name(hata));
-            return 0;
-        }
-        return yazilan_bayt / sizeof(std::int16_t);
-    }
-
-    // 🔴 PARCANIN TAMAMI YAZILIYOR — DONGU SART.
+    // ---- ADIM: kaynakta ornek basina ne kadar ilerliyoruz ----------------
     //
-    // 23.08.2026'da bulundu: onceki surum tek bir 1024 ornekli tampon
-    // dolduruyor, `std::min` ile kirpiyor ve GERISINI SESSIZCE ATIYORDU.
-    // Cagiran (pati_sohbet.cpp) donus degerine bakmadigi icin kayip
-    // hicbir yere yazilmiyordu da.
+    //   adim = 24000 x carpan / 48000 = carpan / 2
     //
-    // 1024 ornek = 24 kHz'de 42 ms. Yorum "Gemini ~20-40 ms gonderiyor"
-    // diyordu ve tam sinirdaydi — bir tik uzun gelen her parcanin kuyrugu
-    // kayboluyordu. Varsayilan ses seviyesi 0.85, yani bu yol HER ZAMAN
-    // calisiyor; sorun 1.0'da gorunmuyor ve o yuzden olcumlerde de
-    // gorunmemisti.
-    //
-    // Belirti: Pati konusurken cumlenin icinde kucuk bosluklar.
-    std::array<std::int16_t, 1024> olcekli{};
-    size_t toplam_bayt = 0;
+    // 1.30'da 0,65. ADIM HER ZAMAN 1'DEN KUCUK (carpan tavani 1.60,
+    // yani adim tavani 0,80) ve bu tesaduf degil, secimin sebebi:
+    // adim 1'in altindayken ARA DEGER uretiyoruz, yani hicbir bilgi
+    // atilmiyor ve katlanma olusmuyor. Adim 1'in ustunde olsaydi
+    // seyreltme yapardik ve Pati'nin sesi cizirdardi.
+    const float adim = g_hiz * static_cast<float>(PATI_GEMINI_CIKIS_HZ) /
+                       static_cast<float>(PATI_SES_HZ);
 
-    for (size_t bas = 0; bas < kaynak.size(); bas += olcekli.size()) {
-        const size_t n = std::min(olcekli.size(), kaynak.size() - bas);
-        for (size_t i = 0; i < n; ++i) {
-            olcekli[i] = yumusak_sinirla(
-                static_cast<float>(kaynak[bas + i]) * g_seviye);
-        }
+    // Cikis bloklar halinde yaziliyor, tek seferde degil: bir parca
+    // 2,5 kata kadar uzayabiliyor (en yavas hizda) ve 33 KB'lik bir
+    // yigit tamponu kabul edilemez.
+    std::array<std::int16_t, 512> cikti{};
 
-        size_t bayt = 0;
-        hata = i2s_channel_write(g_hop, olcekli.data(), n * sizeof(std::int16_t),
-                                 &bayt, timeout_ms);
-        toplam_bayt += bayt;
-
-        if (hata != ESP_OK && hata != ESP_ERR_TIMEOUT) {
-            ESP_LOGW(ETIKET, "hoparlor yazma: %s", esp_err_to_name(hata));
-            break;
-        }
-        // Zaman asimi: kuyruk dolu ve bekleme suresi doldu. Kalan
-        // parcayi zorlamak gecikmeyi buyutur, birakmak daha dogru —
-        // ama artik SESSIZCE degil, donus degerinde gorunerek.
-        if (bayt < n * sizeof(std::int16_t)) {
-            break;
-        }
-    }
-
-    return toplam_bayt / sizeof(std::int16_t);
+    return g_ornek.isle(
+        kaynak, adim, g_seviye, cikti,
+        [&](std::span<const std::int16_t> blok) -> bool {
+            size_t bayt = 0;
+            const esp_err_t hata = i2s_channel_write(
+                g_tx, blok.data(), blok.size() * sizeof(std::int16_t),
+                &bayt, timeout_ms);
+            if (hata != ESP_OK && hata != ESP_ERR_TIMEOUT) {
+                ESP_LOGW(ETIKET, "hoparlor yazma: %s", esp_err_to_name(hata));
+                return false;
+            }
+            // Kismi yazma: kuyruk dolu ve bekleme suresi doldu. Kalani
+            // zorlamak gecikmeyi buyutur; birakmak daha dogru — ama
+            // artik SESSIZCE degil, donus degerinde gorunerek.
+            return bayt == blok.size() * sizeof(std::int16_t);
+        });
 }
 
 esp_err_t hoparlor_temizle()
 {
-    if (g_hop == nullptr) {
+    if (!g_hazir) {
         return ESP_OK;
     }
     // Kanali kapatip acmak DMA kuyrugunu bosaltiyor. Barge-in'de
     // beklenen davranis: robot ANINDA susuyor.
-    esp_err_t hata = i2s_channel_disable(g_hop);
+    esp_err_t hata = i2s_channel_disable(g_tx);
     if (hata == ESP_OK) {
-        hata = i2s_channel_enable(g_hop);
+        hata = i2s_channel_enable(g_tx);
     }
+
+    // Yeniden ornekleyici de sifirlanmali. Atilan sesin fazini
+    // saklamak, sonraki cumleyi yarim bir ornekten baslatmak olurdu.
+    g_ornek.sifirla();
     return hata;
 }
 

@@ -21,6 +21,7 @@
 #include <esp_chip_info.h>
 #include <esp_heap_caps.h>
 #include <esp_log.h>
+#include <esp_ota_ops.h>
 #include <esp_psram.h>
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
@@ -31,6 +32,7 @@
 
 #include "pati_ekran.hpp"
 #include "pati_gozler.hpp"
+#include "pati_guc.hpp"
 #include "pati_hafiza.hpp"
 #include "pati_olcum.hpp"
 #include "pati_pinler.h"
@@ -42,14 +44,6 @@
 #include "pati_guncelleme.hpp"
 #include "pati_kullanim.hpp"
 #include "pati_panel.hpp"
-
-// Kconfig'de `bool` bir secenek KAPALIYKEN makro hic tanimlanmiyor
-// (acikken 1 oluyor). Normal bir `if` icinde kullanabilmek icin sifira
-// sabitliyoruz — `#ifdef` bloklariyla bolmek yerine, cunku kosulun
-// yanindaki gerekce okunabilir kalsin istiyoruz.
-#ifndef CONFIG_PATI_EKRAN_VAR
-#define CONFIG_PATI_EKRAN_VAR 0
-#endif
 
 namespace {
 
@@ -80,8 +74,8 @@ void bekle_ve_dur()
 // -------------------------------------------------------------------------
 // Kartin gercekte ne oldugunu yaz
 //
-// NEDEN: N16R8 aldigimizi biliyoruz ama KARTIN kendisi ne diyor? PSRAM
-// gercekten 8 MB mi, gercekten oktal mi? Bunu tahmin etmek yerine
+// NEDEN: StickS3'un N8R8 oldugunu biliyoruz ama KARTIN kendisi ne diyor?
+// PSRAM gercekten 8 MB mi, gercekten oktal mi? Tahmin etmek yerine
 // cipe soruyoruz. Yanlis varyant gelmisse ilk saniyede anlasilir.
 // -------------------------------------------------------------------------
 void karti_yaz()
@@ -105,41 +99,6 @@ void karti_yaz()
 
     ESP_LOGI(ETIKET, "bos dahili SRAM : %u bayt",
              static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)));
-}
-
-// -------------------------------------------------------------------------
-// Kablolamayi seri porta yaz
-//
-// NEDEN: 13 kablo lehimlenecek ve yanlis yere giden bir tel ya parcayi
-// yakiyor ya saatler yakiyor. Kartin kendisi hangi pini beklediğini
-// soylerse, lehimlerken ekrana bakip dogrulanabiliyor. Kagida yazilan
-// tablo eskiyor; kod eskimiyor.
-// -------------------------------------------------------------------------
-void kablolamayi_yaz()
-{
-    ESP_LOGI(ETIKET, "");
-    ESP_LOGI(ETIKET, "===== KABLOLAMA =====");
-    ESP_LOGI(ETIKET, "INMP441 mikrofon:");
-    ESP_LOGI(ETIKET, "  VDD -> 3V3   <<< 5V VERILIRSE YANAR");
-    ESP_LOGI(ETIKET, "  GND -> GND");
-    ESP_LOGI(ETIKET, "  L/R -> GND   (bosta kalirsa veri gelmez)");
-    ESP_LOGI(ETIKET, "  SCK -> GPIO%d", PATI_MIK_SCK);
-    ESP_LOGI(ETIKET, "  WS  -> GPIO%d", PATI_MIK_WS);
-    ESP_LOGI(ETIKET, "  SD  -> GPIO%d", PATI_MIK_SD);
-    ESP_LOGI(ETIKET, "MAX98357 amfi:");
-    ESP_LOGI(ETIKET, "  VIN  -> 5V");
-    ESP_LOGI(ETIKET, "  GND  -> GND");
-    ESP_LOGI(ETIKET, "  BCLK -> GPIO%d", PATI_AMFI_BCLK);
-    ESP_LOGI(ETIKET, "  LRC  -> GPIO%d", PATI_AMFI_LRC);
-    ESP_LOGI(ETIKET, "  DIN  -> GPIO%d", PATI_AMFI_DIN);
-    ESP_LOGI(ETIKET, "  GAIN -> BOS  (9 dB varsayilan)");
-    ESP_LOGI(ETIKET, "  SD   -> BOS");
-    ESP_LOGI(ETIKET, "Hoparlor: amfinin cikisina. HICBIR UCU GND'YE GITMEZ.");
-    ESP_LOGI(ETIKET, "");
-    ESP_LOGI(ETIKET, "BAGLAMA: GPIO35/36/37 (oktal PSRAM hatti, olu)");
-    ESP_LOGI(ETIKET, "         GPIO19/20 (USB), GPIO43/44 (UART)");
-    ESP_LOGI(ETIKET, "=====================");
-    ESP_LOGI(ETIKET, "");
 }
 
 // -------------------------------------------------------------------------
@@ -213,6 +172,69 @@ void ses_hattini_dene()
              static_cast<double>(pati::ses_seviyesi()) * 100.0);
 }
 
+// -------------------------------------------------------------------------
+// Donanim kilidi — yanlis karta inen yazilim kendini geri alir
+// -------------------------------------------------------------------------
+//
+// SORUN. Guncelleme manifestinde (surum.json) donanim alani YOK; icinde
+// yalnizca surum numarasi ve indirme adresi var. Onceki Pati (ESP32-S3
+// DevKit + INMP441 + MAX98357) ile bu kart AYNI yongayi kullaniyor
+// (esp32s3), yani eski Pati bu yazilimi indirir, imza dogrulamasindan
+// gecirir ve calistirir.
+//
+// Ve calistirdiginda kendi kendine GERI DONEMEZ. Onyukleyicinin geri
+// alma mekanizmasi yeni yapinin kendini "saglam" isaretlememesine
+// bakiyor; oysa guncelleme_onayla() ag ile panel kalkinca cagriliyor ve
+// ikisi de ses kodeginden bagimsiz — ikisi de yanlis kartta da calisir.
+// Yani yazilim sessizce kendini saglam ilan eder, geri alma HIC devreye
+// girmez ve eski Pati kalici olarak susar. Caresi kutuyu acip USB
+// takmak olurdu.
+//
+// COZUM. Kart kimligini yazilimin kendisi soruyor: ES8311 I2C'de cevap
+// veriyor mu? Onceki kartta o yongadan hic yok.
+//
+// NEDEN BURADA, guncelleme_onayla()'DAN ONCE: onay app_main'in cok
+// asagisinda, ag ve panel kalktiktan sonra veriliyor. Oraya varmadan
+// donmemiz gerekiyor.
+//
+// 🔴 KABLOYLA YUKLENDIYSE YENIDEN BASLATMIYORUZ. Geri donulecek bir
+// yapi yoksa esp_restart() sonsuz bir acilis dongusu olurdu — kart
+// surekli yeniden baslar, seri porta bakan biri sebebi goremez ve
+// yeniden yukleme icin indirme moduna girmek bile zorlasir. Yalnizca
+// OTA ile gelmis ve HENUZ ONAYLANMAMIS bir yapi geri alinabilir.
+void donanimi_dogrula()
+{
+    if (pati::donanim_dogru()) {
+        return;
+    }
+
+    ESP_LOGE(ETIKET, "");
+    ESP_LOGE(ETIKET, "===== YANLIS DONANIM =====");
+    ESP_LOGE(ETIKET, "ES8311 ses kodegi I2C'de (0x%02X) cevap vermiyor.",
+             PATI_ADR_ES8311);
+    ESP_LOGE(ETIKET, "Bu yazilim M5Stack StickS3 icin derlendi.");
+
+    const esp_partition_t* p = esp_ota_get_running_partition();
+    esp_ota_img_states_t hal = ESP_OTA_IMG_UNDEFINED;
+
+    if (p != nullptr && esp_ota_get_state_partition(p, &hal) == ESP_OK &&
+        hal == ESP_OTA_IMG_PENDING_VERIFY) {
+        ESP_LOGE(ETIKET, "Bu yapi OTA ile geldi ve henuz onaylanmadi —");
+        ESP_LOGE(ETIKET, "onaylamadan yeniden baslatiyoruz, onyukleyici");
+        ESP_LOGE(ETIKET, "onceki surume DONECEK.");
+        ESP_LOGE(ETIKET, "==========================");
+        // Gunlugun seri porttan cikmasi icin kisa bir an.
+        vTaskDelay(pdMS_TO_TICKS(500));
+        esp_restart();
+    }
+
+    ESP_LOGE(ETIKET, "Bu yapi KABLOYLA yuklenmis: geri donulecek bir");
+    ESP_LOGE(ETIKET, "surum yok, yeniden baslatmiyoruz (acilis dongusu");
+    ESP_LOGE(ETIKET, "olurdu). Dogru yazilimi USB'den yukleyin.");
+    ESP_LOGE(ETIKET, "==========================");
+    ESP_LOGE(ETIKET, "");
+}
+
 }  // namespace
 
 extern "C" void app_main()
@@ -227,6 +249,20 @@ extern "C" void app_main()
         nvs = nvs_flash_init();
     }
     ESP_ERROR_CHECK(nvs);
+
+    // ---- GUC VE I2C -----------------------------------------------------
+    //
+    // BUNDAN SONRAKI HER SEYDEN ONCE. Mikrofon, hoparlor ve ekranin arka
+    // isigi M5PM1'in "L3B" katmanindan besleniyor ve o katman acilista
+    // KENDILIGINDEN GELMIYOR — acmazsak ucu birden olu kalir ve hicbiri
+    // hata vermez. Gerekce pati_pinler.h'nin basinda.
+    if (pati::guc_baslat() != ESP_OK) {
+        ESP_LOGE(ETIKET, "guc katmani kurulamadi — mikrofon, hoparlor ve "
+                         "ekran arka isigi calismayacak");
+    }
+
+    // ---- DONANIM KILIDI -------------------------------------------------
+    donanimi_dogrula();
 
     // Gemini anahtari KENDI NVS bolumunde (bkz. partitions.csv). Ayri
     // durmasinin sebebi tam da yukaridaki satir: bozuk NVS silinip
@@ -244,7 +280,6 @@ extern "C" void app_main()
     ESP_LOGI(ETIKET, "");
 
     karti_yaz();
-    kablolamayi_yaz();
 
     // Olcum matematigi PC ile ayni mi? Bunu HER ACILISTA siniyoruz.
     //
@@ -277,21 +312,23 @@ extern "C" void app_main()
     // Basarisiz olsa bile DEVAM EDIYORUZ: ekransiz Pati konusabilir.
     // Yuzu olmayan robot, sessiz robottan iyidir.
     //
-    // 🔴 AYARA BAGLI, cunku EKRANIN VARLIGI KODDAN ANLASILAMIYOR. SPI
-    // yolu tek yonlu kuruluyor: panel hic bagli olmasa bile esp_lcd
-    // hatasiz aciliyor ve gozler_baslat() ESP_OK donuyor. Yani
-    // "basarisiz olursa atlariz" korumasi calismiyor — olu bir modulle
-    // tam olarak boyle gorundu.
+    // ⚠️ ONCEDEN BURADA BIR AYAR VARDI (PATI_EKRAN_VAR) VE KALDIRILDI.
     //
-    // Bedeli olculdu (23.08.2026, gercek kart): kare ortancasi 114 ms,
-    // en uzunu 385 ms, 50 ms'lik butceye karsi 2.452 atlanan kare. Bu
-    // is ekran yokken hicbir yere gitmiyor ama ayni cekirdekteki ses
-    // cozumunden ve websocket'ten pay aliyor.
-    if (!CONFIG_PATI_EKRAN_VAR) {
-        ESP_LOGW(ETIKET, "ekran KAPALI (PATI_EKRAN_VAR=n) — gozler "
-                         "baslatilmadi, islemci sese kaliyor");
-    } else if (pati::gozler_baslat() != ESP_OK) {
-        ESP_LOGW(ETIKET, "ekran yok — Pati yuzsuz devam ediyor");
+    // Onceki kartta ekran disaridan lehimlenen bir moduldu ve VARLIGI
+    // KODDAN ANLASILAMIYORDU: SPI yolu tek yonlu kuruluyor, panel hic
+    // bagli olmasa bile esp_lcd hatasiz aciliyor ve gozler_baslat()
+    // ESP_OK donuyordu. Olu bir modulle saatlerce tam olarak boyle
+    // gorundu; o yuzden "ekran takili mi" diye SORULMASI gerekiyordu.
+    //
+    // StickS3'te ekran govdenin icinde ve sokulemiyor. Soru anlamsiz
+    // hale geldi, ayar da kaldirildi — cevabi degismeyecek bir soruyu
+    // ayar olarak birakmak, bir gun yanlis cevaplanmasini beklemektir.
+    //
+    // Bedeli hala gercek (23.08.2026, onceki kartta olculdu: kare
+    // ortancasi 114 ms, 50 ms'lik butce) ama artik bir secim degil:
+    // ekran orada ve cocuk yuze bakiyor.
+    if (pati::gozler_baslat() != ESP_OK) {
+        ESP_LOGW(ETIKET, "ekran acilmadi — Pati yuzsuz devam ediyor");
     } else {
         pati::gozler_bos();
     }

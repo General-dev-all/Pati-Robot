@@ -5,7 +5,7 @@ rem NEDEN AYRI: bunlar firmware'in parcasi DEGIL. `main/` icinde
 rem olmadiklari icin idf.py build'i etkilemiyorlar; konak derleyicisi
 rem olmayan bir makinede sadece testler atlaniyor.
 rem
-rem IKI TEST VAR:
+rem UC TEST VAR:
 rem
 rem   goz_karsilastir     pati_gozler.cpp <-> panel/gozler240.js
 rem                       Ayni girdiyle PIKSEL PIKSEL karsilastiriyor.
@@ -18,7 +18,13 @@ rem                       Govdeleme KARAKTER sayiyor; bayt sayilirsa
 rem                       Turkce kelimeler bozuk kesiliyor ve hafiza
 rem                       ayni seyi iki kez kaydediyor.
 rem
-rem Ikisinin de ortak gerekcesi: "portladim" ile "dogru portladim" ayri
+rem   ses_karsilastir     pati_ornekleyici.hpp — Pati'nin sesini uretiyor
+rem                       Iki gercek hata buldu: dilim sinirinda ayrisma
+rem                       (her sinirda tik sesi) ve uzun akista faz
+rem                       kaymasi. Ikisi de kulakla duyulur, gozle
+rem                       gorulmez.
+rem
+rem Ucunun de ortak gerekcesi: "portladim" ile "dogru portladim" ayri
 rem seyler ve fark gozle gorulmuyor.
 rem
 rem NOT: bu dosya CRLF satir sonuyla durmali. LF ile yazilirsa cmd.exe
@@ -99,15 +105,53 @@ if errorlevel 1 (
 .\hafiza_karsilastir.exe .
 if errorlevel 1 set HAFIZA_HATA=1
 
+rem ==================================================== 3) SES
+echo.
+echo  ============================================================
+echo   3) SES  -  yeniden ornekleyici
+echo  ============================================================
+rem Pati'nin sesini ureten matematik: 24 kHz Gemini sesini 48 kHz'e
+rem cevirirken 1.30x hiz carpanini da uyguluyor.
+rem
+rem EN ONEMLI SINAMA PARCA SINIRI. Gemini sesi 200-280 ms'lik dilimler
+rem halinde geliyor; faz dilimler arasinda tasinmazsa her sinirda tik
+rem sesi oluyor ve koda bakarak gorulmuyor. Sinama ayni sesi tek parca
+rem ve duzensiz dilimler halinde isleyip ciktilari karsilastiriyor.
+rem
+rem Iki gercek hata buldu (23.08.2026): dilim sinirinda ayrisma ve
+rem 500 saniyede 1.661 ornek kayma. Ikisinin de sebebi konumun tek bir
+rem float'ta biriktirilmesiydi.
+echo   derleniyor...
+cl /nologo /std:c++20 /EHsc /O2 /W3 ses_karsilastir.cpp /Fe:ses_karsilastir.exe /Fo:obj\ >derleme3.log 2>&1
+if errorlevel 1 (
+  echo.
+  echo   DERLEME HATASI - derleme3.log:
+  type derleme3.log
+  exit /b 1
+)
+
+.\ses_karsilastir.exe
+if errorlevel 1 set SES_HATA=1
+
+rem KULAKLA DINLEMEK ICIN: elinde 24 kHz mono int16 ham bir Gemini
+rem kaydi varsa
+rem
+rem     ses_karsilastir.exe --pcm kayit.pcm --cikti .
+rem
+rem iki WAV yaziyor — biri onceki kartin caldigi sey, digeri yeni
+rem yolun ciktisi. Ikisi ayni duyulmali.
+
 rem ====================================================
 echo.
 echo  ============================================================
 if defined GOZ_HATA echo   GOZLER: BASARISIZ
 if defined HAFIZA_HATA echo   HAFIZA: BASARISIZ
-if not defined GOZ_HATA if not defined HAFIZA_HATA echo   IKI TEST DE GECTI
+if defined SES_HATA echo   SES: BASARISIZ
+if not defined GOZ_HATA if not defined HAFIZA_HATA if not defined SES_HATA echo   UC TEST DE GECTI
 echo  ============================================================
 echo.
 
 if defined GOZ_HATA exit /b 1
 if defined HAFIZA_HATA exit /b 1
+if defined SES_HATA exit /b 1
 exit /b 0

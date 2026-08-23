@@ -212,8 +212,8 @@ inline void satir_temizle(int gen)
 //
 //   Burada `std::lrintf` vardi. Dogru sonucu veriyordu ama xtensa'da
 //   satir ici ACILMIYOR: newlib'in sf_lrint.c'sine gercek bir cagri
-//   oluyor. Bu fonksiyon piksel basina UC kez cagriliyor — 240x240'lik
-//   bir gecis karesi 170 binden fazla kutuphane cagrisi demek.
+//   oluyor. Bu fonksiyon piksel basina UC kez cagriliyor — tam bir
+//   gecis karesi yuz binlerce kutuphane cagrisi demek.
 //
 //   Kartta bekci kopegi iki kez havladi (9,5 sn ve 14,5 sn) ve iki
 //   backtrace'in de en ic karesi ayni yerdi: lrintf'in icinde.

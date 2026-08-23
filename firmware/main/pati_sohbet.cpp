@@ -587,7 +587,7 @@ void mik_gorevi(void* /*arg*/)
         if (g_uykuda) {
             if (konusma_var_mi(parca, n)) {
                 sesli_us += static_cast<std::int64_t>(n) * 1000000
-                            / PATI_MIK_HZ;
+                            / PATI_GEMINI_GIRIS_HZ;
                 if (sesli_us >= UYANMA_SESLI_US) {
                     sesli_us = 0;
                     uyandir();
@@ -675,8 +675,8 @@ esp_err_t sohbet_baslat()
     g_ayar.model = CONFIG_PATI_MODEL;
     // ⚠️ Varsayilan ikisi de 24000. Giris 16 kHz olmali; yanlis olursa
     // Gemini sesi yavas/hizli duyar ve VAD hic tutmaz.
-    g_ayar.input_sample_rate_hz = PATI_MIK_HZ;
-    g_ayar.output_sample_rate_hz = PATI_HOP_HZ;
+    g_ayar.input_sample_rate_hz = PATI_GEMINI_GIRIS_HZ;
+    g_ayar.output_sample_rate_hz = PATI_GEMINI_CIKIS_HZ;
     g_ayar.enable_input_transcription = true;  // dokum: uyum sayimi icin
     if (ayar_vad_ms() > 0) {
         g_ayar.vad_silence_ms = ayar_vad_ms();

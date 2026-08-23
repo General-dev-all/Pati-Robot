@@ -1,2 +1,2 @@
-2.2.8
-Pati’nin sesi yükseltildi.
+3.0.0
+Pati yeni donanıma taşındı: M5Stack StickS3. Eski elektronikli Pati bu sürümü çalıştırmaz — indirse bile kendini eski sürüme geri alır.

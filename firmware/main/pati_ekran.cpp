@@ -37,12 +37,38 @@ constexpr const char* ETIKET = "ekran";
 //             gorunuyorsa bu deger yanlis.
 constexpr bool BAYT_CEVIR = true;
 
-// 2. RENK TERSLIGI. Cok sayida 240x240 IPS modulu "inverted" panel
+// 2. RENK TERSLIGI. Cok sayida ST7789 IPS paneli "inverted" tipte
 //    kullaniyor ve ST7789'un INVON komutu gerekiyor.
 //
 //    BELIRTI: test deseninde siyah BEYAZ, beyaz SIYAH gorunuyorsa
 //             (ya da butun renkler negatif) bu deger yanlis.
 constexpr bool RENK_TERS = true;
+
+// 3. YON. Panel fiziksel olarak DIKEY (135 genis, 240 yuksek) ama Pati
+//    YATAY kullaniyor: iki goz yan yana 178 piksel yer kapliyor ve
+//    135'e sigmiyor. Cevirince 240 genislik geliyor.
+//
+//    swap_xy satirla sutunu degistiriyor, mirror da hangi kenarin
+//    yukarida kaldigini seciyor.
+//
+//    BELIRTI: goruntu BASASAGI ya da AYNADA gibiyse asagidaki iki
+//             degerden biri yanlis. Dortlu kombinasyonun biri dogru;
+//             once EKR_AYNA_X'i cevirmeyi deneyin.
+constexpr bool EKR_CEVIR  = true;   // swap_xy
+constexpr bool EKR_AYNA_X = true;
+constexpr bool EKR_AYNA_Y = false;
+
+// 4. PIKSEL KAYMASI. ST7789P3'un cerceve bellegi 240x320 ama panel
+//    135x240 — goruntu bellegin ORTASINA dusuyor, yani bir kayma var.
+//
+//    Dikey kullanimda sutun kaymasi (240-135)/2 = 52, satir kaymasi
+//    (320-240)/2 = 40. YATAYA cevirince ikisi YER DEGISTIRIYOR.
+//
+//    BELIRTI: goruntu birkac piksel kayik duruyor ve bir kenarda ince
+//             bir cop/gurultu seridi goruluyorsa bu iki sayi yanlis.
+//             Ikisini takas etmek ilk denenecek sey.
+constexpr int EKR_KAYMA_X = PATI_EKR_KAYMA_X;  // 40
+constexpr int EKR_KAYMA_Y = PATI_EKR_KAYMA_Y;  // 52
 
 // ---------------------------------------------------------------------------
 
@@ -161,10 +187,13 @@ void ekran_test_deseni()
     ESP_LOGW(ETIKET, "");
     ESP_LOGW(ETIKET, "  Kirmizi ile mavi YER DEGISTIRMISSE : BAYT_CEVIR yanlis");
     ESP_LOGW(ETIKET, "  Siyah ile beyaz YER DEGISTIRMISSE  : RENK_TERS yanlis");
-    ESP_LOGW(ETIKET, "  Hicbir sey gorunmuyorsa            : arka isik (BLK pini)");
+    ESP_LOGW(ETIKET, "  Cubuklar YATAY duruyorsa           : EKR_CEVIR yanlis");
+    ESP_LOGW(ETIKET, "  Sira TERSTEN (turkuaz solda) ise   : EKR_AYNA_X yanlis");
+    ESP_LOGW(ETIKET, "  Kenarda ince cop seridi varsa      : EKR_KAYMA_X/Y yanlis");
+    ESP_LOGW(ETIKET, "  Hicbir sey gorunmuyorsa            : L3B gucu ya da BLK");
     ESP_LOGW(ETIKET, "  Su an: BAYT_CEVIR=%d  RENK_TERS=%d",
              BAYT_CEVIR ? 1 : 0, RENK_TERS ? 1 : 0);
-    ESP_LOGW(ETIKET, "  Ikisi de pati_ekran.cpp basinda, tek satir.");
+    ESP_LOGW(ETIKET, "  Hepsi pati_ekran.cpp basinda, tek satir.");
     ESP_LOGW(ETIKET, "");
 
     for (int y = 0; y < PATI_EKR_Y; y += EKRAN_SERIT_YUKSEK) {
@@ -279,6 +308,17 @@ esp_err_t ekran_baslat()
     // ("make sure the LCD panel has finished the reset stage").
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_panel_reset(g_panel));
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_panel_init(g_panel));
+
+    // Yon ve kayma, cizimden ONCE. Sira onemli: kaymayi swap_xy'den
+    // once verirsek surucu onu eski eksende saklar ve goruntu kayik
+    // cikar.
+    ESP_ERROR_CHECK_WITHOUT_ABORT(
+        esp_lcd_panel_swap_xy(g_panel, EKR_CEVIR));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(
+        esp_lcd_panel_mirror(g_panel, EKR_AYNA_X, EKR_AYNA_Y));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(
+        esp_lcd_panel_set_gap(g_panel, EKR_KAYMA_X, EKR_KAYMA_Y));
+
     ESP_ERROR_CHECK_WITHOUT_ABORT(
         esp_lcd_panel_invert_color(g_panel, RENK_TERS));
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_panel_disp_on_off(g_panel, true));
@@ -293,12 +333,12 @@ esp_err_t ekran_baslat()
     ESP_LOGI(ETIKET, "ekran hazir: %dx%d, SPI%d @%d MHz, serit %d satir",
              PATI_EKR_G, PATI_EKR_Y, SPI_YUVA + 1,
              PATI_EKR_HZ / 1000000, EKRAN_SERIT_YUKSEK);
-    // CS "-1" diye basilirsa tezgahta "bir pin eksik mi" diye aranir;
-    // gelen modulde o pin GERCEKTEN yok (bkz. pati_pinler.h).
-    ESP_LOGI(ETIKET, "  SCK=%d MOSI=%d CS=%s DC=%d RST=%d BLK=%d",
-             PATI_EKR_SCK, PATI_EKR_MOSI,
-             (PATI_EKR_CS < 0) ? "yok (modulde pin degil)" : "bagli",
+    ESP_LOGI(ETIKET, "  SCK=%d MOSI=%d CS=%d DC=%d RST=%d BLK=%d",
+             PATI_EKR_SCK, PATI_EKR_MOSI, PATI_EKR_CS,
              PATI_EKR_DC, PATI_EKR_RST, PATI_EKR_BLK);
+    ESP_LOGI(ETIKET, "  cevir=%d ayna=%d/%d kayma=%d/%d",
+             EKR_CEVIR ? 1 : 0, EKR_AYNA_X ? 1 : 0, EKR_AYNA_Y ? 1 : 0,
+             EKR_KAYMA_X, EKR_KAYMA_Y);
     return ESP_OK;
 }
 

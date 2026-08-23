@@ -18,21 +18,21 @@
 // ---------------------------------------------------------------------------
 
 #define PATI_GOZ_EKRAN_G        240
-#define PATI_GOZ_EKRAN_Y        240
+#define PATI_GOZ_EKRAN_Y        135
 
-#define PATI_GOZ_G              76
-#define PATI_GOZ_Y              96
-#define PATI_GOZ_ARALIK         26
-#define PATI_GOZ_YARICAP        26
-#define PATI_GOZ_MERKEZ_Y       120
+#define PATI_GOZ_G              68
+#define PATI_GOZ_Y              64
+#define PATI_GOZ_ARALIK         28
+#define PATI_GOZ_YARICAP        22
+#define PATI_GOZ_MERKEZ_Y       67
 #define PATI_GOZ_BAKIS_X        14
-#define PATI_GOZ_BAKIS_Y        10
+#define PATI_GOZ_BAKIS_Y        7
 
 // Parlama: gercek bulanik golge ESP32"de yok. Ana seklin biraz
 // buyugu, dusuk alfayla, birkac kat halinde ciziliyor. Olculdu:
 // cizim maliyetinin %81"i bu katmanlar (bkz. gozler_test.mjs).
 #define PATI_GOZ_PARLAMA_KAT       3
-#define PATI_GOZ_PARLAMA_KALINLIK  5
+#define PATI_GOZ_PARLAMA_KALINLIK  3
 #define PATI_GOZ_PARLAMA_ALFA      0.16f
 
 // Kafa egimi ESP32"de goz basina DIKEY KAYDIRMA olarak yapiliyor.

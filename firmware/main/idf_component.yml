@@ -8,5 +8,34 @@
 # mDNS ile adres SABIT bir isim oluyor: http://pati.local
 # iPhone ve Mac'te dogrudan calisiyor (Bonjour), Windows 10+ ve
 # Android 12+ de destekliyor.
+# esp_codec_dev — ES8311 ses kodeginin REGISTER kurulumu.
+#
+# StickS3'te mikrofon ve hoparlor ayri yongalar degil; ikisi de tek bir
+# ES8311'in icinde ve yonga I2C'den yapilandiriliyor. Yaklasik otuz
+# register: saat bolucüleri, ADC/DAC yolu, ses seviyesi, mikrofon
+# kazanci. Yanlis bir bolucu "ses yok" demek ve sebebi disaridan
+# gorunmuyor.
+#
+# NEDEN HAZIR BILESEN, NEDEN KENDIMIZ YAZMIYORUZ: bu depoda kural her
+# bagimliligin anlasilmis olmasi, ama burada anlasilmasi gereken sey
+# BIZIM kodumuz degil, YONGANIN veri sayfasi. Espressif bu diziyi
+# ES8311'li kendi kartlarinda (ESP-BOX, Korvo) surekli test ediyor;
+# biz Eylul'e kadar gercek donanimda deneyemiyoruz. Test edilmis
+# diziyi kullanmak burada daha guvenli.
+#
+# VERI YOLU BIZDE KALIYOR. Bilesen I2S kanalini KENDISI acmiyor —
+# bizim actigimiz kanali aliyor. Yani DMA tampon boyutlari ve yeniden
+# orneklemenin tamami hala pati_ses.cpp'de. Bu onemli: 683 ms'lik
+# tampon ve 0,65 adimli yeniden ornekleme Pati'nin sesini veren
+# seyler ve baskasina devredilmiyor.
+#
+# ⚠️ En az 1.6: eski surumler I2C'yi ESKI surucuyle (driver/i2c.h)
+# kuruyordu. Biz IDF 5.5'in i2c_master'ini kullaniyoruz ve ikisi ayni
+# projede karisirsa surucu catisiyor.
+#
+# ⚠️ espressif/es8311 diye AYRI bir bilesen daha var; o KULLANIMDAN
+# KALDIRILDI (registry'de "deprecated") ve eski I2C surucusune bagli.
+# Arama sonuclarinda once o cikiyor — alinmayacak.
 dependencies:
   espressif/mdns: "^1.8.0"
+  espressif/esp_codec_dev: "^1.6.0"

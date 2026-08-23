@@ -9,8 +9,26 @@
 # dosyada yapilan hicbir degisiklik cihaza ULASAMAZ; kutuyu acip USB takmak
 # gerekir.
 #
-# Bu yuzden tablo BASTAN genis tasarlandi: uygulama 1,37 MB, slotlar 4 MB.
-# Uc kat buyume payi var ve 7,8 MB flash hala bos duruyor.
+# Bu yuzden tablo BASTAN genis tasarlandi: uygulama 1,43 MB, slotlar 3,94 MB.
+# Iki bucuk kat buyume payi var.
+#
+# ===========================================================================
+# 8 MB — STICKS3'E GECERKEN DEGISEN TEK SEY
+# ===========================================================================
+#
+# Onceki kart (ESP32-S3-N16R8) 16 MB flash'a sahipti ve slotlar 4 MB'ti;
+# tablo 0x820000'de, yani 8,5 MB'ta bitiyordu. StickS3'te flash 8 MB
+# (ESP32-S3-PICO-1-N8R8), dolayisiyla o tablo SIGMIYOR.
+#
+# Slotlar 0x3F0000'e (3,94 MB) indirildi ve tablo tam 0x800000'de, yani
+# tam 8 MB'ta bitiyor. Bosa giden tek bayt yok.
+#
+# Uygulama 1,43 MB oldugu icin bu daralma pratikte hicbir sey
+# kaybettirmiyor — hala iki bucuk kati kadar yer var.
+#
+# nvs, otadata, phy_init ve anahtar HIC DOKUNULMADAN kaldi. Ayni
+# adresler, ayni boylar. Bu bilincli: asagidaki gerekce (NVS'in yerinin
+# degismemesi) donanim degisikliginden bagimsiz olarak gecerli.
 #
 # ===========================================================================
 # NEDEN OZEL TABLO — hazir olanlar neden yetmiyor
@@ -58,5 +76,6 @@ nvs,        data, nvs,      0x9000,    0x6000,
 otadata,    data, ota,      0xf000,    0x2000,
 phy_init,   data, phy,      0x11000,   0x1000,
 anahtar,    data, nvs,      0x12000,   0x3000,
-ota_0,      app,  ota_0,    0x20000,   0x400000,
-ota_1,      app,  ota_1,    0x420000,  0x400000,
+ota_0,      app,  ota_0,    0x20000,   0x3F0000,
+ota_1,      app,  ota_1,    0x410000,  0x3F0000,
+# 0x410000 + 0x3F0000 = 0x800000 — tam 8 MB. Buyutulemez.

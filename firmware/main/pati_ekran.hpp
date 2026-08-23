@@ -1,10 +1,11 @@
-// Pati'nin ekrani — ST7789VW 240x240, SPI.
+// Pati'nin ekrani — ST7789P3 240x135 (yatay), SPI.
 //
 // ===========================================================================
 // NEDEN TAM CERCEVE TAMPONU YOK
 // ===========================================================================
 //
-// Ilk tasarim 240x240x2 = 115 KB'lik bir cerceve tamponunu PSRAM'de
+// Ilk tasarim tam bir cerceve tamponunu (onceki kartta 240x240x2 =
+// 115 KB, burada 240x135x2 = 65 KB) PSRAM'de
 // tutup ekrana basmakti. ESP-IDF dokumani (memory-types) bunu
 // engelliyor:
 //

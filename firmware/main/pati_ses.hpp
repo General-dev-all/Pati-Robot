@@ -1,11 +1,20 @@
-// Pati ses hatti — I2S mikrofon girisi ve I2S amfi cikisi
+// Pati ses hatti — ES8311 kodek uzerinden mikrofon ve hoparlor
 //
-// Iki AYRI I2S kanali kullaniliyor (I2S_NUM_0 giris, I2S_NUM_1 cikis)
-// cunku hizlari farkli: mikrofon 16 kHz, hoparlor 24 kHz. Ayni kanali
-// paylasmak mumkun degil.
+// TEK I2S KANAL CIFTI, TEK SAAT. Mikrofon ve hoparlor ayni yonganin
+// (ES8311) icinde ve ayni I2S hattini paylasiyorlar, yani ikisi ayni
+// orneklem hizinda kosmak ZORUNDA. Hat 48 kHz'de calisiyor; sebep
+// pati_pinler.h icindeki PATI_SES_HZ blogunda.
 //
-// Bu dosya SADECE bayt tasiyor. Ne olcum yapiyor ne karar veriyor;
-// olcum pati_olcum.hpp'de, karar app_main'de.
+// Gemini'nin istedigi hizlar farkli (giris 16 kHz, cikis 24 kHz), yani
+// iki tarafta da YENIDEN ORNEKLEME yapiliyor. Ikisi de burada.
+//
+// ⚠️ Onceki kartta (v2.2.8-devkit) durum baskaydi: INMP441 ve MAX98357
+// ayri yongalardi, ayri kanallarda ayri hizlarda kosuyorlardi ve
+// yeniden ornekleme HIC YOKTU — calma hizi dogrudan I2S saatinden
+// ayarlaniyordu. O yol burada kapali.
+//
+// Bu dosya SADECE bayt tasiyor ve ornek cevirisi yapiyor. Ne olcum
+// yapiyor ne karar veriyor; karar app_main'de.
 
 #pragma once
 
@@ -18,24 +27,33 @@
 namespace pati {
 
 // ---------------------------------------------------------------------------
-// Mikrofon (INMP441) — 16 kHz mono int16
+// Ortak kurulum
 // ---------------------------------------------------------------------------
 //
-// ⚠️ INMP441 24 BITLIK bir mikrofon ve verisini 32 bitlik yuvalarin
-// SOLUNA yazar. Yani 16 bit isteyip okuyamayiz — 32 bit okuyup kendimiz
-// kaydirmamiz gerekiyor. Bu, I2S mikrofonlarinda en sik yapilan hata:
-// dogrudan 16 bit istenince ses ya cok kisik ya gurultu cikiyor.
+// Iki fonksiyon da AYNI seyi yapiyor ve ikisini de cagirmak zararsiz:
+// ilk cagiran I2C'yi, I2S'i ve kodegi kuruyor, ikincisi hemen donuyor.
 //
-// Bu yuzden okuma iki adimli: ham 32 bit -> int16'ya cevir.
+// Ayri isimlerle durmalarinin sebebi cagiran taraf: app_main "mikrofonu
+// baslat" ve "hoparloru baslat" diye okunuyor ve donanimin ikisini tek
+// yongada birlestirmis olmasi orayi ilgilendirmiyor.
+//
+// 🔴 ONCESINDE guc_baslat() CAGRILMIS OLMALI. I2C hatti ve kodegin
+// beslemesi (L3B) oradan geliyor; bu fonksiyonlar hazir bir hat
+// bekliyor, kendileri acmiyor.
 
 esp_err_t mikrofon_baslat();
+esp_err_t hoparlor_baslat();
+
+// ---------------------------------------------------------------------------
+// Mikrofon — Gemini'ye 16 kHz mono int16
+// ---------------------------------------------------------------------------
 
 // Mikrofondan int16 ornek okur. Doner: okunan ORNEK sayisi (bayt degil).
 // Blokluyor; timeout_ms kadar bekler.
 //
-// hedef'in kapasitesi kadar okumaya calisir. Ic tamponda 32 bit ham veri
-// icin iki kat yer gerektigi icin tek cagrida en fazla PATI_OKUMA_ORNEK
-// ornek doner.
+// Donen ornekler 16 kHz: kodekten 48 kHz okunup UCER ORNEGIN ORTALAMASI
+// aliniyor. Oran tam sayi oldugu icin bu hem seyreltme hem suzgec
+// gorevi goruyor (ayrinti .cpp'de).
 size_t mikrofon_oku(std::span<std::int16_t> hedef, uint32_t timeout_ms = 100);
 
 // Tek cagrida okunabilecek en fazla ornek. 16 kHz'de 20 ms = 320 ornek.
@@ -44,20 +62,20 @@ size_t mikrofon_oku(std::span<std::int16_t> hedef, uint32_t timeout_ms = 100);
 constexpr size_t PATI_OKUMA_ORNEK = 320;
 
 // ---------------------------------------------------------------------------
-// Hoparlor (MAX98357) — 24 kHz mono int16
+// Hoparlor — Gemini'den 24 kHz mono int16
 // ---------------------------------------------------------------------------
 
-esp_err_t hoparlor_baslat();
-
-// Gemini'den gelen 24 kHz int16 orneklerini amfiye yazar.
-// Doner: yazilan ornek sayisi.
+// Gemini'den gelen 24 kHz int16 orneklerini calar.
 //
-// Ses seviyesi burada uygulaniyor (prototype/ses.py'deki carpanin aynisi).
+// Doner: TUKETILEN KAYNAK ornegi. Yazilan cikis ornegi DEGIL — ikisi
+// artik farkli, cunku 24 kHz kaynak 48 kHz'e cevriliyor ve ustune hiz
+// carpani uygulaniyor (1.30'da bir kaynak ornegi ~1,54 cikis ornegi).
+//
+// Ses seviyesi ve yumusak sinirlayici burada uygulaniyor.
 size_t hoparlor_yaz(std::span<const std::int16_t> kaynak,
                     uint32_t timeout_ms = 200);
 
-// Hoparlorun CALMA hizini ayarlar. 1.30 -> 24 kHz'lik ses 31,2 kHz'de
-// calinir: %30 daha hizli ve ~%30 daha tiz.
+// Calma hizini ayarlar. 1.30 -> ses %30 hizli ve ~%30 tiz calinir.
 //
 // 🔴 PATI'NIN SESI BUNA BAGLI. Live API'de tizlik ve hiz ayarlanamiyor
 // (SpeechConfig semasinda sadece voiceConfig / languageCode var), o
@@ -73,8 +91,11 @@ size_t hoparlor_yaz(std::span<const std::int16_t> kaynak,
 // ayrilamiyor. v1 uretimi ayri yavaslatabildigi icin 1.52 kullaniyordu,
 // burada o deger robotu aceleci yapar.
 //
-// Kanali kisa sureligine kapatip saati yeniden kuruyor, yani calan sesi
-// keser. Acilista ve panelden ayar degisince cagriliyor.
+// ARTIK SESI KESMIYOR. Onceki kartta bu fonksiyon I2S kanalini kapatip
+// saati yeniden kuruyordu, yani panelden hiz degistirmek calan sesi
+// kesiyordu. Burada saat mikrofonla paylasildigi icin zaten
+// degistirilemez ve carpan ornek uzerinde calisiyor — degisiklik
+// aninda ve sessizce uygulaniyor.
 esp_err_t hoparlor_hiz_ayarla(float carpan);
 
 // Bekleyen sesi at — cocuk robotun sozunu kesti (barge-in).
@@ -85,34 +106,50 @@ esp_err_t hoparlor_hiz_ayarla(float carpan);
 esp_err_t hoparlor_temizle();
 
 // ---------------------------------------------------------------------------
-// Ses seviyesi — prototype/ayarlar.py'deki degerlerin aynisi
+// Ses seviyesi
 // ---------------------------------------------------------------------------
 //
-// Cocuk "sesini kis" diyebiliyor. Sinirlar orada da burada da ayni:
-// tamamen sessize alma KASITLI olarak yok, cocuk sifira indirip "Pati
-// bozuldu" sanmasin.
+// Cocuk "sesini kis" diyebiliyor. Tamamen sessize alma KASITLI olarak
+// yok, cocuk sifira indirip "Pati bozuldu" sanmasin.
+//
+// 1.0 ustu mumkun cunku yumusak sinirlayici var: olceklenen her ornek
+// `yumusak_sinirla`dan geciyor, esigin altinda hicbir sey olmuyor,
+// ustunde tavana asimptot yaklasiyor. Kirpma yok.
+//
+// ---------------------------------------------------------------------------
+// 🔴 BASLANGIC DEGERI 1.50'DEN 1.00'E INDIRILDI — SEBEBI HOPARLOR DEGIL,
+//    PIL.
+// ---------------------------------------------------------------------------
+//
+// Onceki kartta 1.50 guvenliydi ve dogruydu: govdede 5 W'lik bir
+// hoparlor, MAX98357 amfi ve duvardan gelen 5 V vardi. Amfi kendi
+// besleme rayinda doyuma gidiyordu, yani sayisal seviye hoparlorun
+// sinirini asamiyordu.
+//
+// StickS3'te ucu de degisti: hoparlor 8 ohm / 1 W (2011 kasa), amfi
+// AW8737, ve besleme 250 mAh'lik bir lityum pil.
+//
+// M5Stack'in kendi urun belgesi (docs.m5stack.com/en/core/StickS3,
+// "Speaker Volume Notice"): pille calisirken hoparlor seviyesini %75'in
+// ALTINDA tutmak gerekiyor, yoksa cekilen akim cihazi BEKLENMEDIK
+// SEKILDE YENIDEN BASLATIYOR.
+//
+// Bir cocuk icin bunun anlami sudur: Pati cumlenin ortasinda kapanip
+// yeniden aciliyor. Bu, "ses biraz kisik" olmasindan cok daha kotu bir
+// ariza — ve sebebi hicbir yerde gorunmuyor, guc dalgalanmasi diye
+// aranir.
+//
+// 1.00 secildi: ne yukseltme ne kisma, kaynagin kendi seviyesi.
+// Panelden yukseltilebiliyor. Yukseltilirken kural basit — Pati pilde
+// calisirken kendiliginden yeniden basliyorsa seviye YUKSEK.
+//
+// Kullanicinin bu donanim icin soyledigi de buydu: "olduğu kadar,
+// artık ses düşük olsa bile çıksın yeter."
+constexpr float SES_SEVIYESI_BASLANGIC = 1.00f;
 
-// 🔴 1.0 USTU ARTIK MUMKUN — cunku yumusak sinirlayici var.
-//
-// 23.08.2026'ya kadar tavan 1.0'di ve haklı olarak oyleydi: olcekleme
-// yolunda kirpma YOKTU, yani 1.0 ustu bir deger 32767'yi asan bir float
-// uretip int16'ya tasiyordu. Tasan ornek ters isaretle tam genlige
-// donuyor, yani "sesi acmak" hoparlorde CIT diye vurmak demekti.
-//
-// Simdi olceklenen her ornek `yumusak_sinirla`dan geciyor: esigin
-// altinda hicbir sey olmuyor, ustunde tavana asimptot yaklasiyor.
-// Kirpma yok, dolayisiyla 1.0 ustu guvenli.
-//
-// 1.50 secildi: 0.85'e gore +4,9 dB, gozle degil KULAKLA ayarlanacak
-// bir sey oldugu icin panelden asagi/yukari oynatilabiliyor ve aninda
-// uygulaniyor.
-//
-// ⚠️ HOPARLOR ACISINDAN TEHLIKE YOK, hangi deger verilirse verilsin:
-// MAX98357 5 V'ta 8 ohm yuke ~1,7 W verebiliyor ve govdedeki hoparlor
-// 5 W. Amfi kendi besleme rayinda doyuma gidiyor, yani dijital seviye
-// hoparlorun sinirini asamiyor. Buradaki sinir HASAR degil, BOZULMA.
-constexpr float SES_SEVIYESI_BASLANGIC = 1.50f;
-constexpr float SES_SEVIYESI_EN_FAZLA  = 2.50f;
+// Tavan 2.50'den 2.00'ye indirildi, ayni gerekceyle. Sinir HASAR degil
+// (amfi kendi rayinda doyuma gidiyor), YENIDEN BASLAMA.
+constexpr float SES_SEVIYESI_EN_FAZLA  = 2.00f;
 constexpr float SES_SEVIYESI_EN_AZ     = 0.15f;
 constexpr float SES_SEVIYESI_ADIM      = 0.15f;
 
