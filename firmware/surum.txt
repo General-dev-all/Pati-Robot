@@ -1,2 +1,2 @@
-2.2.4
+2.2.5
 Pati konuşurken duyulan kısa kesintiler giderildi.
