@@ -1,2 +1,2 @@
 2.2.6
-Pati’nin sesi eski afacan haline döndü.
+Ses kesintileri giderildi, gözler daha akıcı çiziliyor.

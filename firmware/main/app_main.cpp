@@ -43,6 +43,14 @@
 #include "pati_kullanim.hpp"
 #include "pati_panel.hpp"
 
+// Kconfig'de `bool` bir secenek KAPALIYKEN makro hic tanimlanmiyor
+// (acikken 1 oluyor). Normal bir `if` icinde kullanabilmek icin sifira
+// sabitliyoruz — `#ifdef` bloklariyla bolmek yerine, cunku kosulun
+// yanindaki gerekce okunabilir kalsin istiyoruz.
+#ifndef CONFIG_PATI_EKRAN_VAR
+#define CONFIG_PATI_EKRAN_VAR 0
+#endif
+
 namespace {
 
 constexpr const char* ETIKET = "pati";
@@ -268,7 +276,21 @@ extern "C" void app_main()
     //
     // Basarisiz olsa bile DEVAM EDIYORUZ: ekransiz Pati konusabilir.
     // Yuzu olmayan robot, sessiz robottan iyidir.
-    if (pati::gozler_baslat() != ESP_OK) {
+    //
+    // 🔴 AYARA BAGLI, cunku EKRANIN VARLIGI KODDAN ANLASILAMIYOR. SPI
+    // yolu tek yonlu kuruluyor: panel hic bagli olmasa bile esp_lcd
+    // hatasiz aciliyor ve gozler_baslat() ESP_OK donuyor. Yani
+    // "basarisiz olursa atlariz" korumasi calismiyor — olu bir modulle
+    // tam olarak boyle gorundu.
+    //
+    // Bedeli olculdu (23.08.2026, gercek kart): kare ortancasi 114 ms,
+    // en uzunu 385 ms, 50 ms'lik butceye karsi 2.452 atlanan kare. Bu
+    // is ekran yokken hicbir yere gitmiyor ama ayni cekirdekteki ses
+    // cozumunden ve websocket'ten pay aliyor.
+    if (!CONFIG_PATI_EKRAN_VAR) {
+        ESP_LOGW(ETIKET, "ekran KAPALI (PATI_EKRAN_VAR=n) — gozler "
+                         "baslatilmadi, islemci sese kaliyor");
+    } else if (pati::gozler_baslat() != ESP_OK) {
         ESP_LOGW(ETIKET, "ekran yok — Pati yuzsuz devam ediyor");
     } else {
         pati::gozler_bos();
@@ -493,10 +515,23 @@ extern "C" void app_main()
                      static_cast<unsigned>(goz_bilinmeyen));
         }
         if (goz_atlanan > 0) {
+            // Dokumu de yaziyoruz. Eskiden yalnizca "butce asiliyor"
+            // diyordu ve bu, sorunu GORUNUR yapip TESHIS EDILEMEZ
+            // birakiyordu: sekil mi, renk mi, SPI mi belli olmuyordu.
+            // Ayrinti su ana kadar sadece kurulum modunda basiliyordu,
+            // yani Pati aga baglandigi anda gorunmez oluyordu.
             ESP_LOGW(ETIKET, "ATLANAN KARE: %u — cizim butcesi asiliyor "
-                             "(son kare %u us, %u piksel)",
+                             "(son kare %u us / butce %u us)",
                      static_cast<unsigned>(goz_atlanan),
                      static_cast<unsigned>(pati::gozler_kare_us()),
+                     static_cast<unsigned>(1000000 / pati::gozler_hedef_fps()));
+            ESP_LOGW(ETIKET, "  cizim %u us (sekil %u + renk %u) + gonderim %u us"
+                             " | alan %u px, harman %u px",
+                     static_cast<unsigned>(pati::gozler_ciz_us()),
+                     static_cast<unsigned>(pati::gozler_sekil_us()),
+                     static_cast<unsigned>(pati::gozler_renk_us()),
+                     static_cast<unsigned>(pati::gozler_gonder_us()),
+                     static_cast<unsigned>(pati::gozler_alan()),
                      static_cast<unsigned>(pati::gozler_piksel()));
         }
 

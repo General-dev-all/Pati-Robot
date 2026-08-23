@@ -112,4 +112,31 @@ menu "Pati"
             Dusurmek gecikmeyi azaltir ama cocugun sozunu kesme riskini
             artirir. 0 = sunucu varsayilani.
 
+    config PATI_EKRAN_VAR
+        bool "Ekran takili"
+        default y
+        help
+            Ekran modulu gercekten bagli mi ve CALISIYOR mu.
+
+            Kapaliysa gozler hic baslatilmiyor. Bu bir gorunum tercihi
+            degil, ISLEMCI meselesi: goz cizici kare basina ~77.000
+            piksel harmanliyor ve 23.08.2026'da gercek kartta olculdu —
+            20 fps hedefi 50 ms butce demek, gercek kareler ORTANCA
+            114 ms, en uzunu 385 ms surdu ve 2.452 kare atlandi.
+
+            Ekran yokken bu isin ciktisi HICBIR YERE gitmiyor. Sonuc
+            sadece bosa giden islemci degil: ayni cekirdekteki ses
+            cozumu ve websocket isi de payini kaybediyor, yani Pati
+            konusurken duyulan kisa kesintiler buradan besleniyor.
+
+            🔴 EKRANIN VARLIGI YAZILIMDAN ANLASILAMIYOR. ST7789'un SPI
+            yolu tek yonlu kuruluyor ve panel bagli olmasa bile
+            esp_lcd hatasiz aciliyor — 23.08.2026'da olu bir modulle
+            saatlerce boyle gorundu. O yuzden bu ayar var: kod tahmin
+            edemedigi icin SOYLENMESI gerekiyor.
+
+            Yeni bir ekran takilinca burasi y yapilip surum yayimlanir;
+            karti sokup bilgisayara takmaya gerek yok, panelden
+            guncelleme yeter.
+
 endmenu
