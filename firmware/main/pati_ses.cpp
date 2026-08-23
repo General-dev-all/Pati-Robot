@@ -139,15 +139,26 @@ esp_err_t hoparlor_baslat()
     // duzgun aralikli paket vermiyor; 60 ms'lik bir gecikme tamponu
     // kurutuyor ve konusmanin ortasinda bosluk duyuluyor.
     //
-    // 10 x 480 = 4.800 kare, yani 200 ms KAYNAK zamani. Calma hizi
-    // 1.30x oldugu icin gercekte ~154 ms tasiyor: tampon kaynak
-    // orneklerini tutuyor ama onlari %30 hizli tuketiyoruz.
+    // 🔴 TAMPON GEMINI'NIN PARCA BOYUNA GORE SECILDI, tahminle degil.
     //
-    // Ilk sesin gecikmesini ARTIRMIYOR — tampon bir ust sinir, sabit
-    // bir bekleme degil; ilk parca DMA'ya verilir verilmez calmaya
-    // basliyor. Bedeli 9.600 bayt ic RAM.
-    kanal.dma_desc_num = 10;
-    kanal.dma_frame_num = 480;
+    // 23.08.2026'da gercek kartta olculdu: Gemini ses parcalarini
+    // 200-280 ms'lik bloklar halinde gonderiyor (uc turda 24/4820,
+    // 27/7600, 40/11160 ms). Onceki 200 ms'lik tampon, TEK BIR PARCA
+    // kadardi — yani marj sifirdi ve bir parca gec kalinca aninda
+    // bosluk duyuluyordu. Olculen tur 1: parca arasi 404 ms, ses acigi
+    // 262 ms.
+    //
+    // 32 x 512 = 16.384 kare = 683 ms kaynak (calmada ~525 ms), yani
+    // yaklasik UC parcalik marj.
+    //
+    // Ilk sesin gecikmesini ARTIRMIYOR: tampon bir ust sinir, sabit bir
+    // bekleme degil — ilk parca DMA'ya verilir verilmez calmaya
+    // basliyor. Sozunu kesmeyi de bozmuyor: hoparlor_temizle() kanali
+    // kapatip aciyor ve tamponu boyu ne olursa olsun ANINDA bosaltiyor.
+    //
+    // Bedeli ~32 KB ic RAM. Olcumde bos dahili SRAM 289.791 bayt'ti.
+    kanal.dma_desc_num = 32;
+    kanal.dma_frame_num = 512;
 
     esp_err_t hata = i2s_new_channel(&kanal, &g_hop, nullptr);
     if (hata != ESP_OK) {
