@@ -30,6 +30,34 @@ std::uint32_t g_cikis_hz = PATI_HOP_HZ;
 // olmayacak; olursa burasi kilitlenmeli).
 std::array<std::int32_t, PATI_OKUMA_ORNEK> g_ham{};
 
+// YUMUSAK SINIRLAYICI — 1.0 ustu ses seviyesini mumkun kilan sey.
+//
+// Esigin ALTINDA hicbir sey yapmiyor: sesin buyuk kismi dokunulmadan
+// geciyor. Ustunde artan bir oranla sikisip 32767'ye ASIMPTOT olarak
+// yaklasiyor, yani girdi ne kadar buyurse buyusun cikti tavani ASMIYOR.
+//
+// NEDEN DUZ KIRPMA DEGIL: kirpma dalga tepesini duz keser ve bu, kulaga
+// catirti gibi gelir — cocuk icin en rahatsiz edici bozulma bicimi.
+// Asimptotik sikisma tepeyi YUVARLAR; yuksek seviyede hafif bir
+// tokluk birakir, catirti birakmaz.
+//
+// Esik 28000 (~0,85 tam genlik) bilincli: konusmanin buyuk bolumu
+// bunun altinda kaliyor ve hic sekillendirilmiyor.
+constexpr float SINIR_ESIK  = 28000.0f;
+constexpr float SINIR_TAVAN = 32767.0f;
+
+inline std::int16_t yumusak_sinirla(float v)
+{
+    const float a = (v < 0.0f) ? -v : v;
+    if (a <= SINIR_ESIK) {
+        return static_cast<std::int16_t>(v);
+    }
+    constexpr float PAY = SINIR_TAVAN - SINIR_ESIK;
+    const float fazla = a - SINIR_ESIK;
+    const float y = SINIR_ESIK + PAY * (fazla / (fazla + PAY));
+    return static_cast<std::int16_t>((v < 0.0f) ? -y : y);
+}
+
 }  // namespace
 
 // ---------------------------------------------------------------------------
@@ -258,7 +286,10 @@ size_t hoparlor_yaz(std::span<const std::int16_t> kaynak, uint32_t timeout_ms)
     size_t yazilan_bayt = 0;
     esp_err_t hata;
 
-    if (g_seviye >= 1.0f) {
+    // 🔴 KOSUL "== 1.0", ">= 1.0" DEGIL. Tavan 1.0 iken ikisi ayni
+    // seydi; tavan 2.50 olunca ">=" seviyeyi TAMAMEN yok sayardi —
+    // panelden sesi acmak hicbir sey yapmazdi.
+    if (g_seviye > 0.999f && g_seviye < 1.001f) {
         hata = i2s_channel_write(g_hop, kaynak.data(),
                                  kaynak.size() * sizeof(std::int16_t),
                                  &yazilan_bayt, timeout_ms);
@@ -289,7 +320,7 @@ size_t hoparlor_yaz(std::span<const std::int16_t> kaynak, uint32_t timeout_ms)
     for (size_t bas = 0; bas < kaynak.size(); bas += olcekli.size()) {
         const size_t n = std::min(olcekli.size(), kaynak.size() - bas);
         for (size_t i = 0; i < n; ++i) {
-            olcekli[i] = static_cast<std::int16_t>(
+            olcekli[i] = yumusak_sinirla(
                 static_cast<float>(kaynak[bas + i]) * g_seviye);
         }
 

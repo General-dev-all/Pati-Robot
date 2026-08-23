@@ -92,8 +92,27 @@ esp_err_t hoparlor_temizle();
 // tamamen sessize alma KASITLI olarak yok, cocuk sifira indirip "Pati
 // bozuldu" sanmasin.
 
-constexpr float SES_SEVIYESI_BASLANGIC = 0.85f;
-constexpr float SES_SEVIYESI_EN_FAZLA  = 1.00f;
+// 🔴 1.0 USTU ARTIK MUMKUN — cunku yumusak sinirlayici var.
+//
+// 23.08.2026'ya kadar tavan 1.0'di ve haklı olarak oyleydi: olcekleme
+// yolunda kirpma YOKTU, yani 1.0 ustu bir deger 32767'yi asan bir float
+// uretip int16'ya tasiyordu. Tasan ornek ters isaretle tam genlige
+// donuyor, yani "sesi acmak" hoparlorde CIT diye vurmak demekti.
+//
+// Simdi olceklenen her ornek `yumusak_sinirla`dan geciyor: esigin
+// altinda hicbir sey olmuyor, ustunde tavana asimptot yaklasiyor.
+// Kirpma yok, dolayisiyla 1.0 ustu guvenli.
+//
+// 1.50 secildi: 0.85'e gore +4,9 dB, gozle degil KULAKLA ayarlanacak
+// bir sey oldugu icin panelden asagi/yukari oynatilabiliyor ve aninda
+// uygulaniyor.
+//
+// ⚠️ HOPARLOR ACISINDAN TEHLIKE YOK, hangi deger verilirse verilsin:
+// MAX98357 5 V'ta 8 ohm yuke ~1,7 W verebiliyor ve govdedeki hoparlor
+// 5 W. Amfi kendi besleme rayinda doyuma gidiyor, yani dijital seviye
+// hoparlorun sinirini asamiyor. Buradaki sinir HASAR degil, BOZULMA.
+constexpr float SES_SEVIYESI_BASLANGIC = 1.50f;
+constexpr float SES_SEVIYESI_EN_FAZLA  = 2.50f;
 constexpr float SES_SEVIYESI_EN_AZ     = 0.15f;
 constexpr float SES_SEVIYESI_ADIM      = 0.15f;
 

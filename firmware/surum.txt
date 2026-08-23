@@ -1,2 +1,2 @@
 2.2.7
-Ses kesintileri giderildi, gözler daha akıcı çiziliyor.
+Pati’nin sesi yükseltildi.
