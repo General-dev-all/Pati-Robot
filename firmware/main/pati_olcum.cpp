@@ -266,12 +266,32 @@ void rapor_yaz()
     ESP_LOGI(ETIKET, "");
     ESP_LOGI(ETIKET, "========== PATI OLCUM RAPORU (ESP32) ==========");
 
-    std::array<double, EN_FAZLA_TUR> tam{};
-    std::array<double, EN_FAZLA_TUR> ag{};
-    std::array<double, EN_FAZLA_TUR> yerel{};
+    // 🔴 BU DORT DIZI YIGITTA DURAMAZ — static olmalari zorunlu.
+    //
+    // Dordu birden 4 x 200 x 8 = 6400 bayt. Ana gorevin yigiti 8192
+    // (CONFIG_ESP_MAIN_TASK_STACK_SIZE) ve geriye log bicimlendirmesine,
+    // cagri cercevelerine yer kalmiyor.
+    //
+    // 01.08.2026, GERCEK KARTTA GORULDU. app_main bu raporu her bes turda
+    // bir basiyor ve tam o anda:
+    //
+    //   ***ERROR*** A stack overflow in task main has been detected.
+    //   Rebooting...
+    //
+    // Kart sohbetin ortasinda yeniden basliyordu — bes turda bir, saat
+    // gibi. Disaridan hicbiri "yigit tasti" gibi gorunmuyordu: robotun
+    // cumlesi yarida kesiliyor, oturum kopuyor, ses bozuk sanilıyordu.
+    // Ariza once hoparlorde, sonra beslemede arandi.
+    //
+    // static GUVENLI cunku tek cagirici var: app_main. Ikinci bir cagirici
+    // eklenirse burasi ya kilitlenmeli ya yigita geri tasinmali —
+    // o zaman da yigit buyutulmeli.
+    static std::array<double, EN_FAZLA_TUR> tam{};
+    static std::array<double, EN_FAZLA_TUR> ag{};
+    static std::array<double, EN_FAZLA_TUR> yerel{};
+    static std::array<double, EN_FAZLA_TUR> kesme{};
     std::size_t n_tam = 0, n_ag = 0, n_yerel = 0;
     std::size_t kesilen = 0;
-    std::array<double, EN_FAZLA_TUR> kesme{};
     std::size_t n_kesme = 0;
 
     for (std::size_t i = 0; i < g_adet; ++i) {
