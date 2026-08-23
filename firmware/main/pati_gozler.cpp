@@ -271,13 +271,21 @@ struct Kapak {
 };
 
 // Tek bir satiri doldurur. `sy` ekran koordinatinda satir numarasi.
-PATI_HIZLI void satira_yuvarlak(int sy, float x0, float y0, float gen, float yuk,
-                     float r, const Kapak& kapak,
-                     const GozRenk& renk_ust, const GozRenk& renk_alt,
-                     bool gecisli, float alfa)
+// Satirin yatay ARALIGINI hesaplar — doldurmaz.
+//
+// 🔴 NEDEN AYRILDI (23.08.2026): parlama katmanlari gozun ALTINA da
+// ciziliyordu ve hemen ardindan opak goz hepsinin uzerine yaziyordu.
+// Yani her karede binlerce piksel uc kez harmanlanip sonra atiliyordu.
+// O pikselleri atlayabilmek icin gozun araligini, DOLDURMADAN once
+// bilmek gerekiyor — fonksiyonun ikiye ayrilmasinin tek sebebi bu.
+//
+// Doner: false -> bu satirda sekil yok.
+PATI_HIZLI bool satir_araligi(int sy, float x0, float y0, float gen, float yuk,
+                              float r, const Kapak& kapak,
+                              float& L_cik, float& R_cik)
 {
     if (gen <= 0.0f || yuk <= 0.0f) {
-        return;
+        return false;
     }
     r = std::min({r, gen * 0.5f, yuk * 0.5f});
 
@@ -300,7 +308,7 @@ PATI_HIZLI void satira_yuvarlak(int sy, float x0, float y0, float gen, float yuk
     const int son = std::min(PATI_GOZ_EKRAN_Y - 1,
                              static_cast<int>(std::ceil(y1)) - 1);
     if (sy < bas || sy > son) {
-        return;
+        return false;
     }
 
     // --- kose girintisi
@@ -321,7 +329,7 @@ PATI_HIZLI void satira_yuvarlak(int sy, float x0, float y0, float gen, float yuk
     // --- ust kapak:  ym >= ust_a + ust_b * x
     if (kapak.ust_b == 0.0f) {
         if (ym < kapak.ust_a) {
-            return;
+            return false;
         }
     } else {
         const float x = (ym - kapak.ust_a) / kapak.ust_b;
@@ -335,7 +343,7 @@ PATI_HIZLI void satira_yuvarlak(int sy, float x0, float y0, float gen, float yuk
     // --- alt kapak:  ym <= alt_a + alt_b * x
     if (kapak.alt_b == 0.0f) {
         if (ym > kapak.alt_a) {
-            return;
+            return false;
         }
     } else {
         const float x = (ym - kapak.alt_a) / kapak.alt_b;
@@ -347,8 +355,30 @@ PATI_HIZLI void satira_yuvarlak(int sy, float x0, float y0, float gen, float yuk
     }
 
     if (R <= L) {
+        return false;
+    }
+
+    L_cik = L;
+    R_cik = R;
+    return true;
+
+}
+
+// Tek bir satiri doldurur. `sy` ekran koordinatinda satir numarasi.
+//
+// ort_bas..ort_son: uzerine SONRADAN opak bir sekil yazilacagi bilinen
+// piksel araligi — atlanir. ort_bas > ort_son verilirse ortme yok.
+PATI_HIZLI void satira_yuvarlak(int sy, float x0, float y0, float gen, float yuk,
+                     float r, const Kapak& kapak,
+                     const GozRenk& renk_ust, const GozRenk& renk_alt,
+                     bool gecisli, float alfa,
+                     int ort_bas = 1, int ort_son = 0)
+{
+    float L, R;
+    if (!satir_araligi(sy, x0, y0, gen, yuk, r, kapak, L, R)) {
         return;
     }
+    const float ym = static_cast<float>(sy) + 0.5f;
 
     // --- satirin rengi: dikey gecis, satir basina bir deger
     //
@@ -374,6 +404,12 @@ PATI_HIZLI void satira_yuvarlak(int sy, float x0, float y0, float gen, float yuk
                             static_cast<int>(std::ceil(R)) - 1);
 
     for (int x = xb; x <= xs; ++x) {
+        // ORTULU PIKSEL: bu satirda opak goz zaten buranin uzerine
+        // yazacak. Harmanlamak icin degil, ATLAMAK icin bakiyoruz —
+        // testten once en buyuk maliyet kalemi buydu.
+        if (x >= ort_bas && x <= ort_son) {
+            continue;
+        }
         const int i = x - g_serit_x0;
         if (i < 0 || i >= g_serit_gen) {
             continue;
@@ -518,6 +554,32 @@ PATI_HIZLI void satiri_ciz(int sy, const Yerlesim y[2], float kirp)
         const Yerlesim& v = y[i];
         const Kapak kapak{v.ust_a, v.ust_b, v.alt_a, v.alt_b};
 
+        // GOZUN ARALIGI ONCE hesaplaniyor — cizim icin degil, parlama
+        // katmanlarinin neyi ATLAYABILECEGINI bilmek icin.
+        //
+        // Goz alfa 1.0 ile ciziliyor, yani TAM kapsanan piksellerde
+        // satir_karistir dogrudan atama yapiyor ve altindaki her sey
+        // siliniyor. O pikselleri uc parlama katmaninda harmanlamak
+        // bosa is: hesaplanip atiliyorlar.
+        //
+        // ⚠️ SADECE TAM kapsanan pikseller. Kenardaki kismi pikseller
+        // (kapsama k < 1) altindakiyle karisiyor — onlar atlanirsa
+        // gozun cevresinde bir piksellik halka bozulur.
+        int ort_bas = 1, ort_son = 0;      // bos aralik = ortme yok
+        float gL, gR;
+        if (satir_araligi(sy, v.sol, v.ust, v.gen, v.yuk, v.yaricap,
+                          kapak, gL, gR)) {
+#if PATI_GOZ_KENAR_YUMUSAT
+            // k == 1 kosulu: x >= L ve x + 1 <= R
+            ort_bas = static_cast<int>(std::ceil(gL));
+            ort_son = static_cast<int>(std::floor(gR)) - 1;
+#else
+            // Merkez testi: x + 0,5 araligin icinde
+            ort_bas = static_cast<int>(std::ceil(gL - 0.5f));
+            ort_son = static_cast<int>(std::floor(gR - 0.5f));
+#endif
+        }
+
         // --- parlama: ana seklin buyugu, dusuk alfa, birkac kat
         for (int k = PATI_GOZ_PARLAMA_KAT; k >= 1; --k) {
             const float b = static_cast<float>(k) * PATI_GOZ_PARLAMA_KALINLIK;
@@ -527,7 +589,8 @@ PATI_HIZLI void satiri_ciz(int sy, const Yerlesim y[2], float kirp)
                             v.gen + b * 2.0f, v.yuk + b * 2.0f,
                             v.yaricap + b, dis,
                             GOZ_KOYU, GOZ_KOYU, false,
-                            PATI_GOZ_PARLAMA_ALFA / static_cast<float>(k));
+                            PATI_GOZ_PARLAMA_ALFA / static_cast<float>(k),
+                            ort_bas, ort_son);
         }
 
         // --- gozun kendisi
