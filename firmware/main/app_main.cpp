@@ -23,6 +23,7 @@
 #include <esp_log.h>
 #include <esp_ota_ops.h>
 #include <esp_psram.h>
+#include <esp_system.h>
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -404,6 +405,59 @@ extern "C" void app_main()
              pati::ses_hazir() ? "hazir" : "KURULAMADI");
     ESP_LOGW(ETIKET, "  ekran     : %s",
              pati::ekran_hazir() ? "hazir" : "KURULAMADI");
+
+    // Guc kaynagi — ses tavaninin dayanagi (SES_PIL_TAVANI).
+    {
+        const pati::GucKaynagi kaynak = pati::guc_kaynak();
+        const int mv = pati::pil_mv();
+        ESP_LOGW(ETIKET, "  guc kayn. : %s%s · pil %d mV · VIN %d mV",
+                 kaynak == pati::GucKaynagi::Usb   ? "USB/5VIN"
+                 : kaynak == pati::GucKaynagi::Pil ? "PIL"
+                                                   : "BILINMIYOR",
+                 kaynak == pati::GucKaynagi::Usb ? "" : " — ses sinirli",
+                 mv, pati::vin_mv());
+        ESP_LOGW(ETIKET, "  sicaklik  : %.1f C",
+                 static_cast<double>(pati::yonga_sicakligi()));
+    }
+
+    // ---- NEDEN ACILDIK --------------------------------------------------
+    //
+    // 🔴 SES SEVIYESININ TEK DURUST OLCUTU BU SATIR.
+    //
+    // 01.09.2026, gercek kartta olculdu: ses seviyesi 1.00'DE ve kart
+    // USB'ye TAKILIYKEN, bir oturumda dort kez
+    //
+    //     E BOD: Brownout detector was triggered
+    //     rst:0x3 (RTC_SW_SYS_RST)
+    //
+    // Hoparlor akim cekince (AW8737 + 8 ohm) ray cokuyor ve yonga
+    // kendini sifirliyor. Brownout esigi zaten en musamahakar kademede
+    // (CONFIG_ESP_BROWNOUT_DET_LVL 7), yani yazilimdan gevsetilecek yer
+    // yok — gerilim gercekten dusuyor.
+    //
+    // DISARIDAN NASIL GORUNUYOR: Pati cumlenin ortasinda susuyor, ~5
+    // saniye sonra geri geliyor ve konusulani hatirlamiyor. Tipki
+    // baglantinin kopmasi gibi gorunuyor ve sebep agda aranir. Ikisini
+    // ayiran tek sey bu satir.
+    //
+    // KULLANIMI: ses seviyesini panelden artirdiktan sonra buraya bak.
+    // "brownout" cikiyorsa seviye o donanim icin YUKSEK, bir kademe geri
+    // al. M5Stack'in kendi belgesi de pilde %75'in altini soyluyor
+    // (pati_ses.hpp'deki gerekce).
+    const esp_reset_reason_t sebep = esp_reset_reason();
+    ESP_LOGW(ETIKET, "  acilis    : %s",
+             sebep == ESP_RST_BROWNOUT
+                 ? "BROWNOUT — ses seviyesi bu donanim icin yuksek"
+             : sebep == ESP_RST_POWERON    ? "guc verildi"
+             : sebep == ESP_RST_SW         ? "yazilim (guncelleme/yeniden baslat)"
+             : sebep == ESP_RST_PANIC      ? "COKME (panic) — yigit izine bak"
+             : sebep == ESP_RST_TASK_WDT   ? "GOREV BEKCISI — bir gorev takildi"
+             : sebep == ESP_RST_INT_WDT    ? "KESME BEKCISI"
+             : sebep == ESP_RST_DEEPSLEEP  ? "derin uykudan"
+             // Kabloyla yukleme sonrasi: esptool RTS ile sifirliyor.
+             // Ayirt edilmezse "diger" cikiyor ve satir ise yaramiyor.
+             : sebep == ESP_RST_EXT        ? "dis sifirlama (yukleme/RESET)"
+                                           : "diger");
     ESP_LOGW(ETIKET, "=================");
     ESP_LOGW(ETIKET, "");
 
@@ -575,6 +629,22 @@ extern "C" void app_main()
                          ? "I2S hic veri vermiyor"
                          : (mik_okuma == 0 ? "sohbet dongusu hic okumuyor"
                                            : "veri geliyor ama sessiz"));
+        } else if (mik >= 32767) {
+            // KIRPMA. Sessiz kalmasi yanlis olurdu: "32768 / 32767"
+            // satiri okuyana saglikli bir seviye gibi bile gorunebilir
+            // ("sonuna kadar duyuyor"), oysa ADC doymus ve dalga
+            // tepesinden kesilmis demek.
+            //
+            // 01.09.2026'da tam bunun bedeli olculdu: Gemini kirpilmis
+            // sesi yanlis dokumluyor ve Turkce konusulurken Portekizce
+            // cumle donuyordu. Sebep model sanildi.
+            //
+            // Ara sira olmasi normaldir (cocuk bagirmistir); HER
+            // raporda cikiyorsa mikrofon kazanci yuksek demektir —
+            // pati_ses.cpp set_mic_gain, 6 dB'lik basamaklar.
+            ESP_LOGW(ETIKET, "MIKROFON KIRPIYOR: tepe %u (tavan 32767) — "
+                             "her raporda cikiyorsa kazanc yuksek",
+                     static_cast<unsigned>(mik));
         } else {
             ESP_LOGI(ETIKET, "mikrofon tepe genlik: %u / 32767",
                      static_cast<unsigned>(mik));
@@ -586,6 +656,50 @@ extern "C" void app_main()
             // Gemini'ye ULASMIYOR — robot cevap vermiyorsa sebebi bu.
             ESP_LOGW(ETIKET, "GONDERILEMEYEN SES PARCASI: %u",
                      static_cast<unsigned>(gonderilemeyen));
+        }
+
+        // Guc kaynagi degistiyse yaz.
+        //
+        // NEDEN SADECE DEGISINCE: her raporda basmak gunlugu doldurur ve
+        // kablo takilip cikarilmasi seyrek bir olay. Degisim ise tam
+        // olarak bakmak istedigimiz an — ses tavani o anda devreye
+        // giriyor ya da kalkiyor (SES_PIL_TAVANI).
+        static pati::GucKaynagi onceki_kaynak = pati::GucKaynagi::Bilinmiyor;
+        static bool kaynak_basildi = false;
+        const pati::GucKaynagi kaynak = pati::guc_kaynak();
+        if (!kaynak_basildi || kaynak != onceki_kaynak) {
+            onceki_kaynak = kaynak;
+            kaynak_basildi = true;
+            ESP_LOGW(ETIKET, "GUC KAYNAGI: %s · pil %d mV · VIN %d mV · "
+                             "ses tavani %.2f",
+                     kaynak == pati::GucKaynagi::Usb   ? "USB/5VIN"
+                     : kaynak == pati::GucKaynagi::Pil ? "PIL"
+                                                       : "BILINMIYOR",
+                     pati::pil_mv(), pati::vin_mv(),
+                     static_cast<double>(
+                         kaynak == pati::GucKaynagi::Usb
+                             ? pati::ses_seviyesi()
+                             : std::min(pati::ses_seviyesi(),
+                                        pati::SES_PIL_TAVANI)));
+        }
+
+        // Baglanti kac kez koptu.
+        //
+        // Bu sayi SIFIRDAN BUYUK OLABILIR ve tek basina hata degil: wifi
+        // dalgalanir, sunucu oturumu kapatir, toparlanma calisir ve cocuk
+        // bir-iki saniyelik bir bosluk disinda bir sey fark etmez.
+        //
+        // Anlami DEGISIMINDE: dakikalar icinde artiyorsa sebep aranmali
+        // (zayif sinyal, kota, oturum siniri). Sifir kalmasi da bilgi —
+        // "ses gitti" sikayeti geldiginde kopma OLMADIGINI soyluyor ve
+        // aramayi ses yoluna cevirir.
+        static std::uint32_t onceki_kopma = 0;
+        const std::uint32_t kopma = pati::sohbet_kopma_sayisi();
+        if (kopma != onceki_kopma) {
+            ESP_LOGW(ETIKET, "BAGLANTI KOPMASI: %u (bu aralikta %u)",
+                     static_cast<unsigned>(kopma),
+                     static_cast<unsigned>(kopma - onceki_kopma));
+            onceki_kopma = kopma;
         }
 
         // Goz sayaclari. Ikisi de SIFIR olmali:
@@ -656,6 +770,34 @@ extern "C" void app_main()
                      static_cast<unsigned>(pati::gozler_piksel()),
                      static_cast<unsigned>(
                          heap_caps_get_free_size(MALLOC_CAP_INTERNAL)));
+
+            // ---- DAHILI SRAM AYRINTISI ----------------------------------
+            //
+            // 🔴 TEK BASINA "bos yigit" YETMIYOR. 01.09.2026'da gercek
+            // kartta su gorildi:
+            //
+            //     bos yigit: 28895 bayt
+            //     E Dynamic Impl: alloc(4437 bytes) failed
+            //
+            // 28 KB bos, 4,4 KB istek — ve basarisiz. Yani sorun yer
+            // olmamasi degil, PARCALANMA olabilir: bos alan var ama
+            // ardisik degil. Iki durum bambaska cozum istiyor (tampon
+            // kucultmek / ayirma sirasini degistirmek) ve tek sayiyla
+            // ayirt edilemiyor.
+            //
+            // EN DUSUK: acilistan beri gorulen en dip nokta. Anlik deger
+            // rahat gorunse bile burasi sifira yaklasiyorsa sistem
+            // kiyida calisiyor demektir.
+            //
+            // EN BUYUK BLOK: mbedtls'in isteyebilecegi tek parca. TLS el
+            // sikismasi bunun altina duserse baglanti kurulamiyor ve
+            // disaridan "Pati cevap vermiyor" diye gorunuyor.
+            ESP_LOGI(ETIKET,
+                     "  dahili SRAM: en dusuk %u · en buyuk blok %u bayt",
+                     static_cast<unsigned>(heap_caps_get_minimum_free_size(
+                         MALLOC_CAP_INTERNAL)),
+                     static_cast<unsigned>(heap_caps_get_largest_free_block(
+                         MALLOC_CAP_INTERNAL)));
         }
     }
 }

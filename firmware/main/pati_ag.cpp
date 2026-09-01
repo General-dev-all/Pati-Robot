@@ -36,6 +36,30 @@ constexpr int EN_FAZLA_DENEME = 5;
 // sifre degismis demek olabilir.
 constexpr int KOPMA_SINIRI = 10;
 
+// ---------------------------------------------------------------------------
+// Kurulum modunda kayitli agi kac saniyede bir yeniden yoklayalim
+// ---------------------------------------------------------------------------
+//
+// 🔴 KURULUM MODU TEK YONLU BIR KAPIYDI. Girildikten sonra kayitli ag
+// BIR DAHA HIC denenmiyordu: gorev `portMAX_DELAY` ile bekliyor ve o
+// bitleri ancak ebeveyn telefonla gelip panele sifre girerse birisi
+// kaldiriyordu.
+//
+// 01.09.2026'da gercek kartta yasandi: Pati pille calisirken brownout'tan
+// yeniden basladi, acilista agi yakalayamadi ve kurulum moduna dustu.
+// Ag oradaydi, sifre dogruydu, kayit NVS'te duruyordu — Pati yine de
+// kendi kendine donemedi. Panel cevap vermiyordu, gozler "uykulu"da
+// kalmisti ve disaridan gorunusu "Pati bozuldu"ydu.
+//
+// Cocugun odasindaki bir robot icin bu kabul edilemez: router yeniden
+// baslamasi, elektrik kesintisi, bir anlik sinyal kaybi — hepsi normal
+// ve hicbiri insan mudahalesi gerektirmemeli.
+//
+// 3 dakika secildi. Kisa olsaydi kurulum sayfasindaki ebeveynin isini
+// bolerdi (her deneme AP'yi kisa sure aksatiyor); uzun olsaydi router
+// geri geldikten sonra cocuk bosuna beklerdi.
+constexpr int KURULUM_YOKLAMA_MS = 3 * 60 * 1000;
+
 constexpr int BAGLI_BIT = BIT0;
 constexpr int BASARISIZ_BIT = BIT1;
 
@@ -83,6 +107,10 @@ void mdns_kur()
 }
 std::string g_ad;
 int g_deneme = 0;
+// Kurulum AP'sine bagli telefon sayisi. Kayitli agi yoklarken bakiliyor:
+// ebeveyn tam o an sifre giriyorsa denemeyi ERTELIYORUZ, cunku STA
+// baglanmaya calisirken kanal degisiyor ve kurulum sayfasi kopuyor.
+int g_telefon = 0;
 int g_kopma = 0;
 bool g_kurulum_modu = false;
 
@@ -178,7 +206,13 @@ void olay_geldi(void*, esp_event_base_t taban, std::int32_t no, void* veri)
     }
 
     if (taban == WIFI_EVENT && no == WIFI_EVENT_AP_STACONNECTED) {
-        ESP_LOGI(ETIKET, "kurulum: bir telefon baglandi");
+        ++g_telefon;
+        ESP_LOGI(ETIKET, "kurulum: bir telefon baglandi (%d)", g_telefon);
+        return;
+    }
+
+    if (taban == WIFI_EVENT && no == WIFI_EVENT_AP_STADISCONNECTED) {
+        if (g_telefon > 0) --g_telefon;
         return;
     }
 }
@@ -231,9 +265,21 @@ void sta_ayarla(const std::string& ad, const std::string& sifre)
 
 void ap_ac()
 {
+    // Zaten kurulum modundaysak yalnizca durumu geri aliyoruz.
+    //
+    // Kayitli agi periyodik yoklama basarisiz olunca buraya geri
+    // donuluyor; AP hic kapanmadigi icin telsizi yeniden yapilandirmak
+    // gereksiz. Ozellikle BANNER tekrar basilmamali: uc dakikada bir
+    // "KURULUM MODU" yazmak gunlugu doldurur ve gercekten yeni bir olay
+    // olmus gibi gorunur.
+    const bool ilk_giris = !g_kurulum_modu;
+
     g_kurulum_modu = true;
     g_durum = AgDurumu::Kurulum;
     g_ad = ap_adi();
+    std::snprintf(g_ip, sizeof(g_ip), "192.168.4.1");
+
+    if (!ilk_giris) return;
 
     wifi_config_t k{};
     std::strncpy(reinterpret_cast<char*>(k.ap.ssid), g_ad.c_str(),
@@ -293,9 +339,18 @@ void ag_gorevi(void*)
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_ps(WIFI_PS_NONE));
 
     while (true) {
+        // 🔴 KURULUM MODUNDA SONSUZA KADAR BEKLENMIYOR.
+        //
+        // Eskiden burada kosulsuz `portMAX_DELAY` vardi ve kurulum modu
+        // tek yonlu bir kapiya donusuyordu: bitleri ancak ebeveyn
+        // telefonla gelip sifre girerse birisi kaldirabiliyordu.
+        // Gerekcesi ve olculen olay KURULUM_YOKLAMA_MS'in yaninda.
+        const TickType_t bekleme = g_kurulum_modu
+                                       ? pdMS_TO_TICKS(KURULUM_YOKLAMA_MS)
+                                       : portMAX_DELAY;
+
         const EventBits_t b = xEventGroupWaitBits(
-            g_olaylar, BAGLI_BIT | BASARISIZ_BIT, pdTRUE, pdFALSE,
-            portMAX_DELAY);
+            g_olaylar, BAGLI_BIT | BASARISIZ_BIT, pdTRUE, pdFALSE, bekleme);
 
         if (b & BASARISIZ_BIT) {
             // Baglanamadi ya da surekli kopuyor: ebeveyn mudahale
@@ -303,8 +358,44 @@ void ag_gorevi(void*)
             ap_ac();
             g_deneme = 0;
             g_kopma = 0;
+            continue;
         }
-        // BAGLI_BIT: bir sey yapmaya gerek yok, durum guncellendi.
+
+        if (b & BAGLI_BIT) {
+            // Yoklama tuttu: ag geri geldi. AP artik gereksiz.
+            // (Panelden girilen sifrede ayni isi ag_baglan yapiyor.)
+            if (g_kurulum_modu) {
+                ESP_LOGI(ETIKET, "kayitli ag geri geldi — kurulum agi "
+                                 "kapatiliyor");
+                esp_wifi_set_mode(WIFI_MODE_STA);
+                g_kurulum_modu = false;
+            }
+            continue;
+        }
+
+        // ---- Zaman asimi: kurulum modundayiz, kayitli agi yokla ----
+        std::string yad, ysifre;
+        if (!nvs_oku(yad, ysifre)) {
+            // Kayit yok — kutudan yeni cikmis robot. Yoklanacak bir sey
+            // de yok, ebeveyn bekleniyor.
+            continue;
+        }
+
+        if (g_telefon > 0) {
+            // Ebeveyn TAM SU AN kurulum sayfasinda. Denemek AP'yi
+            // aksatir ve onun sayfasi kopar — uc dakika sonra bakariz.
+            ESP_LOGI(ETIKET, "kurulum sayfasi acik, yoklama ertelendi");
+            continue;
+        }
+
+        ESP_LOGI(ETIKET, "kurulum modu: '%s' yeniden yoklaniyor",
+                 yad.c_str());
+        // Sayac sifirlanmali: yukarida 5'e dayanmis halde duruyor ve
+        // sifirlanmazsa ilk kopusta hemen pes ederdik.
+        g_deneme = 0;
+        g_durum = AgDurumu::Ariyor;
+        sta_ayarla(yad, ysifre);
+        esp_wifi_connect();
     }
 }
 

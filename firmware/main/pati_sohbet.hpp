@@ -85,6 +85,17 @@ std::uint32_t sohbet_dusen_olay();
 // diye gorunur, sebebi mikrofonda ya da agda aranir. Sayi burada.
 std::uint32_t sohbet_gonderilemeyen();
 
+// Baglantinin kac kez koptugu (ve yeniden baglanildigi).
+//
+// NEDEN DISA ACILIYOR: kopmanin kendisi normal — wifi dalgalanir,
+// sunucu oturumu kapatir. Toparlanma calistigi surece cocuk bir-iki
+// saniyelik bir bosluk disinda bir sey fark etmiyor. Ama SAYININ
+// BUYUMESI baska bir sey anlatiyor: sik kopuyorsa sebep aranmali
+// (zayif sinyal, kota, uzun oturum siniri). Sifir kalirsa da bilgi:
+// "ses gitti" sikayeti geldiginde kopma OLMADIGINI soyluyor ve
+// aramayi baska yere ceviriyor.
+std::uint32_t sohbet_kopma_sayisi();
+
 // Son rapor araliginda mikrofondan gelen EN YUKSEK genlik (0-32767).
 // Okuyunca sifirlaniyor.
 //

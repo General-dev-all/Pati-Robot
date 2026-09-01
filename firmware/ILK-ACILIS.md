@@ -192,14 +192,28 @@ Gemini anahtarı panelden giriliyor; yazılımın içinde anahtar yok.
 | Hoparlör | 1 kHz test sesi duyuldu |
 | Ekran, gözler | kare 29–31 ms (bütçe 50.000), atlama ~0 |
 | Wifi, panel, Gemini | sohbet turları dönüyor |
+| Mikrofon kazancı (18 dB) | 22 raporda **sıfır kırpma**, konuşma 21.000–27.000 |
+| Kopan oturumun toparlanması | gerçek kopmada 25–26 ms'de yeniden bağlandı |
+| Güç kaynağı algılama | USB'de VIN 4878 mV, pilde 0–2 mV |
+| Pilde ses tavanı | pile geçince `ses_tavani` 1.00 → 0.70 |
+| Yonga sıcaklığı | çalışırken 57–64 °C |
+| Dahili SRAM | dip nokta 49.067 bayt (önce 1.903'tü) |
 
 | Hâlâ ayarlanabilir | Belirtisi |
 |---|---|
 | Ekranın yönü/aynalaması | görüntü ters ya da yan durur |
-| Pil ömrü ve güvenli ses seviyesi | Pati cümle ortasında kapanıp açılır |
-| Mikrofon kazancı (30 dB) | Pati duymaz ya da her sesi konuşma sanır |
+| `SES_PIL_TAVANI` (0.70) | pilde ses kısık gelir ya da hâlâ brownout olur |
 | DMA tamponu (341 ms) | konuşurken kısa takılmalar |
 | Göz yerleşimi | görünüm tercihi, `panel/gelistirici.html` |
+
+| Açık kalan | Not |
+|---|---|
+| Wifi sinyali 1–2/4 | zayıf; TCP takılması ve kopma buradan geliyor, yeri değişmeli |
+| Hareket + akım → brownout | azınlıkta ama var; ikinci kart hiç denenmedi |
+| Pil ömrü | hiç ölçülmedi |
+| Uyku/uyanma | kartta denenmedi |
+
+> Kesilme, donma ve çökme teşhisi için ayrı belge: **`TESHIS.md`**.
 
 ---
 

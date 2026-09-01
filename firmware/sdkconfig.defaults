@@ -30,6 +30,44 @@ CONFIG_SPIRAM_SPEED_80M=y
 CONFIG_SPIRAM_USE_MALLOC=y
 
 # ---------------------------------------------------------------------------
+# 🔴 DAHILI SRAM'I PSRAM'E BOSALT — olculdu, tahmin degil
+# ---------------------------------------------------------------------------
+#
+# 01.09.2026, gercek kartta, acilistan 65 saniye sonra:
+#
+#     bos yigit: 27447 bayt
+#     dahili SRAM: en dusuk 1903 · en buyuk blok 7680 bayt
+#
+# Yani dahili SRAM TAMAMEN TUKENMENIN 2 KB UZAGINA kadar indi. Sonucu
+# seri gunlukte goruldu:
+#
+#     E Dynamic Impl: alloc(4437 bytes) failed
+#     E esp-tls-mbedtls: write error :-0x7F00
+#     E websocket_client: ESP_ERR_MBEDTLS_SSL_WRITE_FAILED
+#
+# mbedtls TLS yazmasi icin yer bulamiyor, baglanti kopuyor, tur
+# acilmiyor. DISARIDAN GORUNUSU: "Pati cevap vermiyor, bir sure sonra
+# kendine geliyor" — ve sebebi bellekte aranmiyor, agda ya da
+# donanimda araniyor. Bir kere de cihazi sallamakla karistirildi.
+#
+# 8 MB PSRAM ise bos duruyor. Iki ayar onu kullandiriyor:
+#
+# TRY_ALLOCATE_WIFI_LWIP: wifi ve lwIP tamponlari once PSRAM'den
+# isteniyor. Bu tamponlar dahili SRAM'in en buyuk musterisi ve DMA
+# gerektirmiyorlar.
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+
+# ALWAYSINTERNAL: bu boyutun ALTINDAKI ayirmalar her zaman dahili
+# SRAM'den yapiliyor. 16384 idi, yani 4437 baytlik TLS tamponu da dahili
+# isteniyordu — tam basarisiz olan istek. 4096'ya indirildi: kucuk ve
+# sik ayirmalar (gorev yapilari, kuyruklar) dahili kaliyor, TLS ve
+# websocket gibi buyuk tamponlar PSRAM'e gidiyor.
+#
+# ⚠️ SIFIRA INDIRILMIYOR. PSRAM erisimi dahili SRAM'den yavas; her
+# kucuk ayirmayi oraya atmak ses ve goz butcelerini yerdi.
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096
+
+# ---------------------------------------------------------------------------
 # Flash — 8 MB (StickS3: ESP32-S3-PICO-1-N8R8)
 # ---------------------------------------------------------------------------
 #
@@ -142,6 +180,39 @@ CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
 # TLS el sikisma tamponu. AGENTS.md/PLAN §5: "TLS tek gercek yuk."
 # Varsayilan 16 KB yetiyor ama PSRAM'den alinsin ki dahili SRAM bosalsin.
 CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
+
+# ---------------------------------------------------------------------------
+# 🔴 mbedTLS TAMAMEN PSRAM'DEN — parcalanma dahili SRAM'i yiyordu
+# ---------------------------------------------------------------------------
+#
+# Yukaridaki DYNAMIC_BUFFER "PSRAM'den alinsin" DIYORDU ama almiyordu:
+# o ayar tamponlari kullanilmadiginda serbest birakiyor, NEREDEN
+# alindigini degistirmiyor. Ayirmalar yine genel yigittan, yani once
+# dahili SRAM'den yapiliyordu.
+#
+# 01.09.2026, gercek kartta olculdu. Once dahili SRAM tamamen tukendi
+# (dip nokta 1903 bayt) ve TLS yazmasi coktu:
+#
+#     E Dynamic Impl: alloc(4437 bytes) failed
+#
+# Wifi/lwIP tamponlari PSRAM'e alininca dip nokta 30475'e cikti. Ama
+# ARDINDAN, dokuz dakika ve yedi yeniden baglanma sonra:
+#
+#     dahili SRAM: en dusuk 2611 · en buyuk blok 10240 bayt
+#
+# Bos alan 45 KB'ken en buyuk ardisik blok 10 KB. Yani sorun yer degil,
+# PARCALANMA: her TLS oturumu aciliyor, kapaniyor ve arkasinda delik
+# birakiyor. Zayif wifi yuzunden dakikada bir yeniden baglanan bir
+# cihazda bu birikiyor ve sonunda 4 KB'lik bir istek bile karsilanamaz
+# hale geliyor.
+#
+# Bu ayar mbedTLS'in ayirmalarini dogrudan PSRAM'e yonlendiriyor.
+# Parcalanma orada oluyor ve 8 MB icinde onemsiz kaliyor; dahili SRAM
+# DMA'ya, kesmelere ve gorev yigitlarina kaliyor.
+#
+# BEDELI: TLS islemleri PSRAM'den biraz yavas. Kabul edilebilir —
+# olculen tur gecikmesi zaten 2-30 ms ve butce cok daha genis.
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
 
 # ---------------------------------------------------------------------------
 # Gorev yigitlari ve zamanlayici

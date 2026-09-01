@@ -6,6 +6,7 @@
 
 #include <driver/i2s_std.h>
 #include <esp_log.h>
+#include <esp_timer.h>
 
 #include "es8311_codec.h"
 #include "esp_codec_dev_defaults.h"
@@ -304,12 +305,59 @@ esp_err_t ses_kur()
     //
     // 0 dB secildi: bozulmayi sayisal tarafta yonetiyoruz ve orada
     // sinirlayici var. Kodekten kazanc almak o korumanin ONUNE gecerdi.
-    g_kodek->set_vol(g_kodek, 0.0f);
+    //
+    // DONUS DEGERI KONTROL EDILIYOR. Surucu, kodek acik degilken
+    // sessizce ESP_CODEC_DEV_WRONG_STATE donuyor (es8311.c'de
+    // `if (codec->is_open == false)`). Yok sayilsaydi kazanc hic
+    // uygulanmadan her sey "calisiyor" gorunurdu.
+    if (g_kodek->set_vol(g_kodek, 0.0f) != ESP_CODEC_DEV_OK) {
+        ESP_LOGW(ETIKET, "kodek cikis kazanci ayarlanamadi");
+    }
 
-    // Mikrofon kazanci 30 dB. MEMS mikrofonun sinyali zayif; onceki
-    // karttaki INMP441'de bu kazanc yonganin icinde sabitti, burada
-    // ayarlanabiliyor. Cocuk robotun bir kol boyu uzaginda konusuyor.
-    g_kodek->set_mic_gain(g_kodek, 30.0f);
+    // ---- Mikrofon kazanci -------------------------------------------
+    //
+    // 🔴 30 dB'DEN 18 dB'YE DUSURULDU — 01.09.2026, GERCEK OLCUM.
+    //
+    // 30 dB bir tahmindi ("MEMS sinyali zayif, cocuk bir kol boyu
+    // uzakta") ve gercek konusmada MIKROFON KIRPIYORDU: tepe genlik
+    // raporu bes saniyelik pencerelerin cogunda tam tavana oturuyordu
+    //
+    //     mikrofon tepe genlik: 32768 / 32767
+    //
+    // (32768 = |INT16_MIN|, yani ADC doymus.) Ayni oturumda sessiz
+    // pencereler 1400-2200, kirpmayan konusma pencereleri 8783 ve
+    // 16119 olculdu — yani en yuksek heceler tavanin epey uzerinde.
+    //
+    // BELIRTISI KIRPMA GIBI GORUNMUYOR: Gemini'nin dokumu bozuluyor.
+    // Ayni oturumda Turkce konusulurken gelen dokumler:
+    //     "Isso. Nao quero, nao."   (Portekizce)
+    //     "Vabbe."                  (Italyanca)
+    // Sessiz cumleler duzgun cikarken yuksek sesli olanlar sacmaliyor.
+    // Disaridan "Pati beni anlamiyor" diye gorunuyor ve sebep model
+    // ya da agda araniyor.
+    //
+    // Surucu 6 dB'lik basamaklar kabul ediyor (0/6/12/18/24/30/36/42;
+    // es8311.c set_mic_gain).
+    //
+    // ONCE 24 dB DENENDI, YETMEDI. Ayni gun ikinci olcum: 25 raporun
+    // 17'sinde tepe hala tavanda. Ama basamak BOSA GITMEDI ve etkisi
+    // olculebildi — sessiz pencereler 1400-2200'den 807-1155'e dustu,
+    // yani tam beklenen yarilanma. Kazanc uygulaniyor, sadece yetmiyor.
+    //
+    // Kirpmayan pencereler o olcumde 7555-26911 arasindaydi; yani en
+    // yuksek heceler tavani bir basamaktan fazla asiyor.
+    //
+    // 18 dB'de beklenen: sessizlik ~400-580, konusma ~3800-13500.
+    // ASR icin -12 dBFS civari fazlasiyla yeterli; onemli olan mutlak
+    // seviye degil, TEPENIN KESILMEMESI.
+    //
+    // VAD'A ETKISI YOK — ilk indirmede olculdugu icin artik tahmin
+    // degil. Yerel esik 90 RMS (konusma_var_mi) ve 18 dB'de konusmanin
+    // RMS'i hala onun on katindan fazla. Ortam gurultusu duserse
+    // uyandirma yanlis tetiklenmesi AZALIR, ki bu iyi yonde.
+    if (g_kodek->set_mic_gain(g_kodek, 18.0f) != ESP_CODEC_DEV_OK) {
+        ESP_LOGW(ETIKET, "mikrofon kazanci ayarlanamadi — kirpma olabilir");
+    }
 
     if (g_kodek->enable(g_kodek, true) != ESP_CODEC_DEV_OK) {
         ESP_LOGE(ETIKET, "kodek etkinlestirilemedi");
@@ -422,6 +470,37 @@ esp_err_t hoparlor_hiz_ayarla(float carpan)
     return ESP_OK;
 }
 
+// Hoparlore FIILEN gidecek seviye.
+//
+// Kullanicinin panelden sectigi deger `g_seviye`de dokunulmadan duruyor
+// ve `ses_seviyesi()` onu donduruyor — ebeveyn ayarini kaybetmesin,
+// USB takilinca sectigi seviye geri gelsin. Kisilan yalnizca burasi.
+//
+// Gerekcesi SES_PIL_TAVANI'nin yaninda: pilde 1.00 brownout yapiyor.
+float etkin_seviye()
+{
+    // Zaten tavanin altindaysa kaynagi sormaya bile gerek yok — I2C
+    // islemi bedava degil ve burasi ses yolunun tam ustu.
+    if (g_seviye <= SES_PIL_TAVANI) return g_seviye;
+
+    // GUC KAYNAGI ONBELLEKLENIYOR. Sorusu bir I2C islemi (~0,5 ms) ve
+    // hoparlor_yaz() her ses parcasinda cagriliyor. Kablonun takilip
+    // cikarilmasi insan hizinda bir olay; saniyede bir yoklamak hem
+    // yeterince hizli hem de olculebilir bir yuk degil.
+    static GucKaynagi son = GucKaynagi::Bilinmiyor;
+    static std::int64_t son_us = 0;
+    const std::int64_t simdi = esp_timer_get_time();
+    if (son_us == 0 || simdi - son_us > 1000000) {
+        son_us = simdi;
+        son = guc_kaynak();
+    }
+
+    // BILINMIYOR ISE KISIYORUZ. Yanlis tahminin bedeli iki yanda esit
+    // degil: bir yanda "ses biraz kisik", obur yanda "Pati cumlenin
+    // ortasinda kapaniyor".
+    return (son == GucKaynagi::Usb) ? g_seviye : SES_PIL_TAVANI;
+}
+
 size_t hoparlor_yaz(std::span<const std::int16_t> kaynak, uint32_t timeout_ms)
 {
     if (!g_hazir || kaynak.empty()) {
@@ -446,7 +525,7 @@ size_t hoparlor_yaz(std::span<const std::int16_t> kaynak, uint32_t timeout_ms)
     std::array<std::int16_t, 512> cikti{};
 
     return g_ornek.isle(
-        kaynak, adim, g_seviye, cikti,
+        kaynak, adim, etkin_seviye(), cikti,
         [&](std::span<const std::int16_t> blok) -> bool {
             size_t bayt = 0;
             const esp_err_t hata = i2s_channel_write(

@@ -1,7 +1,9 @@
 #include "pati_guc.hpp"
 
+#include <algorithm>
 #include <cstdint>
 
+#include <driver/temperature_sensor.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -155,6 +157,24 @@ esp_err_t pm1_cikis(int pin, bool seviye)
     return ESP_OK;
 }
 
+// Iki ardisik register'i tek bir 16 bitlik mV degeri olarak okur.
+//
+// Kucuk-sonlu ve IKI BAYT DA TAM: ust bayti dort bitle maskelemek
+// (surucu basliginin dedigi gibi) pili 4130 mV yerine 34 mV gosteriyordu.
+// Gerekcesi ve olculen degerler pati_pinler.h'de.
+//
+// Okunamazsa -1 — 0 degil, cunku 0 gecerli bir gerilim (VIN yokken).
+int pm1_16bit(std::uint8_t dusuk_reg, std::uint8_t ust_reg)
+{
+    std::uint8_t dusuk = 0, ust = 0;
+    if (g_pm1 == nullptr) return -1;
+    if (pm1_oku(dusuk_reg, dusuk) != ESP_OK ||
+        pm1_oku(ust_reg, ust) != ESP_OK) {
+        return -1;
+    }
+    return (static_cast<int>(ust) << 8) | dusuk;
+}
+
 // Hatta kim var — YALNIZCA bir sey ters gidince basiliyor.
 //
 // Bunun degeri sudur: "M5PM1 cevap vermiyor" tek basina hicbir sey
@@ -260,6 +280,63 @@ bool donanim_dogru()
 {
     if (g_yol == nullptr) return false;
     return i2c_master_probe(g_yol, PATI_ADR_ES8311, BEKLEME_MS) == ESP_OK;
+}
+
+GucKaynagi guc_kaynak()
+{
+    const int vin = vin_mv();
+    if (vin < 0) return GucKaynagi::Bilinmiyor;
+
+    // ESIK 3000 mV. Olculen iki uc birbirinden cok uzak: USB takiliyken
+    // 4884 mV, cikarilinca birkac yuz mV'a dusuyor. Esigin tam ortada
+    // olmasi gerekmiyor, ikisinden de UZAK olmasi gerekiyor.
+    return (vin >= 3000) ? GucKaynagi::Usb : GucKaynagi::Pil;
+}
+
+int pil_mv()
+{
+    return std::max(0, pm1_16bit(PATI_PM1_VBAT_L, PATI_PM1_VBAT_H));
+}
+
+float yonga_sicakligi()
+{
+    // Tek sefer kuruluyor, sonra hep ayni tutamak.
+    //
+    // 🔴 ARALIK KEYFI SECILEMIYOR. Ilk denemede (-10, 110) yazildi ve
+    // kurulum sessizce REDDEDILDI: ESP32-S3 yalnizca belirli olcum
+    // aralıklarini destekliyor (-10~80, -30~50, 20~100, 50~125) ve
+    // eslesmeyen bir aralik hata donduruyor. Panelde -1000 gorununce
+    // anlasildi.
+    //
+    // 20~100 secildi cunku sorulan soru "isiniyor mu": yonga zaten 40 C
+    // civarinda calisiyor, ilgilendigimiz bant onun ustu.
+    static temperature_sensor_handle_t tutamak = nullptr;
+    static bool denendi = false;
+    if (!denendi) {
+        denendi = true;
+        temperature_sensor_config_t ayar =
+            TEMPERATURE_SENSOR_CONFIG_DEFAULT(20, 100);
+        esp_err_t hata = temperature_sensor_install(&ayar, &tutamak);
+        if (hata == ESP_OK) hata = temperature_sensor_enable(tutamak);
+        if (hata != ESP_OK) {
+            // HATA KODU YAZILIYOR. Ilk surumde yalnizca "kurulamadi"
+            // yaziyordu ve sebep gorunmuyordu; ustelik tek sefer
+            // basildigi icin sonradan bakildiginda gunlukte hic yoktu.
+            ESP_LOGW(ETIKET, "sicaklik sensoru kurulamadi: %s",
+                     esp_err_to_name(hata));
+            tutamak = nullptr;
+        }
+    }
+    if (tutamak == nullptr) return -1000.0f;
+
+    float c = 0.0f;
+    if (temperature_sensor_get_celsius(tutamak, &c) != ESP_OK) return -1000.0f;
+    return c;
+}
+
+int vin_mv()
+{
+    return pm1_16bit(PATI_PM1_VIN_L, PATI_PM1_VIN_H);
 }
 
 }  // namespace pati

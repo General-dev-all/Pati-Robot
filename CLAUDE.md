@@ -77,6 +77,10 @@ idf.py build
 idf.py -p <PORT> flash monitor
 ```
 
+Bir şey takılıyor, donuyor ya da kendiliğinden yeniden başlıyorsa:
+**`firmware/TESHIS.md`** — belirti → sebep tablosu, sağlıklı sayılar,
+gözlem yöntemleri ve daha önce yapılmış yanlış teşhisler.
+
 Konak testleri (üçü de geçmeli):
 ```
 cd firmware\test && derle.bat
@@ -104,9 +108,10 @@ indiriyor. Elle yükleme yok.
 
 ## Sık düşülen tuzaklar
 
-**`sdkconfig` zaten varsa `sdkconfig.defaults` OKUNMAZ.** Varsayılan
-değiştirdikten sonra `idf.py reconfigure`, yoksa ölçüm anlamsız çıkar.
-Bir kez yaşandı.
+**`sdkconfig` zaten varsa `sdkconfig.defaults` OKUNMAZ.** Ve
+`idf.py reconfigure` DE YETMİYOR — dosyayı silmek gerekiyor.
+`CONFIG_IDF_TARGET` zaten bu yüzden defaults'ta duruyor, silmek güvenli.
+İki kez yaşandı.
 
 **`.bat` dosyaları CRLF olmalı.** LF olursa `cmd.exe` her satırın ilk
 harfini yiyor ve testler sessizce atlanıyor. `.gitattributes` sabitliyor
@@ -123,7 +128,17 @@ dönüyor — tam bir yazılım hatası gibi görünür. `pati_guc.cpp` açıyor
 yapıyor). ES8311 için `0x30`, `0x18` değil.
 
 **Pilde ses seviyesi.** M5Stack yazıyor: yüksek seviyede çekilen akım
-cihazı yeniden başlatıyor. Varsayılan 1.00 ve bilinçli düşük.
+cihazı yeniden başlatıyor. Varsayılan 1.00 ve bilinçli düşük. Pilde
+`SES_PIL_TAVANI` (0.70) devreye giriyor; karar VIN gerilimine bakılarak
+veriliyor, "kablo takılı mı"ya değil (`pati_guc.cpp`, `guc_kaynak`).
+
+**`CONFIG_MBEDTLS_DYNAMIC_BUFFER` "PSRAM'den al" demek DEĞİL.** Tamponu
+serbest bırakıyor, nereden alındığını değiştirmiyor. PSRAM için
+`MBEDTLS_EXTERNAL_MEM_ALLOC` gerekiyor. Yorum yıllarca "PSRAM'den
+alınsın" diyordu ve alınmıyordu; dahili SRAM 1903 bayta kadar indi.
+
+**USB'yi çekince seri kablo da gidiyor.** Pilde ne olduğu seri porttan
+görülemiyor — tek pencere panelin `api/durum` → `guc` alanı.
 
 ---
 
@@ -150,6 +165,37 @@ sınandı ve çalışıyor. Sohbet turları dönüyor.
 
 Kalan bilinmeyen yok denecek kadar az; `firmware/ILK-ACILIS.md` neyin
 doğrulandığını ve neyin hâlâ ayarlanabilir olduğunu tutuyor.
+
+---
+
+## Gelecek: 2 DC motor + 2 servo
+
+Pati'ye ileride **iki DC motor ve iki servo** eklenecek, **ayrı
+beslemeli**. Henüz yapılmadı ama bugünkü kararları etkiliyor, o yüzden
+burada:
+
+**Ayrı besleme pazarlıksız.** Kart 250 mAh'lik hücreyle zaten sınırda:
+01.09.2026'da yalnızca hoparlör akımıyla brownout yaşandı
+(`TESHIS.md`). Motorları aynı raydan beslemek Pati'yi her harekette
+kapatır. Motor beslemesi ayrı olmalı ve **yalnızca toprak ortak**.
+
+**Boş pin az.** StickS3'te ne varsa `pati_pinler.h`'de yazılı: I2C
+(47/48), I2S (14-18), ekran (38-45), tuşlar (11/12). Kalanlar Grove
+portu ve HAT başlığı. Dört PWM kanalı (2 motor + 2 servo) buraya
+sığmalı; sığmazsa I2C'den bir PWM sürücüsü (PCA9685 gibi) tek çözüm ve
+hat zaten kurulu.
+
+**Gürültü asıl risk.** Motor akımı I2S ve I2C hatlarına biniyor.
+Belirtisi tanıdık olacak: ses cızırdar, ES8311 cevap vermez, M5PM1
+NACK verir — yani `TESHIS.md`'deki "yanlış kart" tablosunun aynısı.
+Motor eklendikten sonra bu belirtiler görülürse **önce gürültüye
+bakılmalı**, yazılıma değil.
+
+**Zamanlama bütçesi dar.** Göz karesi 24-30 ms, bütçe 50 ms. LEDC
+donanımdan sürüyor, yani PWM'in kendisi bedava; ama motor mantığı ses
+ve göz görevleriyle aynı çekirdekleri paylaşacak. O gün geldiğinde
+`TESHIS.md`'deki sayılar (atlanan kare, dahili SRAM dip noktası)
+karşılaştırma zemini olacak — bugünkü değerler oraya yazılı.
 
 ---
 

@@ -93,6 +93,36 @@
 #define PATI_PM1_GPIO_FUNC0 0x16  // pin basina 2 bit, 0b00 = GPIO
 
 // M5PM1'in kendi GPIO'lari (ESP32'nin degil).
+// Guc kaynagi ve pil gerilimi — ayni surucu basligindan
+// (github.com/m5stack/M5PM1, src/M5PM1.h).
+//
+// PWR_SRC'nin [2:0] biti su an sistemi NEYIN besledigini soyluyor:
+//   0 = 5VIN (USB/DC)   1 = 5VINOUT   2 = pil   3 = bilinmiyor
+//
+// 🔴 "USB TAKILI MI" ILE "SISTEM USB'DEN MI BESLENIYOR" AYNI SEY DEGIL.
+// M5PM1 pil doluyken sistemi pilden besleyip USB'yi yalnizca sarja
+// ayirabiliyor. Ses seviyesi karari icin onemli olan IKINCISI, cunku
+// akimi cekecek olan kaynak o. Bu yuzden VBUS pinine degil bu
+// register'a bakiyoruz.
+// GERCEK KARTTA OLCULEREK DOGRULANDI (01.09.2026, USB takiliyken):
+//     0x20/21 VREF = 0x0CED = 3309 mV   -> 3,3 V rayi
+//     0x22/23 VBAT = 0x1022 = 4130 mV   -> dolu lityum hucre
+//     0x24/25 VIN  = 0x1314 = 4884 mV   -> USB 5 V (kablo dususuyle)
+//
+// ⚠️ IKI BAYT DA TAM KULLANILIYOR, 16 bit kucuk-sonlu, birimi mV.
+// Surucu basligi ust bayt icin "high 4 bits" diyor ve ONA GUVENILDI:
+// maskelenince pil 4130 yerine 34 mV cikti. Once oyle yazildi, dokum
+// alininca duzeltildi — baslik bu yongada birebir tutmuyor.
+//
+// PWR_SRC (0x04) KULLANILMIYOR. Basliga gore [2:0] biti 0=5VIN, 1=
+// 5VINOUT, 2=pil olmali; gercek kartta USB takiliyken 0x05 okundu, yani
+// o sema da tutmuyor. VIN gerilimine bakmak hem olculebilir hem de
+// anlami kendinden belli: haricî 5 V var mi, yok mu.
+#define PATI_PM1_VBAT_L  0x22  // pil gerilimi, mV, kucuk-sonlu 16 bit
+#define PATI_PM1_VBAT_H  0x23
+#define PATI_PM1_VIN_L   0x24  // haricî 5 V girisi, mV, kucuk-sonlu 16 bit
+#define PATI_PM1_VIN_H   0x25
+
 #define PATI_PM1_L3B 2  // PYG2 — mikrofon + hoparlor + LCD arka isik gucu
 #define PATI_PM1_AMF 3  // PYG3 — AW8737 hoparlor amfisi anahtari
 

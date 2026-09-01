@@ -154,6 +154,34 @@ constexpr float SES_SEVIYESI_BASLANGIC = 1.00f;
 // Tavan 2.50'den 2.00'ye indirildi, ayni gerekceyle. Sinir HASAR degil
 // (amfi kendi rayinda doyuma gidiyor), YENIDEN BASLAMA.
 constexpr float SES_SEVIYESI_EN_FAZLA  = 2.00f;
+
+// ---------------------------------------------------------------------------
+// 🔴 PILDE UST SINIR — kullanicinin ayari degil, donanimin siniri
+// ---------------------------------------------------------------------------
+//
+// 01.09.2026'da olculdu: Pati USB'den cikarilip pille calisirken, ses
+// seviyesi 1.00'DE, cocuk "selam" dediginde cevap vermeye baslayacagi
+// anda brownout'a dusup yeniden basladi. Seri gunlukten:
+//
+//     E BOD: Brownout detector was triggered
+//
+// Brownout esigi zaten en musamahakar kademede (CONFIG_ESP_BROWNOUT_DET
+// _LVL 7), yani yazilimdan gevsetilecek yer yok — 250 mAh'lik hucre
+// AW8737'nin tepe akimini karsilayamiyor ve ray cokuyor.
+//
+// USB'de ayni seviye sorun cikarmiyor: akim oradan geliyor.
+//
+// Bu yuzden tavan KAYNAGA GORE. Kullanicinin panelden sectigi seviye
+// olduğu gibi duruyor (`ses_seviyesi()` onu donduruyor); yalnizca
+// hoparlore giden sayi pilde kisiliyor. Ebeveyn ayari kaybetmiyor,
+// USB takilinca sectigi seviye geri geliyor.
+//
+// ⚠️ BU SAYI HENUZ TAM OLCULMEDI. Bilinen tek nokta 1.00'in pilde
+// COKTUGU. 0.70 ondan ~3 dB asagisi, yani tepe akimin ucte biri kadar
+// dusuyor. Pilde hala brownout goruluyorsa (DURUM ozetindeki "acilis"
+// satiri soyluyor) buradan asagi cekilecek; hic gorulmuyorsa ve ses
+// kisik geliyorsa yukari.
+constexpr float SES_PIL_TAVANI = 0.70f;
 constexpr float SES_SEVIYESI_EN_AZ     = 0.15f;
 constexpr float SES_SEVIYESI_ADIM      = 0.15f;
 

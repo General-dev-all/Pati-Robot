@@ -32,6 +32,7 @@ namespace pati {
 namespace {
 
 using stackchan::conversation::ConversationConfig;
+using stackchan::conversation::ConversationError;
 using stackchan::conversation::ConversationEvent;
 using stackchan::conversation::ConversationEventType;
 using stackchan::conversation::ConversationState;
@@ -54,6 +55,94 @@ volatile bool g_calisiyor = false;
 volatile bool g_konusuyor = false;    // robot su an konusuyor mu
 volatile bool g_goaway = false;       // kapanma uyarisi geldi, yenileme bekliyor
 volatile bool g_yenileniyor = false;  // yenileme SURUYOR -> ses gonderme
+
+// ---------------------------------------------------------------------------
+// KOPMA — baglanti oluyordu ve kimse toparlamiyordu
+// ---------------------------------------------------------------------------
+//
+// 🔴 01.09.2026, GERCEK KARTTA YASANDI. Pati ile konusulurken ses kesildi
+// ve BIR DAHA GELMEDI. Disaridan bakinca her sey saglamdi: wifi bagli,
+// anahtar gecerli (kod 200), uyumuyor, gozler "dinliyor", mikrofon tepe
+// genligi 23796/32767 — yani duyuyordu. Ama 235 saniye boyunca seri
+// gunlukte TEK BIR sohbet satiri yok: ne dokum, ne cevap, ne tur.
+//
+// Sebep: gemini_live_client `disable_auto_reconnect = true` diyor. Yani
+// tasima katmani BILEREK toparlanmiyor, isi uygulamaya birakiyor —
+// istemcinin kendi yorumu "the conv-task recovery path takes over from
+// here". O yol stackchan'da vardi, Pati'de YOKTU. `case Error:` sadece
+// ESP_LOGE yaziyordu. Ping/pong kopmayi 25 saniyede goruyor, olay
+// geliyor, log'a dusuyor ve orada oluyor.
+//
+// Sonuc zombi robot: mikrofonu okuyor, sesi olu sokete yaziyor, KULLANIM
+// DAKIKASI ISLEMEYE DEVAM EDIYOR (14,0 -> 17,6 dk olculdu) ve yalnizca
+// fisi cekmek duzeltiyor.
+//
+// BELIRTISI: gozler "dinliyor"da kalir, panel her seyi saglam gosterir,
+// mikrofon tepesi normaldir ama sohbet satirlari akmaz. Boyle
+// gorunuyorsa bakilacak yer burasi.
+volatile bool g_koptu = false;
+std::uint32_t g_kopma_sayisi = 0;   // toplam kopma
+std::uint32_t g_deneme = 0;         // ust uste basarisiz toparlama
+std::int64_t g_son_deneme_us = 0;
+
+// Geri cekilme. Anahtar iptal edilmisse ya da kota bitmisse kopma
+// KALICI; bosta dongusu 100 ms'de bir dondugu icin geri cekilme olmadan
+// Gemini'ye saniyede onlarca el sikismasi atardik. Ilk deneme hemen
+// (cocuk bekliyor), sonrakiler 2, 4, 8... en fazla 30 saniyede bir.
+constexpr int GERI_CEKILME_TABAN_MS = 2000;
+constexpr int GERI_CEKILME_EN_COK_MS = 30000;
+
+// ---------------------------------------------------------------------------
+// SESSIZ SUNUCU BEKCISI — hata gelmeyen kopma
+// ---------------------------------------------------------------------------
+//
+// Yukaridaki toparlanma "hata olayi geldi" varsayimina dayaniyor.
+// Ping/pong (15 sn arayla, 25 sn zaman asimi) kopmayi normalde
+// yakaliyor — ama HER olu oturum soketi kapatmiyor. Soket ayakta
+// kalabilir, ping'lere cevap gelebilir ve sunucu yine de tek kelime
+// etmez (oturum siniri dolmus, kota bitmis, arka uc takilmis olabilir).
+// O halde HICBIR hata olayi uretilmez ve toparlanma tetiklenmez.
+//
+// Disaridan gorunusu yine ayni: gozler "dinliyor", mikrofon duyuyor,
+// Pati susuyor. Sikayet de ayni geliyor: "beni duyuyor mu bilmiyorum".
+//
+// Bu yuzden ikinci ve BAGIMSIZ bir olcut: cocuk konustu ve sunucu
+// ondan beri HICBIR SEY soylemedi mi?
+//
+// Iki damganin karsilastirilmasi sart, tek basina sure yetmez: sessiz
+// odada sunucunun susmasi NORMAL. Ancak konusma girdikten sonraki
+// sessizlik anormal.
+//
+// Esik 25 saniye. Olculen gercek gecikme 10-25 ms (pati_olcum) ve
+// sunucu VAD'i 500 ms sessizlik bekliyor, yani saglikli bir turda
+// cevap bir saniyenin altinda basliyor. 25 sn bunun yirmi katindan
+// fazla — yanlis pozitif icin cok yer birakiyor.
+//
+// Yanlis pozitifin bedeli ~600 ms'lik bir yeniden baglanma (uyanma
+// olcumu: 617 ms) ve oturum anahtari korundugu icin robot hicbir seyi
+// unutmuyor. Yanlis negatifin bedeli COCUGU DUYMAYAN ROBOT. Esik
+// bilerek comert.
+constexpr std::int64_t SESSIZ_SUNUCU_US = 25 * 1000000LL;
+
+// 🔴 YANKI KUYRUGU — bekcinin en kolay yanlis anlamasi.
+//
+// Hoparlor tamponu 341 ms (pati_ses.cpp) ve mikrofon hoparlorun yani
+// basinda. Robot sustuktan SONRA da tamponda ses var, mikrofon onu
+// duyuyor ve yerel VAD "konusma" diyor.
+//
+// O yankiyi "cocuk konustu" saysaydik sunu yapardik: cocuk soruyor,
+// Pati cevapliyor, cocuk susuyor — ve cevabin bitisinden 25 saniye
+// sonra bekci "sunucu susuyor" deyip DURUP DURURKEN yeniden
+// baglanirdi. Her cevaptan sonra bir kez, her gun onlarca kez.
+//
+// 1 saniye, 341 ms'lik tamponun uc kati: odadaki yankilanma payi da
+// iceride.
+constexpr std::int64_t YANKI_KUYRUGU_US = 1000000LL;
+
+std::int64_t g_son_sunucu_us = 0;  // sunucudan en son ne zaman olay geldi
+std::int64_t g_son_ses_us = 0;     // yerel VAD en son ne zaman konusma gordu
+std::int64_t g_konusma_us = 0;     // robot en son ne zaman konusuyordu
+std::uint32_t g_bekci_sayisi = 0;  // bekcinin kac kez kopma ilan ettigi
 
 // UYKU — maliyetin en buyuk kalemi (PLAN.md)
 //
@@ -95,6 +184,34 @@ std::uint32_t g_mik_bos = 0;    // kaci HIC veri dondurmedi
 // ---------------------------------------------------------------------------
 void olay_geldi(const ConversationEvent& olay)
 {
+    // KOPMA TESPITI TAM BURADA — kuyruga atmadan once.
+    //
+    // 🔴 NEDEN KUYRUKTAN SONRA DEGIL: `stop()` cagirdigimizda da ayni
+    // olay geliyor ve o kopma DEGIL, bizim kararimiz. Uc yerde bilerek
+    // kapatiyoruz (uyu, yenileme, durdurma) ve UCU DE bayragini ONCE
+    // kaldirip sonra stop() cagiriyor — sira her uc yerde de bilincli,
+    // gerekcesi kendi yorumlarinda yazili. Yani bayrak stop() boyunca
+    // BASILI duruyor ve burada dogru cevabi veriyor.
+    //
+    // Olay kuyruktan cikarken ise bayrak coktan inmis olabilir: yenileme
+    // stop()+start() yapip bayragi indiriyor, olay ise arkadan geliyor.
+    // Karar orada verilseydi her yenilemeyi kopma sanardik.
+    if (olay.type == ConversationEventType::Error && olay.error.has_value()
+        && (*olay.error == ConversationError::NotConnected
+            || *olay.error == ConversationError::TransportInit)
+        && g_calisiyor && !g_uykuda && !g_yenileniyor && !g_koptu) {
+        g_koptu = true;
+        ++g_kopma_sayisi;
+    }
+
+    // SUNUCU HAYAT BELIRTISI. Hata DISINDAKI her olay "karsi taraf hala
+    // orada" demek: dokum, cevap, ses parcasi, konusma basladi/bitti,
+    // arac cagrisi, goAway — hepsi sunucudan geliyor. Bekci bu damgayi
+    // cocugun konusma damgasiyla karsilastiriyor.
+    if (olay.type != ConversationEventType::Error) {
+        g_son_sunucu_us = esp_timer_get_time();
+    }
+
     // Kuyruk POD olmayan tip tasiyamiyor (std::string + shared_ptr var),
     // o yuzden isaretci tasiyoruz. Kopya kurucu shared_ptr sayacini
     // dogru artiriyor.
@@ -181,6 +298,18 @@ void prompt_kur()
     }
 }
 
+// Oturum yeni acildi — bekcinin iki damgasi da tazelensin.
+//
+// Sifirlanmasaydi yeni oturum eski sessizligin faturasini oderdi:
+// acilistan hemen once konusulmus olmasi bekciyi 25 saniye sonra
+// bosuna tetiklerdi. Oturumun acilisi "sunucu konustu" sayiliyor,
+// cunku setup cevabi zaten sunucudan geliyor.
+void bekci_sifirla()
+{
+    g_son_sunucu_us = esp_timer_get_time();
+    g_son_ses_us = 0;
+}
+
 // Oturumu kapatir ama NESNEYI YASATIR.
 //
 // Devam anahtari istemcinin icinde duruyor, yani cocuk konusunca
@@ -252,6 +381,7 @@ void uyandir()
     }
     anahtar_kod_bildir(200);
     kullanim_devam();
+    bekci_sifirla();
     gozler_dinliyor();
     ESP_LOGI(ETIKET, "uyandi (%lld ms)", (esp_timer_get_time() - t0) / 1000);
 }
@@ -297,8 +427,134 @@ void yenileme_gerekirse()
 
     g_goaway = false;
     ayar_yenileme_temizle();
+    bekci_sifirla();
     ESP_LOGI(ETIKET, "yenilendi (%lld ms boslukla, oturum anahtari korundu)",
              (esp_timer_get_time() - t0) / 1000);
+}
+
+// Sunucu, konusuldugu halde susuyor mu? Gerekcesi SESSIZ_SUNUCU_US'un
+// yaninda yazili.
+//
+// Kendisi baglantiyi kapatmiyor, sadece "koptu" diyor; toparlamayi
+// asagidaki tek yol yapiyor. Boylece geri cekilme, tur temizligi ve
+// kullanim sayaci iki ayri yerde tekrarlanmiyor.
+void sessiz_sunucu_bekcisi()
+{
+    if (!g_calisiyor || g_uykuda || g_yenileniyor || g_koptu) return;
+
+    // Sunucu, cocugun son konusmasindan SONRA bir sey soylediyse saglam.
+    // Karsilastirma sart — tek basina "sunucu N saniyedir susuyor" olcutu
+    // sessiz odada surekli yanlis alarm verirdi.
+    if (g_son_ses_us <= g_son_sunucu_us) return;
+
+    const std::int64_t sessiz_us = esp_timer_get_time() - g_son_ses_us;
+    if (sessiz_us < SESSIZ_SUNUCU_US) return;
+
+    ++g_bekci_sayisi;
+    ++g_kopma_sayisi;
+    g_koptu = true;
+    ESP_LOGW(ETIKET, "cocuk %lld sn once konustu, sunucu o andan beri "
+                     "SUSUYOR — oturum olu sayiliyor (hata olayi hic "
+                     "gelmedi, bekci %u. kez)",
+             sessiz_us / 1000000, static_cast<unsigned>(g_bekci_sayisi));
+}
+
+// ---------------------------------------------------------------------------
+// Kopan oturumu geri getir
+// ---------------------------------------------------------------------------
+//
+// Yenilemeyle ayni islem (stop -> prompt -> start) ama iki yerde ayriliyor:
+//
+// 1. YENILEME KONUSMA BOSLUGUNU BEKLER, BU BEKLEYEMEZ. Yenilemenin
+//    beklemesinin sebebi turun ortasinda cevabin bolunmesi. Kopmada
+//    boyle bir risk yok — bolunecek bir cevap zaten gelmiyor. Beklemek
+//    burada "sonsuza kadar bekle" demek olurdu, cunku bekledigi turu
+//    baslatacak olan baglanti kopmus durumda.
+//
+// 2. BASARISIZLIKTA GERI CEKILIYOR. Yenileme "bir dahaki bosta tekrar
+//    dener" diyebiliyor cunku tetikleyicisi nadir. Kopma kalici da
+//    olabilir (anahtar iptal, kota bitti) ve bosta dongusu saniyede 10
+//    kez donuyor.
+void kopmayi_toparla()
+{
+    if (!g_koptu || !g_calisiyor || g_yenileniyor) return;
+
+    // Uyku tam bu sirada basladiysa toparlanacak bir sey yok: oturum
+    // zaten bilerek kapali, cocuk konusunca uyandir() aciyor. Olay
+    // uretilirken uyku bayragi henuz kalkmamis olabilir, o yuzden
+    // ikinci kez burada eliyoruz.
+    if (g_uykuda) {
+        g_koptu = false;
+        return;
+    }
+
+    const std::int64_t simdi = esp_timer_get_time();
+    if (g_deneme > 0) {
+        int bekle = GERI_CEKILME_TABAN_MS << (g_deneme - 1);
+        if (bekle > GERI_CEKILME_EN_COK_MS || bekle <= 0) {
+            bekle = GERI_CEKILME_EN_COK_MS;
+        }
+        if ((simdi - g_son_deneme_us) / 1000 < bekle) return;
+    }
+    g_son_deneme_us = simdi;
+
+    ESP_LOGW(ETIKET, "baglanti koptu (%u. kez) — yeniden baglaniliyor, "
+                     "deneme %u",
+             static_cast<unsigned>(g_kopma_sayisi),
+             static_cast<unsigned>(g_deneme + 1));
+
+    // Bayrak ONCE: mikrofon gorevi bu pencerede push_audio() cagirmasin.
+    // Yenilemedekiyle ayni gerekce — kapali sokete yazmak Python'da
+    // programi cokertmisti.
+    g_yenileniyor = true;
+
+    // 🔴 YARIM KALAN TURU KAPAT. Kopma turun ORTASINDA olduysa
+    // `acik_tur()` sonsuza kadar acik kalir; yenileme yolu ona bakip
+    // "tur suruyor, sonra bakarim" diyor ve BIR DAHA CALISMIYOR.
+    // Ayni sekilde `g_konusuyor` konusma ortasinda kopunca basili
+    // kaliyor ve yanki korumasi mikrofonu susturuyor: robot hem
+    // konusmuyor hem duymuyor olurdu.
+    tur_kapat();
+    g_konusuyor = false;
+
+    // OLU OTURUM DAKIKA YAKMASIN. Olculdu: kopmadan sonra sayac
+    // isliyordu (14,0 -> 17,6 dk). Basarili olursa asagida devam ediyor.
+    kullanim_duraklat();
+
+    g_istemci->stop();
+    prompt_kur();
+    const auto sonuc = g_istemci->start(g_ayar);
+
+    g_yenileniyor = false;
+
+    if (!sonuc.has_value()) {
+        ++g_deneme;
+        ESP_LOGE(ETIKET, "yeniden baglanilamadi — tekrar denenecek");
+        // SEBEBINI SOR. WebSocket el sikismasi basarisiz oldugunda HTTP
+        // kodu gorunmuyor: "anahtar iptal edilmis" ile "wifi koptu" ayni
+        // hataya benziyor. Anahtar katmani kucuk bir REST istegiyle
+        // ayirt ediyor ve panel dogru olani yaziyor. Kendini dakikada
+        // bire sinirliyor. (uyandir() ile ayni gerekce.)
+        anahtar_baglanti_hatasi();
+        // Gozler YALAN SOYLEMESIN. "dinliyor"da birakmak cocuga Pati'nin
+        // bekledigini anlatir; oysa duymuyor. Uykulu bakis dogruyu
+        // soyluyor ve baglanti gelince gozler_dinliyor()'a donuyor.
+        gozler_durum("uykulu");
+        return;
+    }
+
+    g_koptu = false;
+    g_deneme = 0;
+    // Setup yeniden gitti: bekleyen goAway ve ayar degisikligi de bu
+    // mesajla kapandi, ikisini de tekrar tetiklemeye gerek yok.
+    g_goaway = false;
+    ayar_yenileme_temizle();
+    anahtar_kod_bildir(200);
+    kullanim_devam();
+    bekci_sifirla();
+    gozler_dinliyor();
+    ESP_LOGI(ETIKET, "yeniden baglandi (%lld ms)",
+             (esp_timer_get_time() - simdi) / 1000);
 }
 
 // ---------------------------------------------------------------------------
@@ -490,7 +746,10 @@ void olayi_isle(const ConversationEvent& olay)
         break;
 
     case ConversationEventType::Error:
-        ESP_LOGE(ETIKET, "istemci hatasi: %s", olay.text.c_str());
+        // Toparlanma bayragi burada DEGIL, olay_geldi()'de kalkiyor;
+        // gerekcesi orada yazili. Burasi sadece gunluge yaziyor.
+        ESP_LOGE(ETIKET, "istemci hatasi: %s%s", olay.text.c_str(),
+                 g_koptu ? "  -> yeniden baglanilacak" : "");
         break;
 
     default:
@@ -512,6 +771,15 @@ void ses_gorevi(void* /*arg*/)
                 p = nullptr;
             }
         } else {
+            // Kuyruk bos kaldiginda bakiliyor ve dogru yer burasi:
+            // olaylar akiyorsa sunucu zaten konusuyor demektir.
+            sessiz_sunucu_bekcisi();
+
+            // KOPMA ONCE. Yenileme olu bir soket uzerinde anlamsiz, ve
+            // cocuk cevap bekliyor — geciken her saniye "Pati bozuldu"
+            // demek. Kendi geri cekilmesi var, bosta dongusunu yormuyor.
+            kopmayi_toparla();
+
             // Kuyruk bos = konusma boslugu. Yenileme icin ideal an.
             yenileme_gerekirse();
 
@@ -576,6 +844,11 @@ void mik_gorevi(void* /*arg*/)
     std::array<std::int16_t, PATI_OKUMA_ORNEK> parca{};
     // Kesintisiz ses ne kadar surdu (bkz. UYANMA_SESLI_US).
     std::int64_t sesli_us = 0;
+    // Ayni olcu, ama UYANIKKEN — sessiz sunucu bekcisi icin. Ayri sayac
+    // tutuluyor cunku uykudakinin sifirlanma anlari farkli (uyandirinca
+    // sifirlaniyor); tek sayaci paylassalardi biri digerinin altini
+    // oyardi.
+    std::int64_t bekci_sesli_us = 0;
 
     while (g_calisiyor) {
         const std::size_t n = mikrofon_oku(parca, 100);
@@ -601,6 +874,13 @@ void mik_gorevi(void* /*arg*/)
                 parca[i] < 0 ? -static_cast<std::int32_t>(parca[i]) : parca[i]);
             if (g > g_mik_tepe) g_mik_tepe = g;
         }
+
+        // YANKI PENCERESI. Robot konustugu her an damgalaniyor; asagida
+        // "en son ne zaman konusuyordu" diye sorulacak. Burada, her
+        // continue'dan ONCE duruyor ki pencere hep guncel olsun.
+        const std::int64_t simdi = esp_timer_get_time();
+        if (g_konusuyor) g_konusma_us = simdi;
+
         // 🔴 YENILEME PENCERESI: ses GONDERILMIYOR, dusuruluyor.
         //
         // Python'da tam burasi eksikti: yenileme sirasinda kapali sokete
@@ -631,6 +911,39 @@ void mik_gorevi(void* /*arg*/)
             continue;
         }
         sesli_us = 0;
+
+        // BEKCI ICIN DAMGA: "cocuk konustu".
+        //
+        // Gerekcesi SESSIZ_SUNUCU_US ve YANKI_KUYRUGU_US'un yaninda.
+        // Uc kosul birden araniyor:
+        //
+        //   1. Robot konusmuyor ve susali yanki kuyrugu gecmis. Yoksa
+        //      robotun kendi sesi cocuk sanilir ve bekci her cevaptan
+        //      sonra bosuna baglanirdi.
+        //
+        //   2. 🔴 SES SUREKLI — tek bir 20 ms'lik parca YETMIYOR.
+        //      Uyandirmadaki ayni gerekce (bkz. UYANMA_SESLI_US): yerel
+        //      esik bilerek comert, cunku yanlis negatifin bedeli cocugu
+        //      duymamak. Bunun karsiligi oda gurultusunun, kapi
+        //      carpmasinin, oksurugun de zaman zaman "konusma" demesi.
+        //      Tek parca yetseydi bekci sessiz odada tetiklenir ve
+        //      sohbeti DURUP DURURKEN keserdi. Ayni esigi kullaniyoruz
+        //      cunku ayni soruyu soruyor: bu ses gercekten konusma mu?
+        //
+        // Uykuda BURAYA GELINMIYOR (yukarida continue var) ve dogrusu
+        // bu: uykuda oturum zaten bilerek kapali, sunucunun susmasi
+        // beklenen sey.
+        if (!g_konusuyor && (simdi - g_konusma_us) > YANKI_KUYRUGU_US
+            && konusma_var_mi(parca, n)) {
+            bekci_sesli_us += static_cast<std::int64_t>(n) * 1000000
+                              / PATI_GEMINI_GIRIS_HZ;
+            if (bekci_sesli_us >= UYANMA_SESLI_US) {
+                g_son_ses_us = simdi;
+            }
+        } else {
+            // Araya sessizlik girdi: zincir kirildi.
+            bekci_sesli_us = 0;
+        }
 
         // YANKI KORUMASI — artik CALISMA ANINDA, panelden.
         //
@@ -782,7 +1095,29 @@ esp_err_t sohbet_baslat()
     // mikrofon gorevi sadece okuyup gonderiyor (3 KB). Oncelikler
     // websocket gorevinin (5) altinda kalsin ki ag isi aksamasin.
     xTaskCreate(ses_gorevi, "pati_ses", 4096, nullptr, 4, nullptr);
-    xTaskCreate(mik_gorevi, "pati_mik", 3072, nullptr, 4, nullptr);
+    // 🔴 3072'DEN 6144'E CIKARILDI — GERCEK KARTTA COKTU.
+    //
+    // 01.09.2026, seri gunlukten:
+    //     ***ERROR*** A stack overflow in task pati_mik has been detected.
+    //     Backtrace: ... |<-CORRUPTED
+    //     Rebooting...
+    //
+    // Yukaridaki yorum "mikrofon gorevi sadece okuyup gonderiyor" diyordu
+    // ve YAZILDIGI ZAMAN dogruydu. Sonra uyandirma bu goreve baglandi:
+    // cocuk konusunca `uyandir()` BURADAN cagriliyor ve o da
+    // `prompt_kur()` ile 5400 karakterlik sistem promptunu kuruyor,
+    // ustune `g_istemci->start()` setup mesajini hazirlayip gonderiyor.
+    // Bunlar 3 KB'lik bir yigit icin fazla.
+    //
+    // BELIRTISI YANILTICI: cokme uyanma anindaydi, yani cocuk konustugu
+    // an. Disaridan "Pati'ye seslenince kapaniyor" gibi gorunuyor ve
+    // sebep guc dalgalanmasinda ya da mikrofonda aranir. Bir kere de
+    // brownout'la ayni oturumda oldu ve ikisi birbirine karisti.
+    //
+    // NEDEN GORESI BUYUTULDU, IS TASINMADI: uyandirmayi ses gorevine
+    // devretmek olcuyu 100 ms'lik kuyruk beklemesi kadar geciktirirdi ve
+    // uyanma zaten 617 ms. Cocugun bekledigi yerde gereksiz gecikme.
+    xTaskCreate(mik_gorevi, "pati_mik", 6144, nullptr, 4, nullptr);
 
     ESP_LOGI(ETIKET, "sohbet basladi — konusabilirsin");
     return ESP_OK;
@@ -811,6 +1146,14 @@ std::uint32_t sohbet_dusen_olay()
 std::uint32_t sohbet_gonderilemeyen()
 {
     return g_gonderilemeyen;
+}
+
+std::uint32_t sohbet_kopma_sayisi()
+{
+    // SIFIRLANMIYOR: "son aralikta kac kez koptu" degil, "acilistan beri
+    // kac kez koptu" sorusunun cevabi. Mikrofon tepesinin tersine burada
+    // kumulatif olan dogru — bir kopma olduysa bunun izi kalmali.
+    return g_kopma_sayisi;
 }
 
 std::uint32_t sohbet_mik_tepe()

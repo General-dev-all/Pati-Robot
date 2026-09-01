@@ -9,6 +9,7 @@
 #include <cJSON.h>
 #include <esp_http_server.h>
 #include <esp_log.h>
+#include <esp_system.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <lwip/sockets.h>
@@ -17,6 +18,7 @@
 #include "pati_anahtar.hpp"
 #include "pati_ayar.hpp"
 #include "pati_gozler.hpp"
+#include "pati_guc.hpp"
 #include "pati_guncelleme.hpp"
 #include "pati_hafiza.hpp"
 #include "pati_kullanim.hpp"
@@ -193,6 +195,46 @@ esp_err_t durum_isle(httpd_req_t* r)
     // secilebiliyor (yuz araci), yani uyanikken de gorulebilir.
     // Bayrak gonderilmeyince robot uyurken panel "dinliyor" yaziyordu.
     cJSON_AddBoolToObject(k, "uyuyor", sohbet_uyuyor());
+
+    // ---- GUC ------------------------------------------------------------
+    //
+    // 🔴 BU ALAN OLMADAN PILDEKI PATI HIC GOZLENEMIYOR.
+    //
+    // Seri konsol USB uzerinden geliyor; USB'yi cikarinca kablo da
+    // gidiyor. Yani "pilde ne oluyor" sorusunun seri porttan CEVABI YOK
+    // — 01.09.2026'da tam bu duvara carpildi: pilde brownout yasandi,
+    // ses tavani devreye girdi mi girmedi mi olculemedi.
+    //
+    // Ag ise pilde de ayakta. Panel bu yuzden tek gozlem penceresi.
+    //
+    // Ebeveyn icin de gerekli zaten: elde tasinan bir robotun sarji
+    // gorunmeli.
+    cJSON* g = cJSON_CreateObject();
+    const auto kaynak = guc_kaynak();
+    cJSON_AddStringToObject(g, "kaynak",
+                            kaynak == GucKaynagi::Usb   ? "usb"
+                            : kaynak == GucKaynagi::Pil ? "pil"
+                                                        : "bilinmiyor");
+    cJSON_AddNumberToObject(g, "pil_mv", pil_mv());
+    cJSON_AddNumberToObject(g, "vin_mv", vin_mv());
+    cJSON_AddNumberToObject(g, "sicaklik_c", yonga_sicakligi());
+    // Fiilen uygulanan ses tavani — kullanicinin sectigi degil.
+    cJSON_AddNumberToObject(g, "ses_tavani",
+                            kaynak == GucKaynagi::Usb
+                                ? ses_seviyesi()
+                                : std::min(ses_seviyesi(), SES_PIL_TAVANI));
+    // Acilis sebebi. "brownout" gorunuyorsa ses o donanim icin yuksek.
+    const esp_reset_reason_t sebep = esp_reset_reason();
+    cJSON_AddStringToObject(g, "acilis",
+                            sebep == ESP_RST_BROWNOUT   ? "brownout"
+                            : sebep == ESP_RST_PANIC    ? "cokme"
+                            : sebep == ESP_RST_TASK_WDT ? "gorev_bekcisi"
+                            : sebep == ESP_RST_INT_WDT  ? "kesme_bekcisi"
+                            : sebep == ESP_RST_POWERON  ? "guc"
+                            : sebep == ESP_RST_SW       ? "yazilim"
+                            : sebep == ESP_RST_EXT      ? "dis"
+                                                        : "diger");
+    cJSON_AddItemToObject(k, "guc", g);
 
     char* ham = cJSON_PrintUnformatted(k);
     std::string govde = (ham != nullptr) ? ham : "{}";
