@@ -26,7 +26,33 @@ CONFIG_IDF_TARGET="esp32s3"
 # tamponlarini PSRAM'den aliyor (psram_allocator.hpp).
 CONFIG_SPIRAM=y
 CONFIG_SPIRAM_MODE_OCT=y
-CONFIG_SPIRAM_SPEED_80M=y
+# ---------------------------------------------------------------------------
+# 🔴 PSRAM 40 MHz — 80 MHz sarsintiya dayanmiyor
+# ---------------------------------------------------------------------------
+#
+# 01.09.2026, IKI KARTTA DA olculdu. Cihaz konusurken elle sallandiginda
+# yeniden basliyordu. Seri gunlukten iki ayri sifirlama sebebi cikti:
+#
+#   rst:0x3 (RTC_SW_SYS_RST)   PC -> rtc_brownout_isr_handler
+#   rst:0x8 (TG1WDT_SYS_RST)   PC -> panic_enable_cache
+#
+# Ikincisi anahtar. Panic isleyicisi CALISMIS ama onbellegi yeniden
+# acarken DONMUS; yani flash/PSRAM veri yolu cevap vermiyor. Isleyici
+# bile kurtaramayinca donanim bekcisi karti sifirliyor — bu yuzden hicbir
+# backtrace goremedik, CPU kod calistirmiyor, veri yolunda bekliyor.
+#
+# MEKANIZMA: sarsinti beslemede kisa bir dalgalanma yapiyor. Derin olursa
+# brownout dedektoru yakaliyor (birinci sebep). Sig olursa dedektor
+# gormuyor, ama 80 MHz'lik oktal PSRAM o dalgalanmayi kaldiramayip veri
+# yolunu kilitliyor.
+#
+# 40 MHz zamanlama payini iki katina cikariyor. Bedeli PSRAM bant
+# genisliginin yarilanmasi; olculen tur gecikmesi 2-30 ms ve butce cok
+# daha genis, yani yeri var.
+#
+# ⚠️ FLASH DA 80 MHz (CONFIG_ESPTOOLPY_FLASHFREQ_80M). Sallama hala
+# coktururse bir sonraki deneme orayi 40 MHz'e indirmek.
+CONFIG_SPIRAM_SPEED_40M=y
 CONFIG_SPIRAM_USE_MALLOC=y
 
 # ---------------------------------------------------------------------------

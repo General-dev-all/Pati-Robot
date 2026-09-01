@@ -1,2 +1,2 @@
-3.0.4
-Pati artık bağlantısı koptuğunda kendini toparlıyor: internet bir an giderse susup kalmıyor, birkaç saniyede geri dönüyor. Wifi'ye ulaşamazsa da 3 dakikada bir yeniden deniyor. Duyması iyileşti, sesi net anlıyor. Pil ile çalışırken ses kendiliğinden biraz kısılıyor — böylece
+3.0.5
+Pati sallandığında ya da yerinden oynatıldığında artık kapanıp açılmıyor. Sebebi bulundu ve giderildi. Çok sert sallanırsa hâlâ bir an susup birkaç saniyede geri gelebilir; bu normal ve kendini toparlıyor.

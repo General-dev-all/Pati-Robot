@@ -121,6 +121,46 @@ Devreye alınan ayarlar (`sdkconfig.defaults`, gerekçeleri orada):
 
 ---
 
+## 🔴 02.09.2026 — sallayınca çökme: PSRAM 80 MHz
+
+Cihaz konuşurken elle sallanınca yeniden başlıyordu. Pilde daha kolay,
+USB'de daha zor — ama ikisinde de. **İki kartta da aynı**, yani ünite
+kusuru değil.
+
+Bütün gün backtrace alınamadı ve sebebi şuydu: çökme anında CPU kod
+çalıştırmıyor, **veri yolunda bekliyor.** Kaydedilmiş program sayacı
+sonunda söyledi:
+
+```
+rst:0x8 (TG1WDT_SYS_RST)   PC -> panic_enable_cache (panic_handler.c:285)
+rst:0x3 (RTC_SW_SYS_RST)   PC -> rtc_brownout_isr_handler
+```
+
+Birincisi anahtar: panic işleyicisi çalışmış ama **önbelleği yeniden
+açarken donmuş.** Yani flash/PSRAM veri yolu cevap vermiyor. İşleyici
+bile kurtaramayınca donanım bekçisi (TG1) kartı sıfırlıyor — bu yüzden
+hiçbir yığın izi basılamıyor.
+
+**Mekanizma.** Sarsıntı beslemede kısa bir dalgalanma yapıyor. Derin
+olursa brownout dedektörü yakalıyor (ikinci sebep). Sığ olursa dedektör
+görmüyor, ama 80 MHz'lik oktal PSRAM o dalgalanmayı kaldıramayıp veri
+yolunu kilitliyor. Pilde besleme zaten zayıf olduğu için orada daha
+kolay oluyor.
+
+**Çözüm: `CONFIG_SPIRAM_SPEED_40M`.** Zamanlama payı iki katına çıkıyor.
+Sonrasında `panic_enable_cache` donması ve bekçi sıfırlaması BİR DAHA
+GÖRÜLMEDİ; pilde konuşma da çökmeden sürdü.
+
+**Kalan.** Aşırı sallamada hâlâ tek tük `brownout` oluyor — o gerçek bir
+gerilim çöküşü ve fiziksel. Bekçi 5 saniyede toparlıyor. Bekçiyi
+kapatmak çözüm DEĞİL: kilitlenme aynen olur, ama Pati sonsuza kadar
+donar ve fiş çekmek gerekir. Hastalık kilitlenme, sıfırlama ilaç.
+
+⚠️ Flash da 80 MHz (`CONFIG_ESPTOOLPY_FLASHFREQ_80M`). Bu sınıftan yeni
+bir belirti çıkarsa sıradaki deneme orayı 40 MHz'e indirmek.
+
+---
+
 ## Aynı gün bulunan diğer üç şey
 
 **Kopan oturumu toparlayan kod yoktu.** `gemini_live_client.cpp`

@@ -127,6 +127,12 @@ dönüyor — tam bir yazılım hatası gibi görünür. `pati_guc.cpp` açıyor
 **`esp_codec_dev` 8 bitlik I2C adresi bekliyor** (içeride `>> 1`
 yapıyor). ES8311 için `0x30`, `0x18` değil.
 
+**PSRAM 80 MHz sarsıntıya dayanmıyor.** Cihaz sallanınca veri yolu
+kilitleniyor, `panic_enable_cache` donuyor ve donanım bekçisi kartı
+sıfırlıyor — yığın izi basılamıyor çünkü CPU kod çalıştırmıyor.
+40 MHz'de bitti (`TESHIS.md`). Flash hâlâ 80 MHz; aynı sınıftan belirti
+çıkarsa sıradaki yer orası.
+
 **Pilde ses seviyesi.** M5Stack yazıyor: yüksek seviyede çekilen akım
 cihazı yeniden başlatıyor. Varsayılan 1.00 ve bilinçli düşük. Pilde
 `SES_PIL_TAVANI` (0.70) devreye giriyor; karar VIN gerilimine bakılarak
