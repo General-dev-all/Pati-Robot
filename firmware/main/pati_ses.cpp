@@ -184,7 +184,23 @@ esp_err_t ses_kur()
         ESP_LOGE(ETIKET, "I2S cikis kurulamadi: %s", esp_err_to_name(hata));
         return hata;
     }
-    hata = i2s_channel_init_std_mode(g_rx, &std_cfg);
+    // ---- GIRIS YUVASI — 01.09.2026'da olculerek bulunacak ------------
+    //
+    // IDF'in mono varsayilani SOL yuva (I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG
+    // -> slot_mask = I2S_STD_SLOT_LEFT). Gercek kartta o yuvadan TAM SIFIR
+    // geliyor: gurultu bile yok, yani hatta hic veri dusmuyor.
+    //
+    // Elenenler (hepsi bakildi, hicbiri degildi):
+    //   - kodek saati: {12288000, 48000} surucunun tablosunda VAR ve
+    //     "Unable to configure sample rate" hatasi cikmiyor
+    //   - ADC seviyesi: enable(true) -> es8311_start -> ADC_REG17 = 0xBF
+    //   - no_dac_ref: false'a alindi (surucunun test edilen yolu), fark yok
+    //
+    // Geriye ES8311'in ADC verisini HANGI yuvaya koydugu kaliyor.
+    i2s_std_config_t giris_cfg = std_cfg;
+    giris_cfg.slot_cfg.slot_mask = PATI_SES_GIRIS_YUVA;
+
+    hata = i2s_channel_init_std_mode(g_rx, &giris_cfg);
     if (hata != ESP_OK) {
         ESP_LOGE(ETIKET, "I2S giris kurulamadi: %s", esp_err_to_name(hata));
         return hata;
@@ -221,17 +237,51 @@ esp_err_t ses_kur()
     kodek.master_mode = false;  // saati ESP32 veriyor, kodek kole
     kodek.use_mclk = true;      // MCLK ayri telden (G18)
     kodek.mclk_div = PATI_SES_MCLK_KAT;
-    kodek.digital_mic = false;  // MEMS analog cikisli, kodegin ADC'sine giriyor
+    // ANALOG MIKROFON — 01.09.2026'da gercek kartta dogrulandi.
+    //
+    // MEMS mikrofon kodegin analog ADC girisine bagli, PDM degil.
+    // M5Stack'in urun sayfasi yalnizca "MEMS microphone, SNR 65 dB"
+    // diyor; hangisi oldugu yazmiyor. Teshis sirasinda bir ara
+    // `true` denendi (PDM) ve mikrofon yine sessiz kaldi — cunku asil
+    // sebep baskaydi, DIN/DOUT pinleri terstiydi (bkz. pati_pinler.h).
+    //
+    // Pinler duzeltilip burasi `false` kalinca mikrofon calisti:
+    // konusurken tepe genlik 11.000-32.000 arasi.
+    kodek.digital_mic = false;
     // Amfiyi ESP32'nin bir pini degil M5PM1 aciyor (pati_guc.cpp), yani
     // burada verilecek bir pin yok.
     kodek.pa_pin = -1;
-    // 🔴 Kayitta SAG kanala DAC cikisini KOYMA.
+    // 🔴 no_dac_ref = false — VE BU BILINCLI, "varsayilan boyle" DEGIL.
     //
-    // Varsayilan davranis sag kanali hoparlore giden sesle dolduruyor;
-    // bu bir yanki iptali kolayligi. Pati'de yanki YARIM DUPLEKSLE
-    // cozuluyor (robot konusurken mikrofon gonderilmiyor) ve mono
-    // okudugumuz icin o kanal zaten okunmuyor.
-    kodek.no_dac_ref = true;
+    // Once true yapilmisti: "sag kanala DAC cikisini koymak yanki
+    // iptali icin; biz yarim dupleks kullaniyoruz ve mono okuyoruz,
+    // gereksiz is." Akil yurutmesi mantikliydi ve YANLISTI.
+    //
+    // 01.09.2026, gercek kartta: mikrofon TAM SIFIR okuyor. Gurultu
+    // bile yok. Anahtar gecerli, oturum aciliyor, sure sayiliyor ama
+    // Gemini'ye sessizlik gidiyordu, dolayisiyla Pati hic cevap
+    // vermiyordu.
+    //
+    // Sebep surucude yaziyor (es8311.c, es8311_codec_open):
+    //
+    //     if (no_dac_ref == false) {
+    //         // set internal reference signal (ADCL + DACR)
+    //         write_reg(ES8311_GPIO_REG44, 0x58);
+    //     } else {
+    //         write_reg(ES8311_GPIO_REG44, 0x08);
+    //     }
+    //
+    // Yorumdaki "ADCL" onemli: 0x58 ADC'yi SOL yuvaya yonlendiriyor.
+    // Biz mono okuyoruz ve IDF'in mono varsayilani SOL yuva
+    // (I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG -> slot_mask =
+    // I2S_STD_SLOT_LEFT). 0x08 yazilinca ADC o yuvaya gelmiyor ve
+    // okudugumuz her ornek sifir cikiyor.
+    //
+    // DERS: bu surucunun varsayilani Espressif'in ES8311'li kendi
+    // kartlarinda surekli test edilen yol. Test edilmemis bir
+    // optimizasyon icin ondan sapmak, kazandirdigindan cok
+    // kaybettiriyor.
+    kodek.no_dac_ref = false;
 
     g_kodek = es8311_codec_new(&kodek);
     if (g_kodek == nullptr) {
@@ -265,6 +315,7 @@ esp_err_t ses_kur()
         ESP_LOGE(ETIKET, "kodek etkinlestirilemedi");
         return ESP_FAIL;
     }
+
 
     // Kanallari kodekten SONRA aciyoruz: saat, kodek dinlemeye hazir
     // olmadan akmaya baslamasin.

@@ -100,22 +100,36 @@
 // Ses — ES8311 kodek, MEMS mikrofon, AW8737 amfi
 // ---------------------------------------------------------------------------
 //
-// 🔴 DIN/DOUT ADLARI KODEGIN AGZINDAN. M5Stack'in tablosu ES8311
-// satirini etiketliyor, ESP32 satirini degil:
+// 🔴 DIN/DOUT — BURADA BIR KEZ YANLIS OKUNDU, DIKKAT.
+//
+// M5Stack'in tablosu:
 //
 //     ESP32-S3 |  G18 |  G14 |  G17 |  G15 |  G16
 //     ES8311   | MCLK | DOUT | BCLK | LRCK | DIN
 //
-// Kodegin DOUT'u ESP32'nin GIRISI, kodegin DIN'i ESP32'nin CIKISI.
-// Tabloyu oldugu gibi kopyalayan biri mikrofonla hoparloru ters
-// baglar ve iki taraf da sessiz kalir. Asagidaki isimler ESP32'nin
-// agzindan yazildi.
+// Satir "ES8311" diye etiketli, bu yuzden ilk okuyusta "DOUT kodegin
+// cikisi, yani ESP32'nin GIRISI" diye alindi: din=G14, dout=G16.
+// 01.09.2026'da gercek kartta mikrofon TAM SIFIR okudu ve hoparlorden
+// hic ses cikmadi — iki yon birden olu.
+//
+// Dogru okuyus ayni sayfanin LCD satirindan anlasiliyor:
+//
+//     ST7789P3 | MOSI | SCK | RS | CS | RST | BL
+//
+// Oradaki "MOSI" ekranin cikisi degil, ESP32'nin cikisi. Yani M5Stack
+// satiri cevre birimiyle etiketliyor ama SINYAL ADLARINI ESP32'nin
+// agzindan yaziyor. Ayni kural I2S satirinda da gecerli:
+//
+//     G14 = ESP32'nin DOUT'u  -> hoparlor
+//     G16 = ESP32'nin DIN'i   -> mikrofon
+//
+// Asagidaki isimler ESP32'nin agzindan.
 
 #define PATI_SES_MCLK GPIO_NUM_18
 #define PATI_SES_BCLK GPIO_NUM_17
 #define PATI_SES_LRCK GPIO_NUM_15
-#define PATI_SES_DIN  GPIO_NUM_14  // kodek DOUT -> ESP32 girisi (mikrofon)
-#define PATI_SES_DOUT GPIO_NUM_16  // ESP32 cikisi -> kodek DIN  (hoparlor)
+#define PATI_SES_DIN  GPIO_NUM_16  // ESP32 girisi  <- kodek (mikrofon)
+#define PATI_SES_DOUT GPIO_NUM_14  // ESP32 cikisi  -> kodek (hoparlor)
 
 // 🔴 TEK KANAL, TEK HIZ — ONCEKI KARTTAN EN BUYUK FARK.
 //
@@ -143,6 +157,14 @@
 // katlanma gurultusuyle bozulurdu — yani tam da korumaya calistigimiz
 // sey giderdi.
 #define PATI_SES_HZ 48000
+
+// Mikrofonun hangi I2S yuvasindan okunacagi.
+//
+// ⚠️ GERCEK KARTTA BELIRLENIYOR. IDF'in mono varsayilani SOL ve o
+// yuvadan tam sifir geliyor; ES8311'in ADC'sini SAG yuvaya koydugu
+// dusunuluyor. Yanlissa belirti nettir: mikrofon tepe genligi 0 kalir
+// ve seri porta "MIKROFON SESSIZ" yazilir.
+#define PATI_SES_GIRIS_YUVA I2S_STD_SLOT_LEFT
 
 // Kodege MCLK'i biz veriyoruz (ES8311 kole). 256 x 48 kHz = 12,288 MHz,
 // standart bir deger.

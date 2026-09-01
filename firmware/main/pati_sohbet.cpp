@@ -72,6 +72,18 @@ std::uint32_t g_tur = 0;
 std::uint32_t g_dusen_olay = 0;
 std::uint32_t g_gonderilemeyen = 0;  // push_audio basarisiz oldu
 
+// Mikrofondan gelen en yuksek genlik — "Pati beni duyuyor mu" sorusunun
+// tek olculebilir cevabi.
+//
+// 01.09.2026'da gercek kartta gerekti: her sey ayaktaydi (anahtar
+// gecerli, oturum aciliyor, sure sayiliyor) ama Pati cevap vermiyordu.
+// Sebep sunlardan biri olabilirdi: mikrofon susuyor, ses gonderilmiyor,
+// Gemini duymuyor. Uc ayri yere bakmak gerekiyordu ve hicbiri
+// gorunmuyordu. Bu sayi ilkini tek basina eliyor.
+std::uint32_t g_mik_tepe = 0;
+std::uint32_t g_mik_okuma = 0;  // kac kez okundu
+std::uint32_t g_mik_bos = 0;    // kaci HIC veri dondurmedi
+
 // ---------------------------------------------------------------------------
 // Olay geri cagirimi — ISTEMCININ KENDI GOREVINDE calisiyor
 //
@@ -567,8 +579,27 @@ void mik_gorevi(void* /*arg*/)
 
     while (g_calisiyor) {
         const std::size_t n = mikrofon_oku(parca, 100);
+
+        // 🔴 IKI AYRI ARIZA, TEK BELIRTI.
+        //
+        // "Mikrofon sessiz" iki bambaska seyden gelebilir:
+        //   n == 0        -> okuma HIC veri dondurmedi (zaman asimi)
+        //   n > 0, hep 0  -> veri geldi ama icinde ses yok
+        //
+        // Ilki I2S/DMA sorunu, ikincisi kodek/ADC sorunu. Ayirmadan
+        // bakmak yanlis yerde saatler harcamak demek — 01.09.2026'da
+        // tam bu oldu.
+        ++g_mik_okuma;
         if (n == 0) {
+            ++g_mik_bos;
             continue;
+        }
+        // Tepe genlik — gonderim kosullarindan ONCE, cunku soru
+        // "mikrofon duyuyor mu", "gonderiyor muyuz" degil.
+        for (std::size_t i = 0; i < n; ++i) {
+            const std::uint32_t g = static_cast<std::uint32_t>(
+                parca[i] < 0 ? -static_cast<std::int32_t>(parca[i]) : parca[i]);
+            if (g > g_mik_tepe) g_mik_tepe = g;
         }
         // 🔴 YENILEME PENCERESI: ses GONDERILMIYOR, dusuruluyor.
         //
@@ -780,6 +811,24 @@ std::uint32_t sohbet_dusen_olay()
 std::uint32_t sohbet_gonderilemeyen()
 {
     return g_gonderilemeyen;
+}
+
+std::uint32_t sohbet_mik_tepe()
+{
+    // Okuyup SIFIRLIYOR: rapor "son araliktaki en yuksek genlik" demek.
+    // Kumulatif olsaydi bir kez bagiran biri sonsuza kadar "mikrofon
+    // calisiyor" gosterirdi.
+    const std::uint32_t t = g_mik_tepe;
+    g_mik_tepe = 0;
+    return t;
+}
+
+void sohbet_mik_okuma(std::uint32_t& okuma, std::uint32_t& bos)
+{
+    okuma = g_mik_okuma;
+    bos = g_mik_bos;
+    g_mik_okuma = 0;
+    g_mik_bos = 0;
 }
 
 void sohbet_durdur()

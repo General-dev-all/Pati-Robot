@@ -85,6 +85,20 @@ std::uint32_t sohbet_dusen_olay();
 // diye gorunur, sebebi mikrofonda ya da agda aranir. Sayi burada.
 std::uint32_t sohbet_gonderilemeyen();
 
+// Son rapor araliginda mikrofondan gelen EN YUKSEK genlik (0-32767).
+// Okuyunca sifirlaniyor.
+//
+// Sessiz odada bile birkac yuz olmali. TAM SIFIR gelirse mikrofon hic
+// veri vermiyor demektir — Gemini'ye sessizlik gidiyor ve robot
+// cevap vermiyor.
+std::uint32_t sohbet_mik_tepe();
+
+// Son aralikta mikrofon kac kez okundu ve kaci BOS dondu.
+//
+// bos == okuma  -> I2S/DMA hic veri vermiyor
+// bos == 0      -> veri geliyor; sessizse sorun kodekte/ADC'de
+void sohbet_mik_okuma(std::uint32_t& okuma, std::uint32_t& bos);
+
 // Oturumu kapatir, ses ve mikrofon gorevlerini sonlandirir.
 //
 // Guncelleme icin var (pati_guncelleme): indirme sirasinda TLS tamponu

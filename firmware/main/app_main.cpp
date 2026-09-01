@@ -558,6 +558,28 @@ extern "C" void app_main()
                      static_cast<unsigned>(dusen));
         }
 
+        // Mikrofon duyuyor mu — her raporda, kosulsuz.
+        //
+        // Sessiz odada bile birkac yuz olmali. TAM SIFIR gelirse Gemini'ye
+        // sessizlik gidiyor: robot cevap vermez ve sebebi ag ya da anahtar
+        // sanilir. 01.09.2026'da gercek kartta tam bu oldu.
+        const std::uint32_t mik = pati::sohbet_mik_tepe();
+        std::uint32_t mik_okuma = 0, mik_bos = 0;
+        pati::sohbet_mik_okuma(mik_okuma, mik_bos);
+        if (mik == 0) {
+            ESP_LOGW(ETIKET, "MIKROFON SESSIZ: tepe 0 · %u okuma, %u bos "
+                             "(%s)",
+                     static_cast<unsigned>(mik_okuma),
+                     static_cast<unsigned>(mik_bos),
+                     (mik_okuma > 0 && mik_bos == mik_okuma)
+                         ? "I2S hic veri vermiyor"
+                         : (mik_okuma == 0 ? "sohbet dongusu hic okumuyor"
+                                           : "veri geliyor ama sessiz"));
+        } else {
+            ESP_LOGI(ETIKET, "mikrofon tepe genlik: %u / 32767",
+                     static_cast<unsigned>(mik));
+        }
+
         const std::uint32_t gonderilemeyen = pati::sohbet_gonderilemeyen();
         if (gonderilemeyen > 0) {
             // Bu da SIFIR olmali. Sifirdan buyukse mikrofon sesi
@@ -576,14 +598,31 @@ extern "C" void app_main()
             ESP_LOGW(ETIKET, "BILINMEYEN IFADE: %u kez",
                      static_cast<unsigned>(goz_bilinmeyen));
         }
-        if (goz_atlanan > 0) {
+        // 🔴 SAYAC KUMULATIF — FARKA BAKIYORUZ.
+        //
+        // 01.09.2026'da gercek kartta gorundu: wifi baglanirken 895 kare
+        // atlandi (o sirada dogruydu, islemci doluydu), sonra her sey
+        // duzeldi ama uyari 5 saniyede bir basilmaya DEVAM ETTI —
+        // ustelik "butce asiliyor" diyerek, kare 14 ms iken ve butce
+        // 50 ms iken.
+        //
+        // Boyle bir uyari sorunu gorunur yapmiyor, GERCEK sorunlari
+        // gizliyor: surekli yanan bir ikaz isigina bakan kimse kalmaz.
+        // Bir daha bakan (insan ya da sonraki oturum) olmayan bir
+        // sorunun pesine duser.
+        //
+        // Simdi yalnizca SON ARALIKTA atlanan kare varsa yaziyor.
+        static std::uint32_t onceki_atlanan = 0;
+        const std::uint32_t yeni_atlanan = goz_atlanan - onceki_atlanan;
+        onceki_atlanan = goz_atlanan;
+
+        if (yeni_atlanan > 0) {
             // Dokumu de yaziyoruz. Eskiden yalnizca "butce asiliyor"
             // diyordu ve bu, sorunu GORUNUR yapip TESHIS EDILEMEZ
             // birakiyordu: sekil mi, renk mi, SPI mi belli olmuyordu.
-            // Ayrinti su ana kadar sadece kurulum modunda basiliyordu,
-            // yani Pati aga baglandigi anda gorunmez oluyordu.
-            ESP_LOGW(ETIKET, "ATLANAN KARE: %u — cizim butcesi asiliyor "
-                             "(son kare %u us / butce %u us)",
+            ESP_LOGW(ETIKET, "ATLANAN KARE: %u (toplam %u) — cizim butcesi "
+                             "asiliyor (son kare %u us / butce %u us)",
+                     static_cast<unsigned>(yeni_atlanan),
                      static_cast<unsigned>(goz_atlanan),
                      static_cast<unsigned>(pati::gozler_kare_us()),
                      static_cast<unsigned>(1000000 / pati::gozler_hedef_fps()));

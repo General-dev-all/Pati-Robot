@@ -20,7 +20,7 @@ CONFIG_IDF_TARGET="esp32s3"
 # ---------------------------------------------------------------------------
 # PSRAM — 8 MB, oktal
 # ---------------------------------------------------------------------------
-# Kartimiz N16R8: 16 MB flash + 8 MB OKTAL PSRAM.
+# StickS3'un yongasi N8R8: 8 MB flash + 8 MB OKTAL PSRAM.
 # PSRAM sart cunku WebSocket'in TLS tamponlari ve ses kuyruklari dahili
 # 512 KB SRAM'e sigmiyor. stackchan'in conversation bileseni de
 # tamponlarini PSRAM'den aliyor (psram_allocator.hpp).
@@ -98,6 +98,31 @@ CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
 # ⚠️ Yaniltici ipucu: derleme ciktisinda "-- USING O3" yaziyor. O bizim
 # degil — espressif__esp_audio_codec bileseni kendi kodu icin basiyor.
 CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+# ---------------------------------------------------------------------------
+# CPU 240 MHz — IDF'in varsayilani 160
+# ---------------------------------------------------------------------------
+#
+# 🔴 GERCEK KARTTA OLCULDU (01.09.2026), tahmin degil.
+#
+# Kart ilk kez calisirken goz cizici kare basina 45-49 ms harciyordu ve
+# butce 50 ms (20 fps). Bes saniyede ~90 kare atlaniyordu. Cizim
+# suresinin %85'i sekil rasterlemesi.
+#
+# Sebep goz cizicinin agirligi degildi: yonga 160 MHz'de kosuyordu,
+# cunku CONFIG_ESP_DEFAULT_CPU_FREQ IDF'te varsayilan olarak 160.
+# ESP32-S3 240 MHz destekliyor.
+#
+# 240 MHz her seyi hizlandiriyor — sekil rasterlemesi, ses yeniden
+# ornekleme, TLS, websocket — ve hicbir gorsel taviz istemiyor.
+#
+# BEDELI PIL. Ama bu kartta asil akimi CPU degil telsiz cekiyor:
+# ses kesintilerini onlemek icin wifi guc tasarrufu KAPALI
+# (WIFI_PS_NONE, pati_ag.cpp). Kullanicinin tek pazarlıksız sarti
+# sesin kesilmemesi; pil ikinci sirada ve sarj kablosu her zaman
+# yaninda.
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+
 
 # ---------------------------------------------------------------------------
 # C++20
