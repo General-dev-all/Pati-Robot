@@ -1,2 +1,2 @@
-3.0.2
+3.0.3
 Pati yeni donanıma taşındı: M5Stack StickS3. Eski elektronikli Pati bu sürümü çalıştırmaz — indirse bile kendini eski sürüme geri alır.
