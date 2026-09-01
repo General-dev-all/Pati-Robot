@@ -382,6 +382,31 @@ extern "C" void app_main()
     // Geri almak onu duzeltmezdi.
     pati::guncelleme_onayla();
 
+    // ---- DURUM OZETI ----------------------------------------------------
+    //
+    // 🔴 ACILISIN ILK SANIYESI BU KARTTA GORULEMIYOR.
+    //
+    // Konsol USB uzerinden geliyor (UART koprusu yok) ve her sifirlamada
+    // USB yeniden numaralaniyor — bilgisayarin portu birkac saniye
+    // kayboluyor. 23.08.2026'da kart ilk kez takildiginda tam olarak bu
+    // yasandi: guc ve ses satirlari her denemede kacti, cihaz "sessiz"
+    // sanildi ve teshis dakikalar aldi.
+    //
+    // Bu yuzden ozet BURADA, ag ve panel kalktiktan sonra bir kez daha
+    // basiliyor. Buraya gelindiginde monitor coktan baglanmis oluyor.
+    ESP_LOGW(ETIKET, "");
+    ESP_LOGW(ETIKET, "===== DURUM =====");
+    ESP_LOGW(ETIKET, "  guc / L3B : %s",
+             pati::guc_hazir() ? "acik" : "KAPALI — mik/hoparlor/arka isik olu");
+    ESP_LOGW(ETIKET, "  ES8311    : %s",
+             pati::donanim_dogru() ? "cevap veriyor" : "YOK");
+    ESP_LOGW(ETIKET, "  ses hatti : %s",
+             pati::ses_hazir() ? "hazir" : "KURULAMADI");
+    ESP_LOGW(ETIKET, "  ekran     : %s",
+             pati::ekran_hazir() ? "hazir" : "KURULAMADI");
+    ESP_LOGW(ETIKET, "=================");
+    ESP_LOGW(ETIKET, "");
+
     // Baglanti kurulana kadar bekle. Kurulum modundaysa BEKLEMIYORUZ:
     // ebeveyn bilgiyi girene kadar burada durmak, gozleri ve paneli
     // olu birakmak olurdu — oysa panel tam o an gerekli.

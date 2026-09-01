@@ -19,16 +19,42 @@ constexpr int BEKLEME_MS = 100;
 
 i2c_master_bus_handle_t g_yol = nullptr;
 i2c_master_dev_handle_t g_pm1 = nullptr;
+bool g_hazir = false;
+
+// M5PM1 islemleri BIRKAC KEZ DENENIYOR.
+//
+// Yonganin "I2C bosta uyku" kipi var (M5Stack belgesi, M5PM1 Sleep >
+// I2C Idle Sleep): hat bir sure sessiz kalinca uyuyor ve kendisini
+// uyandiran ILK islem kayboluyor. Tek denemede bu, rastgele bir NACK
+// gibi gorunur — acilista bir kere olur, bir daha olmaz, sebebi
+// aranirken bulunmaz.
+//
+// Uc deneme yeterli: ilki uyandirir, ikincisi is gorur. Aradaki kisa
+// bekleme yonganin ayaga kalkmasi icin.
+constexpr int DENEME = 3;
 
 esp_err_t pm1_oku(std::uint8_t reg, std::uint8_t& deger)
 {
-    return i2c_master_transmit_receive(g_pm1, &reg, 1, &deger, 1, BEKLEME_MS);
+    esp_err_t hata = ESP_FAIL;
+    for (int i = 0; i < DENEME; ++i) {
+        hata = i2c_master_transmit_receive(g_pm1, &reg, 1, &deger, 1,
+                                           BEKLEME_MS);
+        if (hata == ESP_OK) return ESP_OK;
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
+    return hata;
 }
 
 esp_err_t pm1_yaz(std::uint8_t reg, std::uint8_t deger)
 {
     const std::uint8_t paket[2] = {reg, deger};
-    return i2c_master_transmit(g_pm1, paket, sizeof(paket), BEKLEME_MS);
+    esp_err_t hata = ESP_FAIL;
+    for (int i = 0; i < DENEME; ++i) {
+        hata = i2c_master_transmit(g_pm1, paket, sizeof(paket), BEKLEME_MS);
+        if (hata == ESP_OK) return ESP_OK;
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
+    return hata;
 }
 
 // Bir register'in tek bir bitini degistirir, kalanina dokunmaz.
@@ -156,6 +182,8 @@ void hatti_tara()
 
 i2c_master_bus_handle_t i2c_yolu() { return g_yol; }
 
+bool guc_hazir() { return g_hazir; }
+
 esp_err_t guc_baslat()
 {
     if (g_yol != nullptr) return ESP_OK;
@@ -167,7 +195,7 @@ esp_err_t guc_baslat()
     yol.clk_source = I2C_CLK_SRC_DEFAULT;
     yol.glitch_ignore_cnt = 7;
     // Kartta harici cekme direncleri var; icerideki zayif direncler
-    // yalnizca emniyet payi. 400 kHz'de tek basina yeterli olmazlardi.
+    // yalnizca emniyet payi.
     yol.flags.enable_internal_pullup = true;
 
     esp_err_t hata = i2c_new_master_bus(&yol, &g_yol);
@@ -216,8 +244,9 @@ esp_err_t guc_baslat()
         return hata;
     }
 
-    ESP_LOGI(ETIKET, "guc hazir — I2C %d/%d, L3B acik, amfi acik",
-             PATI_I2C_SCL, PATI_I2C_SDA);
+    g_hazir = true;
+    ESP_LOGI(ETIKET, "guc hazir — I2C %d/%d @%d kHz, L3B acik, amfi acik",
+             PATI_I2C_SCL, PATI_I2C_SDA, PATI_I2C_HZ / 1000);
     return ESP_OK;
 }
 

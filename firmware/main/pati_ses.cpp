@@ -299,6 +299,8 @@ esp_err_t ses_kur()
 // Mikrofon
 // ---------------------------------------------------------------------------
 
+bool ses_hazir() { return g_hazir; }
+
 esp_err_t mikrofon_baslat() { return ses_kur(); }
 
 size_t mikrofon_oku(std::span<std::int16_t> hedef, uint32_t timeout_ms)

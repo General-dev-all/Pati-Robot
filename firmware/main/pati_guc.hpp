@@ -59,4 +59,12 @@ bool donanim_dogru();
 // Pati kizilotesi kullanmiyor, yani pratikte hep acik.
 esp_err_t hoparlor_amfi(bool ac);
 
+// guc_baslat() basarili oldu mu — L3B ve amfi gercekten acildi mi.
+//
+// Acilis kaydinin ILK SANIYESI bu kartta gorulemiyor: konsol USB
+// uzerinden geliyor ve her sifirlamada USB yeniden numaralaniyor, yani
+// bilgisayar portu birkac saniye kaybediyor. Durum sonradan da
+// sorulabilmeli.
+bool guc_hazir();
+
 }  // namespace pati

@@ -57,7 +57,28 @@
 #define PATI_I2C_SCL GPIO_NUM_48
 #define PATI_I2C_SDA GPIO_NUM_47
 
-#define PATI_I2C_HZ (400 * 1000)
+// 🔴 100 kHz, 400 DEGIL — GERCEK KARTTA OLCULDU (23.08.2026).
+//
+// Once 400 kHz yazilmisti ("400 kHz standart, herkes kullaniyor") ve
+// kart gelince su cikti: M5PM1 ADRESINE cevap veriyor (yoklama geciyor)
+// ama ilk register okumasi NACK yiyor. IDF'in hatasi
+// ESP_ERR_INVALID_STATE — "islem tamamlanmadi", yani NACK
+// (esp_driver_i2c/i2c_master.c:727).
+//
+// Sonuc zinciri sessizdi ve tam da korktugumuz gibiydi:
+//   M5PM1 yaziamiyor -> L3B acilmiyor -> mikrofon, hoparlor ve ekran
+//   arka isigi beslenmiyor -> ES8311 0x18'de cevap vermiyor -> "yanlis
+//   donanim" sanildi. Ekran simsiyahti.
+//
+// Sebep M5PM1'in kendi surucusunde yaziyor (github.com/m5stack/M5PM1,
+// M5PM1.cpp): `_requestedSpeed = M5PM1_I2C_FREQ_100K` ve
+// `_i2cConfig.speed400k = false`. Yani yonga 100 kHz'de baslıyor;
+// 400 kHz AYRICA ACILMASI gereken bir kip.
+//
+// ES8311 zaten 100 kHz'i destekliyor ve hattaki tek is acilistaki
+// register kurulumu — birkac milisaniye fark eder, hicbir sey
+// kaybetmiyoruz.
+#define PATI_I2C_HZ (100 * 1000)
 
 #define PATI_ADR_ES8311 0x18
 #define PATI_ADR_M5PM1  0x6E

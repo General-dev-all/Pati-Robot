@@ -44,6 +44,10 @@ namespace pati {
 esp_err_t mikrofon_baslat();
 esp_err_t hoparlor_baslat();
 
+// I2S ve kodek gercekten ayaga kalkti mi. Acilis kaydinin ilk saniyesi
+// USB'de gorulemedigi icin sonradan da sorulabilmeli (bkz. pati_guc.hpp).
+bool ses_hazir();
+
 // ---------------------------------------------------------------------------
 // Mikrofon — Gemini'ye 16 kHz mono int16
 // ---------------------------------------------------------------------------
