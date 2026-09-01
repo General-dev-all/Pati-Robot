@@ -129,15 +129,27 @@ cihazı yeniden başlatıyor. Varsayılan 1.00 ve bilinçli düşük.
 
 ## Durum
 
-Yazılım tamam ve derleniyor. Kartsız doğrulanabilen her şey doğrulandı:
-gözler 240×135'te tarayıcıyla **0 farklı piksel**, yeniden örnekleyici
-gerçek Gemini kaydıyla sınandı.
+**GERÇEK KARTTA ÇALIŞIYOR** — 01.09.2026'da ilk kez ayağa kalktı.
+Mikrofon, hoparlör, ekran, gözler, wifi, panel, Gemini sohbeti: hepsi
+sınandı ve çalışıyor. Sohbet turları dönüyor.
 
-**Gerçek kartta hiç çalışmadı** — kartlar Eylül 2026'da geliyor.
-Doğrulanmamış varsayımlar (kodek register'ları, ekran yönü ve kayması,
-güç rayları) kaynakta `⚠️` ile işaretli ve hepsi tek satırlık anahtar.
+İlk açılışta bulunan üç şey — hepsi düzeltildi, hepsi kaynakta yazılı:
 
-Kart gelince sırayla ne yapılacağı: `firmware/ILK-ACILIS.md`.
+1. **I2C 100 kHz olmalı, 400 değil.** M5PM1 adresini cevaplıyor ama
+   register erişimini reddediyor. Tek sebep, dört belirti: L3B açılmaz
+   → mikrofon/hoparlör/arka ışık beslenmez → ES8311 cevap vermez →
+   donanım kilidi "yanlış kart" der, ekran simsiyah kalır.
+2. **`DIN`/`DOUT` ters okunmuştu.** M5Stack'in tablosu satırı çevre
+   birimiyle etiketliyor ama sinyal adlarını ESP32'nin ağzından
+   yazıyor (aynı sayfadaki LCD satırındaki "MOSI" gibi). Doğrusu:
+   `dout = G14` (hoparlör), `din = G16` (mikrofon). Yanlışken iki yön
+   birden ölüydü.
+3. **CPU 160 MHz'deydi** (IDF varsayılanı). Kare süresi 45–49 ms,
+   bütçe 50 ms, 5 saniyede ~90 kare atlanıyordu. 240 MHz'de aynı kare
+   29–31 ms ve atlama duruyor.
+
+Kalan bilinmeyen yok denecek kadar az; `firmware/ILK-ACILIS.md` neyin
+doğrulandığını ve neyin hâlâ ayarlanabilir olduğunu tutuyor.
 
 ---
 

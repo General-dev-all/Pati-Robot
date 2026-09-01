@@ -1,10 +1,11 @@
 # StickS3 — ilk açılış listesi
 
-Kart kutudan çıktığında sırayla bakılacak şeyler. Her adımda **ne
+Kart takıldığında sırayla bakılacak şeyler. Her adımda **ne
 görmen gerektiği** ve **görmezsen hangi tek satırın değişeceği** yazıyor.
 
-Yazılım gerçek kartta hiç çalışmadı (kartlar Eylül 2026'da geliyor).
-Kaynakta `⚠️` ile işaretli her yer, burada bir satıra karşılık geliyor.
+**01.09.2026: kart geldi ve her şey çalıştı.** Aşağıdaki liste artık
+"bilinmeyeni bul" değil, "bir şey ters giderse nereye bak" listesi.
+İlk açılışta bulunan üç şey en sonda ayrı bir bölümde.
 
 ---
 
@@ -18,8 +19,19 @@ cd firmware
 idf.py -p <PORT> flash monitor
 ```
 
-`KARTA-YUKLE.bat` aynı şeyi yapıyor ama COM portunu CH343 köprüsüne
-göre arıyor; StickS3'te köprü farklı olabilir, o zaman portu elle ver.
+`KARTA-YUKLE.bat` aynı şeyi yapıyor ve portu kendi buluyor. StickS3'te
+USB-UART köprüsü **yok** — ESP32-S3'ün kendi USB'si Windows'ta
+"USB Seri Cihaz (COMx)" diye görünüyor.
+
+⚠️ **Seri portu izlerken DTR/RTS'e dokunma.** Bu kartta o hatlar kartı
+indirme moduna sokuyor (`boot:0x0 DOWNLOAD`, yeşil ışık yanıp söner) ve
+uygulama hiç açılmaz. `esp_idf_monitor --no-reset` kullan; sıfırlamak
+için yan düğmeye bir kez kısa tıkla.
+
+⚠️ **Açılışın ilk ~1 saniyesi USB'de görülmez** — her sıfırlamada USB
+yeniden numaralanıyor ve bilgisayar portu o kadar süre kaybediyor. O
+yüzden ağ kalktıktan sonra bir `===== DURUM =====` özeti basılıyor;
+güç, kodek, ses ve ekranın durumu orada.
 
 🔴 **`idf.py flash`, `app-flash` değil.** Bölüm tablosu özel ve 8 MB'a
 göre yeniden yazıldı; sadece uygulamayı yazmak eski tabloyu bırakır.
@@ -172,16 +184,46 @@ Gemini anahtarı panelden giriliyor; yazılımın içinde anahtar yok.
 | Hafıza motoru ↔ Python | 1008 kontrol |
 | Derleme, bölüm tablosu | `pati.bin` 1,46 MB / 3,94 MB yuva |
 
-| Doğrulanmadı — kart gerekiyor | Yanlışsa nasıl anlaşılır |
+| Kartta doğrulandı (01.09.2026) | Ölçüm |
 |---|---|
-| ES8311 register dizisi | ses hiç çıkmaz; `derle.bat` geçiyorsa örnekleyicide değil kodekte |
-| M5PM1 register bit düzeni | **kendi kendini denetliyor** — `BEKLENEN GIBI AYARLANMADI` yazar |
-| Ekran yönü ve aynalama | test deseni yatay/ters çıkar, seri port hangi ayar olduğunu söyler |
-| Ekranın piksel kayması | kenarda ince çöp şeridi |
-| Ekranın çubuk üzerindeki yeri (stüdyo) | sadece görsel; firmware'i etkilemiyor |
-| Pil ömrü ve güvenli ses seviyesi | Pati cümle ortasında kapanıp açılır |
-| Mikrofon kazancı | Pati duymaz ya da her sesi konuşma sanır |
-| DMA tamponunun yeterliliği | konuşurken kısa takılmalar |
+| Güç katmanı, L3B, amfi | `guc hazir — I2C 48/47 @100 kHz` |
+| ES8311 kodek | register dökümü: ADC açık, seviye `0xbf`, port susturulmamış |
+| Mikrofon | konuşurken tepe genlik 11.000–32.000 |
+| Hoparlör | 1 kHz test sesi duyuldu |
+| Ekran, gözler | kare 29–31 ms (bütçe 50.000), atlama ~0 |
+| Wifi, panel, Gemini | sohbet turları dönüyor |
 
-Bunların hiçbiri sessiz değil: her birinin ya bir log satırı var ya da
-kulakla/gözle anında belli olan bir belirtisi.
+| Hâlâ ayarlanabilir | Belirtisi |
+|---|---|
+| Ekranın yönü/aynalaması | görüntü ters ya da yan durur |
+| Pil ömrü ve güvenli ses seviyesi | Pati cümle ortasında kapanıp açılır |
+| Mikrofon kazancı (30 dB) | Pati duymaz ya da her sesi konuşma sanır |
+| DMA tamponu (341 ms) | konuşurken kısa takılmalar |
+| Göz yerleşimi | görünüm tercihi, `panel/gelistirici.html` |
+
+---
+
+## İlk açılışta bulunan üç şey
+
+**1. I2C 400 kHz çalışmıyor, 100 kHz gerekiyor.** M5PM1 adresini
+cevaplıyor (yoklama geçiyor) ama ilk register erişiminde NACK veriyor.
+Tek sebep, dört belirti: L3B açılmaz → mikrofon, hoparlör ve arka ışık
+beslenmez → ES8311 cevap vermez → donanım kilidi "yanlış kart" der,
+ekran simsiyah kalır. Kaynağı M5Stack'in kendi sürücüsü:
+`_requestedSpeed = M5PM1_I2C_FREQ_100K`, `speed400k = false`.
+
+**2. `DIN`/`DOUT` ters okunmuştu.** M5Stack'in tablosu satırı
+`ES8311` diye etiketliyor ama sinyal adlarını **ESP32'nin ağzından**
+yazıyor — aynı sayfadaki LCD satırındaki `MOSI` de ekranın değil
+ESP32'nin çıkışı. Doğrusu `dout = G14` (hoparlör), `din = G16`
+(mikrofon). Yanlışken iki yön birden ölüydü ve belirti "mikrofon tam
+sıfır okuyor" idi.
+
+Elenenler (her biri o an doğru cevap gibi görünmüştü): kodek saati,
+ADC seviyesi, `no_dac_ref`, I2S yuvası (sol/sağ), analog/PDM seçimi.
+Kodeği kesin olarak eleyen şey yongadan alınan **register dökümü**
+oldu.
+
+**3. CPU 160 MHz'deydi.** IDF'in varsayılanı; hiç ayarlanmamıştı. Kare
+45–49 ms sürüyor ve 5 saniyede ~90 kare atlanıyordu. 240 MHz'de aynı
+kare 29–31 ms, atlama duruyor.
