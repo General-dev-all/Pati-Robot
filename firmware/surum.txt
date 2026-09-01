@@ -1,2 +1,2 @@
 3.0.4
-Pati artık bağlantısı koptuğunda kendini toparlıyor: internet bir an giderse susup kalmıyor, birkaç saniyede geri dönüyor. Wifi'ye ulaşamazsa da 3 dakikada bir yeniden deniyor. Duyması iyileşti, sesi net anlıyor. Pil ile çalışırken ses kendiliğinden biraz kısılıyor — böylece Pati cümlenin ortasında kapanmıyor.
+Pati artık bağlantısı koptuğunda kendini toparlıyor: internet bir an giderse susup kalmıyor, birkaç saniyede geri dönüyor. Wifi'ye ulaşamazsa da 3 dakikada bir yeniden deniyor. Duyması iyileşti, sesi net anlıyor. Pil ile çalışırken ses kendiliğinden biraz kısılıyor — böylece
