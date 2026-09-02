@@ -1,2 +1,2 @@
-3.0.8
-Pati pilde daha az güç harcıyor: gözlerin çevresindeki parlama katmanları azaltıldı (hareket aynı akıcılıkta kalıyor), ekran biraz daha kısıldı ve dahilî bellek saati düşürüldü. Ses tavanı pilde 0.65'e indi. Ayrıca ekran donmasına yol açan bir kusur giderildi.
+3.0.9
+Pati pilde daha az güç harcıyor: gözlerin çevresindeki parlama katmanları azaltıldı (hareket aynı akıcılıkta kalıyor), ekran biraz daha kısıldı ve dahilî bellek saati düşürüldü. Ses tavanı pilde 0.60'a indi. Ayrıca ekran donmasına yol açan bir kusur giderildi.

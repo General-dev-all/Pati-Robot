@@ -79,7 +79,7 @@ cümle ortasında kaybolmak kabul edilemez.
 | Göz parlama katmanı 3 → 1 (pilde) | çizim maliyetinin **%81'i** bu katmanlarda (ölçülmüş) | 🔄 sınanmadı |
 | Ekran %45 → %35 | taban akım | 🔄 sınanmadı |
 | Wifi verici 20 → 15 dBm (pilde) | telsiz gönderirken 250-350 mA | ❌ **geri alındı** — menzil çöktü (3/4 → 1/4), "modemin dibinde bile zor çekiyor" |
-| Ses tavanı 0.70 → 0.65 | hoparlör tepe akımı | 🔄 sınanmadı |
+| Ses tavanı 0.70 → **0.60** | hoparlör tepe akımı; wifi kısılamadığı için telafi | 🔄 sınanmadı |
 | Flash 80 → 40 MHz | PSRAM'den sonraki ikinci saat | 🔄 sınanmadı |
 | Brownout eşiği | eşik gereksiz hassas olabilir | ❌ **çürütüldü** — zaten en toleranslı (aşağıda) |
 | Açılışta güç kipinin geç girmesi | 6 sn boyunca tam yük | ✅ kusur, düzeltildi (aşağıda) |

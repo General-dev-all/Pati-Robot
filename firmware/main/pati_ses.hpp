@@ -190,7 +190,7 @@ constexpr float SES_SEVIYESI_EN_FAZLA  = 2.00f;
 // cunku esikleri belirleyecek olcum yok — tahminle yazilsaydi bu
 // yorumdaki hatanin aynisi tekrarlanirdi.
 // ---------------------------------------------------------------------------
-// 02.09.2026 — 0.70'ten 0.65'e indirildi, KULLANICININ ACIK IZNIYLE
+// 02.09.2026 — 0.70'ten 0.60'a indirildi, KULLANICININ ACIK IZNIYLE
 // ---------------------------------------------------------------------------
 //
 // 🔴 BU DEGER UZUN SURE PAZARLIGA KAPALIYDI ve oyle kalmasi dogruydu:
@@ -208,16 +208,22 @@ constexpr float SES_SEVIYESI_EN_FAZLA  = 2.00f;
 // Kullanicinin sozu: "hatta cok ihtiyacin varsa ve sorunumuzu
 // cozucegine inaniyorsan biraz hoparloru bile kismana izin veriyorum."
 //
-// Once 0.55 yazildi ve kullanici geri cevirdi: "0.55 az olmadi mi?"
-// Hakliydi — 0.70'ten 0.55'e inmek %21'lik bir dususe denk geliyor ve
-// bu, olculmemis bir kazanc icin cok buyuk bir odun. 0.65 kucuk bir
-// adim; ise yaramazsa zaten geri alinacak, yarasa bile daha ileri
-// gitmeden once olculecek.
+// Bu deger uc adimda buraya geldi ve sirasi anlamli:
+//   0.55 -> kullanici geri cevirdi ("0.55 az olmadi mi?"). Hakliydi;
+//           %21'lik dusus, olculmemis bir kazanc icin buyuk bir odun.
+//   0.65 -> kabul edildi.
+//   0.60 -> wifi verici gucu GERI ALINDIKTAN sonra kullanici kendisi
+//           istedi: "wifiyi kisamiyoruz mecbur bari istemesem de ordan
+//           biraz daha tasaruf edelim."
+//
+// Yani bu son adim bir tercih degil, kapanan bir kapinin telafisi.
+// Wifi tarafi bir gun duzelirse (kapsama iyilesir ve verici gucu
+// kisilabilir hale gelirse) ilk geri verilecek sey BURASI olmali.
 //
 // ⚠️ BU BIR GERI ADIM VE OLCULMESI SART. Cokme belirgin azalmazsa
 // 0.70'e GERI DONULMELI — sesi bedavaya kismis oluruz ve bu, ustunde
 // iki gun durulmus bir degeri bosuna feda etmek olur.
-constexpr float SES_PIL_TAVANI = 0.65f;
+constexpr float SES_PIL_TAVANI = 0.60f;
 constexpr float SES_SEVIYESI_EN_AZ     = 0.15f;
 constexpr float SES_SEVIYESI_ADIM      = 0.15f;
 
