@@ -1,2 +1,2 @@
 3.0.6
-Pati artık iki düğmeyle yönetiliyor: yan düğmeye tek tık tamamen kapatıyor, tekrar tek tık açıyor. Mavi tuşa kısa basınca pil ve wifi bilgisi çıkıyor, uzun basınca uyuyor. Pil azalınca ekranda "şarja tak" hatırlatması gösteriliyor. Pilde çalışırken çok daha seyrek kapanıyor; açılıştaki renkli şeritler de kaldırıldı.
+Pati artık iki düğmeyle yönetiliyor: yan düğmeye tek tık tamamen kapatıyor, tekrar tek tık açıyor. Mavi tuşa kısa basınca pil ve wifi bilgisi çıkıyor, uzun basınca uyuyor. Pil azalınca ekranda "şarja tak" hatırlatması gösteriliyor. Pilde çalışırken çok daha seyrek kapanı
