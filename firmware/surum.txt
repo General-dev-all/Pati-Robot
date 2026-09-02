@@ -1,2 +1,2 @@
 3.0.7
-Pati wifi'ye bağlanamadığında ekranda artık arayan bir wifi işareti gösteriyor; eskiden sessizce cevap vermiyordu ve sebebi görünmüyordu. Yeni sürüm çıktığında da açılışta haber veriyor: mavi tuşa bir kez basmak güncellemeyi başlatıyor ve yüzde ekranda ilerliyor. Pil azken güncelleme teklif edilmiyor, önce şarj isteniyor.
+Pati wifi'ye bağlanamadığında ekranda artık arayan bir wifi işareti gösteriyor; eskiden sessizce cevap vermiyordu ve sebebi görünmüyordu. Yeni sürüm çıktığında da açılışta haber veriyor: mavi tuşa bir kez basmak güncellemeyi başlatıyor ve yüzde ekranda ilerliyor. Pil azken 
