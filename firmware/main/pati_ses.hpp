@@ -189,7 +189,35 @@ constexpr float SES_SEVIYESI_EN_FAZLA  = 2.00f;
 // `pil_mv()` zaten okunuyor, yani kademeli bir tavan mumkun. Yapilmadi
 // cunku esikleri belirleyecek olcum yok — tahminle yazilsaydi bu
 // yorumdaki hatanin aynisi tekrarlanirdi.
-constexpr float SES_PIL_TAVANI = 0.70f;
+// ---------------------------------------------------------------------------
+// 02.09.2026 — 0.70'ten 0.65'e indirildi, KULLANICININ ACIK IZNIYLE
+// ---------------------------------------------------------------------------
+//
+// 🔴 BU DEGER UZUN SURE PAZARLIGA KAPALIYDI ve oyle kalmasi dogruydu:
+// pilde kisik ses gercek bir kayip, cocuk duyamiyorsa robot ise
+// yaramiyor. Iki gun boyunca bu satira dokunulmadan cozum arandi.
+//
+// Neden simdi indi: iki gunluk olcumden sonra hoparlorun tepe akimi
+// disinda denenmedik buyuk bir aday kalmadi. Ve olculen sey su —
+// brownout esigi ZATEN en toleransli ayarda (ESP32-S3 LVL_SEL_7 =
+// 2,44 V; kaynak: esp-idf/components/esp_hw_support/power_supply/
+// port/esp32s3/Kconfig.power). Yani 3,3 V rayi gercekten 2,44 V'a
+// dusuyor. Bu kucuk bir dalgalanma degil; tepe akimi cekense M5Stack'in
+// kendi belgesinin de isaret ettigi hoparlor.
+//
+// Kullanicinin sozu: "hatta cok ihtiyacin varsa ve sorunumuzu
+// cozucegine inaniyorsan biraz hoparloru bile kismana izin veriyorum."
+//
+// Once 0.55 yazildi ve kullanici geri cevirdi: "0.55 az olmadi mi?"
+// Hakliydi — 0.70'ten 0.55'e inmek %21'lik bir dususe denk geliyor ve
+// bu, olculmemis bir kazanc icin cok buyuk bir odun. 0.65 kucuk bir
+// adim; ise yaramazsa zaten geri alinacak, yarasa bile daha ileri
+// gitmeden once olculecek.
+//
+// ⚠️ BU BIR GERI ADIM VE OLCULMESI SART. Cokme belirgin azalmazsa
+// 0.70'e GERI DONULMELI — sesi bedavaya kismis oluruz ve bu, ustunde
+// iki gun durulmus bir degeri bosuna feda etmek olur.
+constexpr float SES_PIL_TAVANI = 0.65f;
 constexpr float SES_SEVIYESI_EN_AZ     = 0.15f;
 constexpr float SES_SEVIYESI_ADIM      = 0.15f;
 

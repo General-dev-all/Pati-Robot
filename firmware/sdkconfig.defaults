@@ -50,8 +50,8 @@ CONFIG_SPIRAM_MODE_OCT=y
 # genisliginin yarilanmasi; olculen tur gecikmesi 2-30 ms ve butce cok
 # daha genis, yani yeri var.
 #
-# ⚠️ FLASH DA 80 MHz (CONFIG_ESPTOOLPY_FLASHFREQ_80M). Sallama hala
-# coktururse bir sonraki deneme orayi 40 MHz'e indirmek.
+# ✅ FLASH DA 40 MHz'E INDI (02.09.2026, asagida). Bu not oraya
+# gonderiyordu ve sira gercekten geldi.
 CONFIG_SPIRAM_SPEED_40M=y
 CONFIG_SPIRAM_USE_MALLOC=y
 
@@ -107,7 +107,25 @@ CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096
 # temiz bir kopyada derliyor ve sdkconfig hic olusmamis oluyor.
 CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
 CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
-CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+
+# ---------------------------------------------------------------------------
+# Flash 40 MHz — PSRAM'den sonra sirasi gelen ikinci saat
+# ---------------------------------------------------------------------------
+#
+# PSRAM 80 -> 40 MHz indirilmisti (sallayinca cokme, TESHIS.md) ve o
+# zaman yukariya su not dusulmustu: "Flash da 80 MHz. Sallama hala
+# coktururse bir sonraki deneme orayi 40 MHz'e indirmek."
+#
+# 02.09.2026'da sira geldi — ama sallama yuzunden degil. Pilde brownout
+# suruyor ve o gun brownout esiginin ZATEN en toleransli ayarda oldugu
+# dogrulandi (ESP32-S3 LVL_SEL_7 = 2,44 V, kaynak esp-idf
+# components/esp_hw_support/power_supply/port/esp32s3/Kconfig.power).
+# Yani 3,3 V rayi gercekten 2,44 V'a dusuyor; yuksek frekansli flash
+# erisimi hem akim cekiyor hem de gerilim dustugunde ilk bozulan yer.
+#
+# Bedeli kod okumanin yavaslamasi. Onbellek sayesinde pratikte kucuk
+# olmali; olculecek olan goz kare suresi (TESHIS.md'de 24-30 ms).
+CONFIG_ESPTOOLPY_FLASHFREQ_40M=y
 
 # ---------------------------------------------------------------------------
 # Bolum tablosu — OTA'li

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <new>
 
@@ -15,9 +16,6 @@
 #include "pati_ekran.hpp"
 #include "pati_goz_uretilmis.h"
 #include "pati_pinler.h"
-#include "pati_ag.hpp"
-#include "pati_guc.hpp"
-#include "pati_guncelleme.hpp"
 #include "pati_perde.hpp"
 
 namespace pati {
@@ -195,6 +193,35 @@ constexpr int GUNC_TAZELE_MS = 500;
 //
 // USB takiliysa sinir HIC uygulanmiyor: akim oradan geliyor.
 constexpr int GUNC_EN_AZ_PIL = 40;
+
+// ---------------------------------------------------------------------------
+// Disaridan BILDIRILEN durum — goz gorevi hicbir sey sormuyor
+// ---------------------------------------------------------------------------
+//
+// Gerekce pati_gozler.hpp'de. Ozeti: sormak kilit ve I2C demekti, ve
+// goz gorevi o kilitte iki kez dondu. Burasi sadece atomik okuma.
+std::atomic<int>  g_d_gunc{-1};      // GuncellemeDurumu, -1 = bilinmiyor
+std::atomic<int>  g_d_gunc_yuzde{0};
+std::atomic<bool> g_d_ag_bagli{true};
+std::atomic<bool> g_d_ag_kurulum{false};
+std::atomic<int>  g_d_pil{-1};
+std::atomic<bool> g_d_usb{true};
+
+// Guncelleme durumlarinin sayisal karsiligi. pati_guncelleme.hpp'deki
+// enum ile AYNI SIRADA olmali; burada tekrar edilmesinin sebebi bu
+// dosyanin o basligi ARTIK ICE ALMAMASI (kilit oradan geliyordu).
+//
+// ⚠️ Enum'a yeni bir durum eklenirse burasi da guncellenmeli. Karsiligi
+// bozulursa perde yanlis anda cikar — sessiz bir hata.
+constexpr int GD_VAR = 3;      // GuncellemeDurumu::Var
+constexpr int GD_INIYOR = 4;   // GuncellemeDurumu::Iniyor
+constexpr int GD_BITTI = 5;    // GuncellemeDurumu::Bitti
+
+// Yeni surum numarasi. Dize oldugu icin atomik degil; yalnizca guc
+// gozcusu yaziyor ve yalnizca goz gorevi okuyor. En kotu durumda goz
+// gorevi yarim yazilmis bir dize cizer — bir kare boyunca. Kilit
+// koymak, tam da kacindigimiz seyi geri getirirdi.
+char g_gunc_surum[24] = {};
 
 // Guncelleme perdesi su an ekranda mi — tus gorevi buna bakiyor.
 std::atomic<bool> g_gunc_acik{false};
@@ -728,7 +755,22 @@ PATI_HIZLI void satiri_ciz(int sy, const Yerlesim y[2], float kirp)
         }
 
         // --- parlama: ana seklin buyugu, dusuk alfa, birkac kat
-        for (int k = PATI_GOZ_PARLAMA_KAT; k >= 1; --k) {
+        //
+        // 🔴 PILDE TEK KAT. Uretilmis dosyadaki not: "cizim maliyetinin
+        // %81'i bu katmanlar" (gozler_test.mjs ile olculdu). Uc kattan
+        // bire inmek cizim isinin yarisindan fazlasini kesiyor.
+        //
+        // NEDEN FPS DUSURMEKTEN IYI: kare hizi dusunce gozler kekeliyor
+        // ve bu goze carpiyor. Parlama ise gozun etrafindaki yumusak
+        // halka — bir kata inince goz biraz daha "duz" duruyor ama
+        // HAREKET ayni akicilikta kaliyor. Cocugun fark ettigi sey
+        // hareket.
+        //
+        // ⚠️ Kazanci OLCULMEDI, cizim maliyetinin dagilimindan
+        // hesaplandi. Olculecek olan yine cokme sikligi.
+        const int parlama_kat =
+            g_pilde.load(std::memory_order_relaxed) ? 1 : PATI_GOZ_PARLAMA_KAT;
+        for (int k = parlama_kat; k >= 1; --k) {
             const float b = static_cast<float>(k) * PATI_GOZ_PARLAMA_KALINLIK;
             const Kapak dis{kapak.ust_a - b, kapak.ust_b,
                             kapak.alt_a + b, kapak.alt_b};
@@ -747,7 +789,11 @@ PATI_HIZLI void satiri_ciz(int sy, const Yerlesim y[2], float kirp)
 
         // --- cam parlamasi
 #if PATI_GOZ_CAM_PARLAMASI
-        if (kirp < 0.5f && v.yuk > 14.0f) {
+        // Pilde cam parlamasi da kapali: kucuk ama bedava bir tasarruf.
+        // Gozun sol ustundeki minik beyaz leke — yoklugu ancak yan yana
+        // konursa fark ediliyor.
+        if (!g_pilde.load(std::memory_order_relaxed)
+            && kirp < 0.5f && v.yuk > 14.0f) {
             const float px = v.sol + v.gen * (0.14f - v.bakis_x * 0.04f);
             satira_yuvarlak(sy, px, v.ust + v.yuk * 0.10f,
                             v.gen * 0.26f, std::max(v.yuk * 0.20f, 3.0f),
@@ -1018,6 +1064,7 @@ void gozler_gorevi(void*)
     bool onceki_bilgi = false;          // "gecen turda perde vardi"
     int wifi_faz = 0;
     std::int64_t gunc_ilk_us = 0;       // teklif penceresinin baslangici
+
     while (true) {
         // Dusuk pil uyarisi: gozlerin YERINE tam ekran ciziliyor.
         if (g_uyari_var.exchange(false, std::memory_order_relaxed)) {
@@ -1055,13 +1102,13 @@ void gozler_gorevi(void*)
 
         // ---- GUNCELLEME PERDESI --------------------------------------
         //
-        // Iki hal: yeni surum bekliyor (sureli teklif) ve iniyor
-        // (sonuna kadar). Ikisi de gozlerin yerine geciyor.
-        const GuncellemeDurumu gd = guncelleme_durumu();
+        // Durumlar SORULMUYOR, bildirilmis olani okunuyor (atomik).
+        // Gerekce yukarida g_d_* kutusunun basinda.
+        const int gd = g_d_gunc.load(std::memory_order_relaxed);
         bool gunc = false;
-        if (gd == GuncellemeDurumu::Iniyor || gd == GuncellemeDurumu::Bitti) {
+        if (gd == GD_INIYOR || gd == GD_BITTI) {
             gunc = true;
-        } else if (gd == GuncellemeDurumu::Var) {
+        } else if (gd == GD_VAR) {
             if (gunc_ilk_us == 0) gunc_ilk_us = esp_timer_get_time();
             gunc = (esp_timer_get_time() - gunc_ilk_us) < GUNC_TEKLIF_US;
         } else {
@@ -1074,9 +1121,8 @@ void gozler_gorevi(void*)
         // Kurulum kipi HARIC. Orada ag gercekten yok ama anlami bambaska:
         // "beni ayarla". O hali gozler anlatiyor (uykulu) ve panel
         // acik — "WiFi araniyor" yazmak yanlis yere baktirirdi.
-        const AgDurumu ag = ag_durumu();
-        const bool wifi_yok =
-            (ag != AgDurumu::Bagli && ag != AgDurumu::Kurulum);
+        const bool wifi_yok = !g_d_ag_bagli.load(std::memory_order_relaxed)
+                              && !g_d_ag_kurulum.load(std::memory_order_relaxed);
 
         // Perdeden gozlere donuste ekran TEK YERDE temizleniyor —
         // hangi perde oldugu onemsiz.
@@ -1088,7 +1134,7 @@ void gozler_gorevi(void*)
         onceki_bilgi = perde;
 
         if (gunc) {
-            const bool iniyor = (gd != GuncellemeDurumu::Var);
+            const bool iniyor = (gd != GD_VAR);
 
             // Dusuk pilde guncelleme TEKLIF EDILMIYOR. Indirme wifi ve
             // flash yazmayi ayni anda calistiriyor, yani en yuksek akimi
@@ -1096,13 +1142,14 @@ void gozler_gorevi(void*)
             // (PIL.md). Yarim kalan OTA guvenli — onyukleyici eski
             // surume doner — ama cocuk icin "gunculuyorum" deyip
             // kapanmak kotu.
-            const int y = pil_yuzde();
+            const int y = g_d_pil.load(std::memory_order_relaxed);
             const bool pil_zayif = !iniyor
-                                   && guc_kaynak() != GucKaynagi::Usb
+                                   && !g_d_usb.load(std::memory_order_relaxed)
                                    && y >= 0 && y < GUNC_EN_AZ_PIL;
 
-            perde_guncelleme(guncelleme_yeni_surum(),
-                             iniyor ? guncelleme_yuzde() : -1,
+            perde_guncelleme(g_gunc_surum,
+                             iniyor ? g_d_gunc_yuzde.load(std::memory_order_relaxed)
+                                    : -1,
                              pil_zayif ? "ÖNCE ŞARJA TAK" : nullptr);
             vTaskDelay(pdMS_TO_TICKS(GUNC_TAZELE_MS));
             son_uyanma = xTaskGetTickCount();
@@ -1211,6 +1258,24 @@ void gozler_pil_kipi(bool pilde)
 {
     g_kare_ms.store(pilde ? PIL_KARE_MS : KARE_MS, std::memory_order_relaxed);
     g_pilde.store(pilde, std::memory_order_relaxed);
+}
+
+void gozler_durum_bildir(int gunc_durum, int gunc_yuzde,
+                         const char* gunc_surum, bool ag_bagli,
+                         bool ag_kurulum, int pil_yuzde, bool usb)
+{
+    g_d_gunc.store(gunc_durum, std::memory_order_relaxed);
+    g_d_gunc_yuzde.store(gunc_yuzde, std::memory_order_relaxed);
+    g_d_ag_bagli.store(ag_bagli, std::memory_order_relaxed);
+    g_d_ag_kurulum.store(ag_kurulum, std::memory_order_relaxed);
+    g_d_pil.store(pil_yuzde, std::memory_order_relaxed);
+    g_d_usb.store(usb, std::memory_order_relaxed);
+
+    if (gunc_surum != nullptr) {
+        std::snprintf(g_gunc_surum, sizeof(g_gunc_surum), "%s", gunc_surum);
+    } else {
+        g_gunc_surum[0] = '\0';
+    }
 }
 
 void gozler_bilgi_degistir()

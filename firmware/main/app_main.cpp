@@ -40,6 +40,8 @@
 #include "pati_ses.hpp"
 #include "pati_sohbet.hpp"
 #include "pati_tus.hpp"
+#include <esp_wifi.h>
+
 #include "pati_ag.hpp"
 #include "pati_anahtar.hpp"
 #include "pati_ayar.hpp"
@@ -120,10 +122,45 @@ void guc_kipi_uygula(pati::GucKaynagi kaynak)
     // tepe akimi yapiyor, ama o tepe taban akimin uzerine biniyor:
     // taban dusunce ray daha yuksekte durur ve tepe icin pay kalir.
     //
-    // ⚠️ 0.45 OLCULMUS BIR DEGER DEGIL, makul bir baslangic. Tek basina
-    // denendi ve cokmeyi durdurmadi (bkz. PIL.md); yine de taban akimi
-    // dusurdugu icin duruyor.
-    pati::ekran_parlaklik_ayarla(pilde ? 0.45f : 1.00f);
+    // ⚠️ OLCULMUS DEGERLER DEGIL. 0.45 tek basina denendi ve cokmeyi
+    // durdurmadi (bkz. PIL.md); yine de taban akimi dusurdugu icin
+    // duruyordu. 02.09.2026'da kullanicinin istegiyle 0.35'e indi:
+    // "sorun barizse guc, biraz daha kisalim."
+    //
+    // 0.15 alt sinir ve orasi "kisik ekran" degil "kapali ekran" gibi
+    // gorunuyor (pati_ekran.hpp). 0.35 hala rahat okunuyor.
+    pati::ekran_parlaklik_ayarla(pilde ? 0.35f : 1.00f);
+
+    // ---- WIFI VERICI GUCU: pilde kisik ----------------------------------
+    //
+    // 🔴 EN CIDDI SUPHELI, ve 02.09.2026 gecesine kadar HIC DENENMEDI.
+    // ESP32-S3 telsizi gonderirken 250-350 mA cekiyor — muhtemelen
+    // hoparlor amfisinden bile buyuk bir tepe. Ve Pati SUREKLI gonderiyor:
+    // mikrofon sesi kesintisiz Gemini'ye akiyor.
+    //
+    // Birim 0,25 dBm. 80 = 20 dBm (varsayilan tavan), 60 = 15 dBm.
+    // 3 dB dusus kabaca yarim guc demek.
+    //
+    // ⚠️ BEDELI MENZIL. Wifi su an 3/4 ve payimiz sinirli; bu yuzden
+    // "abartmadan" bir kademe seciliyor, telsizi kismak degil.
+    // Kapsama sikayeti gelirse ilk bakilacak yer burasi.
+    //
+    // USB'de tavan geri veriliyor: orada akim sorun degil ve menzil
+    // bedava.
+    const int8_t tx = pilde ? 60 : 80;
+    const esp_err_t tx_hata = esp_wifi_set_max_tx_power(tx);
+    if (tx_hata != ESP_OK) {
+        ESP_LOGW(ETIKET, "wifi verici gucu ayarlanamadi: %s",
+                 esp_err_to_name(tx_hata));
+    } else {
+        int8_t okunan = 0;
+        esp_wifi_get_max_tx_power(&okunan);
+        // OKUNAN DEGER YAZILIYOR: istenen ile uygulanan ayni olmayabilir,
+        // surucu kendi izin verdigi basamaga yuvarliyor.
+        ESP_LOGW(ETIKET, "wifi verici gucu: istendi %d, uygulandi %d "
+                         "(%.2f dBm)",
+                 tx, okunan, static_cast<double>(okunan) / 4.0);
+    }
 
     // ---- GOZLER: pilde yavas, konusurken daha yavas ---------------------
     //
@@ -201,6 +238,30 @@ void guc_gozcusu(void*)
         pati::pil_ornekle();
 
         const pati::GucKaynagi kaynak = pati::guc_kaynak();
+
+        // ---- GOZ GOREVINE DURUM BILDIR --------------------------------
+        //
+        // 🔴 GOZ GOREVI ARTIK HICBIR SEY SORMUYOR. Perde kararlari icin
+        // guncelleme, ag ve guc durumuna bakiyordu; ikisi KILIT aliyor
+        // (ayni kilidi panel de aliyor), biri I2C yapiyor.
+        //
+        // 02.09.2026'da iki kez goruldu: gozler dondu ve donuk kaldi,
+        // sonunda cihaz coktu. Cizim gorevi bekleyebilecegi hicbir sey
+        // icermemeli.
+        //
+        // Burasi zaten 2 saniyede bir donuyor ve bu sorulari sormanin
+        // dogru yeri: bu gorev bekleyebilir, goz gorevi bekleyemez.
+        {
+            const pati::AgDurumu ag = pati::ag_durumu();
+            pati::gozler_durum_bildir(
+                static_cast<int>(pati::guncelleme_durumu()),
+                pati::guncelleme_yuzde(),
+                pati::guncelleme_yeni_surum(),
+                ag == pati::AgDurumu::Bagli,
+                ag == pati::AgDurumu::Kurulum,
+                pati::pil_yuzde(),
+                kaynak == pati::GucKaynagi::Usb);
+        }
         if (ilk || kaynak != onceki) {
             ilk = false;
             onceki = kaynak;

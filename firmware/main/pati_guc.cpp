@@ -369,13 +369,75 @@ int pil_mv()
 // durmasi lazim.
 //
 // Bir acilista bir kez yaziliyor, yani flash yipranmasi sorun degil.
+// Acilista bir kez okunup burada tutuluyor — gerekce pati_guc.hpp'de.
+std::uint32_t g_cokme_ram = 0;
+int g_cokme_mv_ram = 0;
+
+void cokme_onbellek_tazele()
+{
+    nvs_handle_t h;
+    if (nvs_open("pati", NVS_READONLY, &h) != ESP_OK) return;
+    std::uint32_t n = 0;
+    std::uint32_t mv = 0;
+    nvs_get_u32(h, "cokme", &n);
+    nvs_get_u32(h, "cokme_mv", &mv);
+    nvs_close(h);
+    g_cokme_ram = n;
+    g_cokme_mv_ram = static_cast<int>(mv);
+}
+
+// Bilerek kapanmadan/uykuya girmeden hemen once yaziliyor; acilista
+// cokme_say() bunu gorup sayimi atliyor ve bayragi siliyor.
+void kapaniyoruz_isaretle()
+{
+    nvs_handle_t h;
+    if (nvs_open("pati", NVS_READWRITE, &h) != ESP_OK) return;
+    nvs_set_u32(h, "bilerek", 1);
+    nvs_commit(h);
+    nvs_close(h);
+}
+
 void cokme_say()
 {
     const esp_reset_reason_t sebep = esp_reset_reason();
+
+    // 🔴 BILEREK KAPANMA COKME DEGIL — ama BROWNOUT gibi gorunuyor.
+    //
+    // 02.09.2026'da olculdu. Yan dugmeyle kapatilan cihaz, USB takili ve
+    // pil DOLUYKEN, her acilista "brownout" diyordu:
+    //
+    //     21:34:35  cokme=18  acilis=brownout  4188 mV  kaynak=usb
+    //     21:38:54  cokme=19  acilis=brownout  4192 mV  kaynak=usb
+    //     21:49:22  cokme=20  acilis=brownout  4188 mV  kaynak=usb
+    //
+    // Sebep: M5PM1 gucu keserken 3,3 V rayi dusuyor ve ESP32'nin
+    // brownout dedektoru kapanmadan hemen ONCE atesleniyor. RTC'ye
+    // "brownout" yaziliyor, acilista o okunuyor.
+    //
+    // Duzeltilmeseydi sayac isini goremezdi: cocugun evinde her kapatma
+    // bir "cokme" olurdu ve PIL.md'deki A/B yontemi anlamsizlasirdi.
+    {
+        nvs_handle_t h;
+        if (nvs_open("pati", NVS_READWRITE, &h) == ESP_OK) {
+            std::uint32_t bilerek = 0;
+            nvs_get_u32(h, "bilerek", &bilerek);
+            if (bilerek != 0) {
+                nvs_set_u32(h, "bilerek", 0);
+                nvs_commit(h);
+                nvs_close(h);
+                ESP_LOGI(ETIKET, "onceki kapanma bilerekti — cokme sayilmadi");
+                cokme_onbellek_tazele();
+                return;
+            }
+            nvs_close(h);
+        }
+    }
+
     // Normal acilislar sayilmiyor: dugmeye basmak ya da kabloyla yukleme
     // bir ariza degil.
     if (sebep != ESP_RST_BROWNOUT && sebep != ESP_RST_PANIC &&
         sebep != ESP_RST_TASK_WDT && sebep != ESP_RST_INT_WDT) {
+        cokme_onbellek_tazele();
         return;
     }
 
@@ -391,6 +453,7 @@ void cokme_say()
     nvs_commit(h);
     nvs_close(h);
 
+    cokme_onbellek_tazele();
     ESP_LOGW(ETIKET, "COKME SAYACI: %u (bu acilis: %s, pil %d mV)",
              static_cast<unsigned>(n + 1),
              sebep == ESP_RST_BROWNOUT ? "brownout"
@@ -399,27 +462,23 @@ void cokme_say()
              pil_mv());
 }
 
-std::uint32_t cokme_sayisi()
-{
-    nvs_handle_t h;
-    if (nvs_open("pati", NVS_READONLY, &h) != ESP_OK) return 0;
-    std::uint32_t n = 0;
-    nvs_get_u32(h, "cokme", &n);
-    nvs_close(h);
-    return n;
-}
-
-bool yan_dugme_basili()
+bool yan_dugme_tiklandi()
 {
     if (g_pm1 == nullptr) return false;
     std::uint8_t v = 0;
     if (pm1_oku(PATI_PM1_BTN_STATUS, v) != ESP_OK) return false;
-    return (v & 0x01) != 0;
+    // [7] BTN_FLAG — okundugunda donanim kendisi siliyor, yani iki
+    // okuma arasinda olan bir basis kaybolmuyor.
+    return (v & 0x80) != 0;
 }
 
 void guc_kapat()
 {
     ESP_LOGW(ETIKET, "kapatiliyor — M5PM1 sistem komutu");
+
+    // Bunu ONCE yaziyoruz: guc kesildikten sonra yazacak zaman yok ve
+    // M5PM1 kapanirken cikan brownout aksi halde cokme sayilirdi.
+    kapaniyoruz_isaretle();
 
     // Ekran ve sesi once kes: kapanma komutu ile gucun gercekten
     // kesilmesi arasinda birkac milisaniye var ve o arada ekranin
@@ -441,6 +500,11 @@ void guc_kapat()
 void guc_derin_uyku()
 {
     ESP_LOGW(ETIKET, "derin uykuya giriliyor — uyandirma: tuslar");
+
+    // Derin uykuda guc kesilmiyor, yani buradan brownout beklenmiyor.
+    // Yine de isaretliyoruz: uyanma yolu bir gun degisirse (ornegin
+    // gercek kapanmaya cevrilirse) sayac sessizce kirlenmesin.
+    kapaniyoruz_isaretle();
 
     // Ekran arka isigi, mikrofon ve hoparlor L3B'den besleniyor.
     // Kapatmak hem akimi dusuruyor hem de cihazin GERCEKTEN kapali
@@ -469,15 +533,9 @@ void guc_derin_uyku()
     esp_deep_sleep_start();
 }
 
-int son_cokme_mv()
-{
-    nvs_handle_t h;
-    if (nvs_open("pati", NVS_READONLY, &h) != ESP_OK) return 0;
-    std::uint32_t mv = 0;
-    nvs_get_u32(h, "cokme_mv", &mv);
-    nvs_close(h);
-    return static_cast<int>(mv);
-}
+std::uint32_t cokme_sayisi() { return g_cokme_ram; }
+
+int son_cokme_mv() { return g_cokme_mv_ram; }
 
 void cokme_sayaci_sifirla()
 {
@@ -486,6 +544,7 @@ void cokme_sayaci_sifirla()
     nvs_set_u32(h, "cokme", 0);
     nvs_commit(h);
     nvs_close(h);
+    cokme_onbellek_tazele();
     ESP_LOGW(ETIKET, "cokme sayaci sifirlandi");
 }
 

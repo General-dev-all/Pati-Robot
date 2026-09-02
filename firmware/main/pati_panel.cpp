@@ -210,7 +210,16 @@ esp_err_t durum_isle(httpd_req_t* r)
     // Ebeveyn icin de gerekli zaten: elde tasinan bir robotun sarji
     // gorunmeli.
     cJSON* g = cJSON_CreateObject();
-    const auto kaynak = guc_kaynak();
+    // VIN BIR KEZ okunuyor ve kaynak karari da ondan veriliyor.
+    //
+    // Once guc_kaynak() cagriliyordu (o da icinde vin_mv() okuyor) ve
+    // ayrica vin_mv() — yani ayni register her istekte IKI KEZ I2C'den
+    // okunuyordu. Bu istek saniyeler mertebesinde yoklanabiliyor ve
+    // hat ES8311 ile paylasiliyor.
+    const int vin = vin_mv();
+    const auto kaynak = (vin < 0)      ? GucKaynagi::Bilinmiyor
+                        : (vin >= 3000) ? GucKaynagi::Usb
+                                        : GucKaynagi::Pil;
     cJSON_AddStringToObject(g, "kaynak",
                             kaynak == GucKaynagi::Usb   ? "usb"
                             : kaynak == GucKaynagi::Pil ? "pil"
@@ -221,7 +230,7 @@ esp_err_t durum_isle(httpd_req_t* r)
     // sarkiyor). Henuz ornek birikmediyse -1.
     cJSON_AddNumberToObject(g, "pil_yuzde", pil_yuzde());
     cJSON_AddNumberToObject(g, "pil_dusuk", pil_dusuk() ? 1 : 0);
-    cJSON_AddNumberToObject(g, "vin_mv", vin_mv());
+    cJSON_AddNumberToObject(g, "vin_mv", vin);
     cJSON_AddNumberToObject(g, "sicaklik_c", yonga_sicakligi());
     // Arizali acilis sayisi — pilde tek olcum araci. Gerekcesi
     // pati_guc.hpp'de: pilde USB yok, seri port yok.
@@ -515,6 +524,25 @@ esp_err_t anahtar_isle(httpd_req_t* r)
 // /api/durum yoklamasindan aliyor (guncelleme.durum / .yuzde). Ayri bir
 // ilerleme baglantisi acilmiyor cunku panel zaten iki saniyede bir
 // soruyor ve ESP32'de her acik soket sayili (LWIP_MAX_SOCKETS).
+// POST /api/cokme — arizali acilis sayacini sifirlar.
+//
+// 🔴 BU BIR TESHIS ARACI, ebeveyn ozelligi degil; panelde dugmesi yok.
+//
+// NEDEN VAR: pil calismasinin tamami "su degisiklik cokmeyi azaltti mi"
+// karsilastirmasi (PIL.md) ve her olcum TEMIZ BIR ZEMIN istiyor.
+// Sayac gelistirme sirasinda kaciniilmaz olarak kirleniyor — 02.09.2026
+// gecesi 2'den 20'ye cikti ve artisin neredeyse tamami yazilim
+// denemelerindendi.
+//
+// Sifirlamak veri KAYBETTIRIYOR, o yuzden elle cagriliyor:
+//   curl -X POST http://pati.local/api/cokme
+esp_err_t cokme_isle(httpd_req_t* r)
+{
+    cokme_sayaci_sifirla();
+    httpd_resp_set_type(r, "application/json");
+    return httpd_resp_sendstr(r, "{\"tamam\":true,\"cokme\":0}");
+}
+
 esp_err_t guncelleme_isle(httpd_req_t* r)
 {
     std::string govde;
@@ -696,6 +724,7 @@ esp_err_t panel_baslat()
 
     const httpd_uri_t yollar[] = {
         {"/api/durum", HTTP_GET, durum_isle, nullptr},
+        {"/api/cokme", HTTP_POST, cokme_isle, nullptr},
         {"/api/aglar", HTTP_GET, aglar_isle, nullptr},
         {"/api/wifi", HTTP_POST, wifi_isle, nullptr},
         {"/api/ayar", HTTP_POST, ayar_isle, nullptr},

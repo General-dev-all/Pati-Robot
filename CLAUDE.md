@@ -148,6 +148,14 @@ serbest bırakıyor, nereden alındığını değiştirmiyor. PSRAM için
 `MBEDTLS_EXTERNAL_MEM_ALLOC` gerekiyor. Yorum yıllarca "PSRAM'den
 alınsın" diyordu ve alınmıyordu; dahili SRAM 1903 bayta kadar indi.
 
+🔴 **Sıcak döngüye I2C, kilit ya da NVS koyma.** 02.09.2026'da pilde
+çökme aralığını 4,5 dakikadan **0,7 dakikaya** düşüren gerileme buydu:
+göz görevi her karede (50 ms) kilit alan iki durum sorusu soruyordu,
+tuş görevi 100 ms'de bir I2C okuyordu. İkisi de yazılırken "küçük bir
+çağrı" görünüyordu. Bir çağrının ucuzluğu tek başına anlamlı değil —
+**saniyede kaç kez yapıldığıyla çarpılmalı.** Çare: seyrek yokla,
+sonucu sakla (`TESHIS.md`).
+
 **Yığın hesabı görevin kodunu değil, çağırdığı en derin şeyi sayar.**
 `pati_tus` görevine 2048 bayt verilmişti, gerekçesi de yazılıydı: "iki
 GPIO okuması ve bir bayrak". Doğruydu — ta ki o bayrağın arkasına
@@ -285,6 +293,19 @@ donanımdan sürüyor, yani PWM'in kendisi bedava; ama motor mantığı ses
 ve göz görevleriyle aynı çekirdekleri paylaşacak. O gün geldiğinde
 `TESHIS.md`'deki sayılar (atlanan kare, dahili SRAM dip noktası)
 karşılaştırma zemini olacak — bugünkü değerler oraya yazılı.
+
+🔴 **Motor görevi yazılırken bakılacak yer: yukarıdaki "sıcak döngü"
+tuzağı.** Bu tuzağa 02.09.2026'da iki kez düşüldü ve pil çökmelerini
+altı katına çıkardı. Bir servo döngüsü doğal olarak 20-50 ms'de bir
+dönmek ister ve içine bir sensör okuması, bir durum sorusu ya da bir
+ayar koymak çok kolay. Motor mantığı yazılırken sorulacak soru:
+
+> Bu döngü saniyede kaç kez dönüyor, ve içindeki her çağrı flash'a,
+> I2C'ye ya da bir kilide dokunuyor mu?
+
+PWM sürücüsü I2C'ye taşınırsa (PCA9685) bu daha da kritik: o zaman
+motor döngüsünün **kendisi** I2C'ye dokunuyor olacak ve hat ES8311
+ile paylaşılıyor.
 
 ---
 

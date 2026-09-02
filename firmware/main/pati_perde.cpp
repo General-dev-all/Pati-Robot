@@ -423,7 +423,7 @@ constexpr int B_CUBUK_SAYI = 4;
 // Metni verilen x'ten baslayarak yazar (ortalamadan).
 void metin_yaz(int x, int y, const char* s, int olcek, std::uint16_t renk)
 {
-    for (const char* p = s; *p != ' ';) {
+    for (const char* p = s; *p != '\0';) {
         const std::uint16_t kod = sonraki_kod(p);
         const Glif* g = glif_bul(kod);
         if (g != nullptr) glif_ciz(x, y, *g, olcek, renk);
@@ -541,7 +541,7 @@ esp_err_t perde_bilgi()
     // kirpiliyor. Kirpmak son care: cocuk adi evdeki agla
     // eslestirebilmeli, yarim ad bunun icin yeterli olmayabilir.
     char ad_metni[40] = {};
-    if (bagli && ad != nullptr && ad[0] != ' ') {
+    if (bagli && ad != nullptr && ad[0] != '\0') {
         std::snprintf(ad_metni, sizeof(ad_metni), "%s", ad);
     } else {
         std::snprintf(ad_metni, sizeof(ad_metni), "%s", "WiFi yok");
@@ -659,7 +659,7 @@ esp_err_t perde_guncelleme(const char* surum, int yuzde, const char* uyari)
 
     char surum_metni[24] = {};
     std::snprintf(surum_metni, sizeof(surum_metni), "%s",
-                  (surum != nullptr && surum[0] != ' ') ? surum : "");
+                  (surum != nullptr && surum[0] != '\0') ? surum : "");
 
     char yuzde_metni[8] = {};
     std::snprintf(yuzde_metni, sizeof(yuzde_metni), "%%%d", y0);
@@ -679,11 +679,11 @@ esp_err_t perde_guncelleme(const char* surum, int yuzde, const char* uyari)
         for (int i = 0; i < PATI_EKR_G * yuk; ++i) g_serit[i] = zemin;
 
         metin_orta(14, iniyor ? "GÜNCELLENİYOR" : "YENİ SÜRÜM", 2, vurgu);
-        if (surum_metni[0] != ' ') {
+        if (surum_metni[0] != '\0') {
             metin_orta(44, surum_metni, 3, vurgu);
         }
 
-        if (uyari != nullptr && uyari[0] != ' ') {
+        if (uyari != nullptr && uyari[0] != '\0') {
             // Dusuk pil hali: tus satirinin yerine uyari.
             metin_orta(96, uyari, 2, vurgu);
         } else if (iniyor) {

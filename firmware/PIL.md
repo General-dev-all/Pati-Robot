@@ -76,6 +76,12 @@ cümle ortasında kaybolmak kabul edilemez.
 | PSRAM 80 → 40 MHz | veri yolu kilitleniyordu | ✅ ama **başka bir sınıfı** çözdü (bkz. TESHIS.md), brownout'u değil |
 | Gözler 20 → 10 fps (pilde) | CPU doluluğu yarıya insin | ✅ **çökme arası ~40 sn → ~4,5 dk** (aşağıda) |
 | Gözler konuşurken 10 → 5 fps | çökmelerin hepsi konuşma anında | 🔄 sınanmadı |
+| Göz parlama katmanı 3 → 1 (pilde) | çizim maliyetinin **%81'i** bu katmanlarda (ölçülmüş) | 🔄 sınanmadı |
+| Ekran %45 → %35 | taban akım | 🔄 sınanmadı |
+| Wifi verici 20 → 15 dBm (pilde) | telsiz gönderirken 250-350 mA | 🔄 sınanmadı |
+| Ses tavanı 0.70 → 0.65 | hoparlör tepe akımı | 🔄 sınanmadı |
+| Flash 80 → 40 MHz | PSRAM'den sonraki ikinci saat | 🔄 sınanmadı |
+| Brownout eşiği | eşik gereksiz hassas olabilir | ❌ **çürütüldü** — zaten en toleranslı (aşağıda) |
 | Açılışta güç kipinin geç girmesi | 6 sn boyunca tam yük | ✅ kusur, düzeltildi (aşağıda) |
 
 ⚠️ İlk ikisi **sağlam akıl yürütmeye** dayanıyordu ve tutmadı. Ders:
@@ -120,6 +126,37 @@ bağlansa bu pencere yirmi saniye olurdu.
 
 Çözüm: ayrı bir **güç gözcüsü görevi** (`app_main.cpp` → `guc_gozcusu`),
 gözler açılır açılmaz başlıyor ve hiçbir şey beklemiyor.
+
+---
+
+## 🔴 Brownout eşiği — araştırıldı, ÇÜRÜTÜLDÜ
+
+02.09.2026'da şu hipotez kuruldu: "çökmelerin hepsi brownout diyor,
+belki eşik gereğinden hassas ve cihaz aslında çalışabilecekken
+resetleniyor."
+
+**Yanlış çıktı.** ESP32-S3'te seviyelerin yönü ESP32'nin **tersi**:
+
+```
+LVL_SEL_1 = 3.30 V   (en hassas)
+LVL_SEL_3 = 2.98 V
+LVL_SEL_4 = 2.84 V
+LVL_SEL_7 = 2.44 V   (en toleransli)
+```
+
+Kaynak: `esp-idf/components/esp_hw_support/power_supply/port/esp32s3/Kconfig.power`
+— forum yorumu değil, IDF'in kendi tanımı. (Bir forumda "level 7 =
+2,98 V" yazıyordu ve o ESP32 içindi; ona güvenilseydi eşik yanlış
+yönde değiştirilecekti.)
+
+Pati **zaten `LVL_SEL_7`'de**, yani en toleranslı ayarda. Düşürülecek
+yer yok.
+
+**Ama bu bir şey öğretti ve önemli:** ray gerçekten **2,44 V'a
+düşüyor.** 3,3 V beslemede bu küçük bir dalgalanma değil, ciddi bir
+çöküş. Yani sorun ölçüm eşiğinde değil, gerçekten güçte — ve yazılım
+tarafında aranacak şey "hangi kod çöktürüyor" değil, **"hangi kod
+akım çekiyor"**.
 
 ---
 

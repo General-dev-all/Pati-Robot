@@ -85,29 +85,31 @@ void tus_gorevi(void*)
     // olabiliyor. Bunu saymaya baslasaydik Pati acilir acilmaz kendini
     // kapatirdi — hem de sebebi gorunmeden, "acilmiyor" diye.
     bool yan_hazir = false;
-    int yan_basili = 0;
     int yan_sayac = 0;
 
     while (true) {
-        // I2C okumasi goz ardi edilecek kadar ucuz degil (~1 ms) ve hat
-        // ES8311 ile paylasiliyor. 20 ms yerine 100 ms'de bir bakiliyor.
-        if (++yan_sayac >= 5) {
+        // 🔴 500 ms'DE BIR — 100 ms DENENDI VE PAHALIYA MAL OLDU.
+        //
+        // Bu okuma I2C uzerinden gidiyor ve o hat ES8311 ile PAYLASILIYOR
+        // (pati_pinler.h: tek hat, uc aygit). 100 ms'de bir yoklamak,
+        // 02.09.2026'da pilde cokme arasini ~44 saniyeye dusuren
+        // gerilemenin bir parcasiydi.
+        //
+        // Seyreklestirmek tik KACIRMIYOR, cunku artik anlik durum degil
+        // BAYRAK okunuyor: M5PM1 basisi biriktiriyor ve okuma onu
+        // siliyor.
+        if (++yan_sayac >= 25) {
             yan_sayac = 0;
-            const bool yan = yan_dugme_basili();
+            const bool tik = yan_dugme_tiklandi();
 
+            // Ilk okuma bayragi TEMIZLEMEK icin. Cihaz bu dugmeye
+            // basilarak aciliyor ve o basis bayrakta duruyor; saymazsak
+            // Pati acilir acilmaz kendini kapatirdi.
             if (!yan_hazir) {
-                if (!yan) yan_hazir = true;   // birakildi, artik sayabiliriz
-            } else if (yan) {
-                // IKI ARDISIK okuma isteniyor (200 ms). Tek okumaya
-                // guvenmek, hattaki bir gurultuyle cihazi kapatmak
-                // demek olurdu — geri alinamayan bir is icin fazla
-                // ince bir kanit.
-                if (++yan_basili >= 2) {
-                    ESP_LOGW(ETIKET, "YAN GUC DUGMESI — kapatiliyor");
-                    guc_kapat();   // geri donmuyor
-                }
-            } else {
-                yan_basili = 0;
+                yan_hazir = true;
+            } else if (tik) {
+                ESP_LOGW(ETIKET, "YAN GUC DUGMESI — kapatiliyor");
+                guc_kapat();   // geri donmuyor
             }
         }
 

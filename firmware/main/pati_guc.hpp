@@ -133,6 +133,15 @@ float yonga_sicakligi();
 // agdan yoklanarak sayilabiliyordu ve bu bilgisayarin acik olmasini
 // gerektiriyordu. Yapilacak isin tamami "su degisiklik cokmeyi azaltti
 // mi" karsilastirmasi; sayinin cihazda durmasi sart.
+// 🔴 IKISI DE RAM'DEN OKUNUYOR, her cagrida NVS'ten DEGIL.
+//
+// Ilk surumde her cagri nvs_open + nvs_get + nvs_close yapiyordu, yani
+// bir FLASH erisimi. Panelin /api/durum'u bunlari her istekte
+// cagiriyor ve o istek saniyeler mertebesinde yoklanabiliyor —
+// olcum sirasinda saniyede birden fazla flash okumasi demekti.
+//
+// Sayilarin degismesi icin tek yol yeni bir acilis; yani acilista bir
+// kez okuyup bellekte tutmak hem dogru hem bedava.
 void cokme_say();              // acilista bir kez, guc_baslat() cagiriyor
 std::uint32_t cokme_sayisi();
 
@@ -215,7 +224,14 @@ bool pil_dusuk();
 // oyle bir ayar yok — uzun basma onda indirme moduna gidiyor. O yuzden
 // sureyi biz sayiyoruz ve esik dolunca kapatma komutunu biz
 // gonderiyoruz.
-bool yan_dugme_basili();
+// M5PM1'in "basildi" bayragini okur ve TEMIZLER (donanim, okumada
+// kendini siliyor).
+//
+// 🔴 NEDEN BAYRAK, "su an basili mi" DEGIL: ilk surum 100 ms'de bir
+// dugmenin anlik durumunu okuyordu. O I2C hatti ES8311 ile PAYLASILIYOR
+// ve sik yoklama ses yolunun onune geciyordu. Bayrak arada basilani da
+// biriktirdigi icin 500 ms'de bir okumak yetiyor — tik kacmiyor.
+bool yan_dugme_tiklandi();
 
 // Cihazi GERCEKTEN kapatir (M5PM1 sistem komutu). Yesil guc isigi da
 // soner. GERI DONMUYOR.

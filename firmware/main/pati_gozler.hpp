@@ -126,6 +126,28 @@ void gozler_pil_uyarisi(int yuzde);
 void gozler_bilgi_degistir();
 bool gozler_bilgi_acik();
 
+// ---------------------------------------------------------------------------
+// Goz gorevine durum BILDIRILIYOR — o hicbir sey SORMUYOR
+// ---------------------------------------------------------------------------
+//
+// 🔴 NEDEN: goz gorevi hangi perdeyi cizecegine karar vermek icin
+// guncelleme, ag ve guc durumuna bakiyordu. Uc sorunun da bedeli vardi:
+// ikisi KILIT aliyor (ayni kilidi panel de aliyor), biri I2C yapiyor.
+//
+// 02.09.2026'da iki kez goruldu: gozler DONDU ve donuk kaldi. Goz
+// gorevi kilidi bekliyordu. Cizim durunca cokme de duruyordu, yani
+// olcumu de bozuyordu.
+//
+// Cozum kare hizini dusurmek DEGIL, soruyu ortadan kaldirmak: durumu
+// zaten 2 saniyede bir yoklayan guc gozcusu buraya BILDIRIYOR ve goz
+// gorevi yalnizca atomik degisken okuyor. Cizim gorevi saf cizim
+// olmali; bekleyebilecegi hicbir sey icermemeli.
+//
+// `gunc_durum` GuncellemeDurumu'nun tam sayi karsiligi (-1 = bilinmiyor).
+void gozler_durum_bildir(int gunc_durum, int gunc_yuzde,
+                         const char* gunc_surum, bool ag_bagli,
+                         bool ag_kurulum, int pil_yuzde, bool usb);
+
 // Guncelleme perdesi su an ekranda mi.
 //
 // Tus gorevi buna bakiyor: perde aciksa mavi tus bilgi sayfasini degil

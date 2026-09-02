@@ -263,6 +263,61 @@ ekranda pil 4074 mV iken sayfa %100 yazıyordu.
 
 ---
 
+## 🔴 02.09.2026 — sıcak döngüye konan "küçük" çağrılar
+
+Gözlerin pilde 10 fps'e inmesi ölçülmüş bir kazançtı: 9 dakikada 2
+çökme. Aynı gece birkaç özellik daha eklendi (tuşlar, perdeler,
+güncelleme sayfası) ve pil ölçümü **kötüleşti**:
+
+| Yapı | Süre | Çökme | Ortalama | Gerilim |
+|---|---|---|---|---|
+| 10 fps | 9 dk | 2 | 4,5 dk'da bir | 3,83 → 3,68 V |
+| + yeni özellikler | 4 dk | 6 | **0,7 dk'da bir** | 4,09 → 4,04 V |
+| + düzeltme | 8 dk | 3 | 2,7 dk'da bir | 4,08 → 4,00 V |
+
+Dikkat: kötü ölçüm **daha yüksek gerilimde** yapıldı. Yani sebep pil
+değildi.
+
+**İki tane vardı, ikisi de aynı hata:**
+
+1. **Göz görevi her karede (50 ms) `guncelleme_durumu()` ve
+   `ag_durumu()` çağırıyordu.** İkisi de kilit alıyor, ve aynı kilidi
+   panel de alıyor (`/api/durum` → `guncelleme_json`).
+2. **Tuş görevi 100 ms'de bir I2C okuyordu.** O hat ES8311 ile
+   paylaşılıyor (`pati_pinler.h`: tek hat, üç aygıt).
+
+İkisi de yazılırken "küçük bir çağrı" görünüyordu. Yorumları bile
+vardı ve yorumlar yanlış değildi — sadece **çağrının kaç kez
+yapıldığını** saymıyorlardı.
+
+### Teşhisi getiren gözlem
+
+Kullanıcı: *"bir ara gözler dondu hep aynı kaldı ama gözler donunca
+hiç çökmedi."*
+
+İki bilgi birden: donma, göz görevinin kilidi beklemesiydi. Ve göz
+görevi durunca çökmenin durması, yükün oradan geldiğini söylüyordu.
+
+Ayrıca çökmelerden biri `kesme_bekcisi` idi — brownout **değil**.
+Kesme watchdog'u kesmelerin fazla uzun kapalı kaldığını söyler, yani
+donanım değil zamanlama. O tek satır "bu bir akım sorunu değil"
+diyordu.
+
+### Kural
+
+**Sıcak döngüye I2C, kilit ya da NVS koyma.** Bir çağrının ucuz olup
+olmadığı tek başına anlamlı değil; saniyede kaç kez yapıldığıyla
+çarpılmalı. Periyodik görev yazarken sorulacak soru:
+
+> Bu döngü saniyede kaç kez dönüyor, ve içindeki her çağrı
+> flash'a, I2C'ye ya da bir kilide dokunuyor mu?
+
+Çare ikisinde de aynıydı: **seyrek yokla, sonucu sakla.** Durumlar
+saniyede bir, tuş 500 ms'de bir ve anlık durum yerine M5PM1'in
+biriken **bayrağı** okunuyor (böylece seyreltmek tık kaçırmıyor).
+
+---
+
 ## Yolda yapılan yanlış teşhisler
 
 Hepsi o an makul görünüyordu; tekrarlanmasın diye yazılı.
