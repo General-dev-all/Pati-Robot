@@ -78,7 +78,7 @@ cümle ortasında kaybolmak kabul edilemez.
 | Gözler konuşurken 10 → 5 fps | çökmelerin hepsi konuşma anında | 🔄 sınanmadı |
 | Göz parlama katmanı 3 → 1 (pilde) | çizim maliyetinin **%81'i** bu katmanlarda (ölçülmüş) | 🔄 sınanmadı |
 | Ekran %45 → %35 | taban akım | 🔄 sınanmadı |
-| Wifi verici 20 → 15 dBm (pilde) | telsiz gönderirken 250-350 mA | 🔄 sınanmadı |
+| Wifi verici 20 → 15 dBm (pilde) | telsiz gönderirken 250-350 mA | ❌ **geri alındı** — menzil çöktü (3/4 → 1/4), "modemin dibinde bile zor çekiyor" |
 | Ses tavanı 0.70 → 0.65 | hoparlör tepe akımı | 🔄 sınanmadı |
 | Flash 80 → 40 MHz | PSRAM'den sonraki ikinci saat | 🔄 sınanmadı |
 | Brownout eşiği | eşik gereksiz hassas olabilir | ❌ **çürütüldü** — zaten en toleranslı (aşağıda) |

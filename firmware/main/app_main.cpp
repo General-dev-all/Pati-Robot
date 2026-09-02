@@ -40,8 +40,6 @@
 #include "pati_ses.hpp"
 #include "pati_sohbet.hpp"
 #include "pati_tus.hpp"
-#include <esp_wifi.h>
-
 #include "pati_ag.hpp"
 #include "pati_anahtar.hpp"
 #include "pati_ayar.hpp"
@@ -131,36 +129,22 @@ void guc_kipi_uygula(pati::GucKaynagi kaynak)
     // gorunuyor (pati_ekran.hpp). 0.35 hala rahat okunuyor.
     pati::ekran_parlaklik_ayarla(pilde ? 0.35f : 1.00f);
 
-    // ---- WIFI VERICI GUCU: pilde kisik ----------------------------------
+    // ---- WIFI VERICI GUCU: DENENDI VE GERI ALINDI ------------------------
     //
-    // 🔴 EN CIDDI SUPHELI, ve 02.09.2026 gecesine kadar HIC DENENMEDI.
-    // ESP32-S3 telsizi gonderirken 250-350 mA cekiyor — muhtemelen
-    // hoparlor amfisinden bile buyuk bir tepe. Ve Pati SUREKLI gonderiyor:
-    // mikrofon sesi kesintisiz Gemini'ye akiyor.
+    // 02.09.2026'da pilde 20 dBm'den 15 dBm'e indirildi. Gerekcesi
+    // saglamdi: telsiz gonderirken 250-350 mA cekiyor ve Pati surekli
+    // gonderiyor.
     //
-    // Birim 0,25 dBm. 80 = 20 dBm (varsayilan tavan), 60 = 15 dBm.
-    // 3 dB dusus kabaca yarim guc demek.
+    // ❌ BEDELI HEMEN GORULDU: kullanici "modemin dibinde bile zor
+    // cekiyor" dedi ve panel 3/4'ten 1/4'e dustu. 3 dB'lik dusus bu
+    // kartin anteni icin fazlaymis.
     //
-    // ⚠️ BEDELI MENZIL. Wifi su an 3/4 ve payimiz sinirli; bu yuzden
-    // "abartmadan" bir kademe seciliyor, telsizi kismak degil.
-    // Kapsama sikayeti gelirse ilk bakilacak yer burasi.
+    // Zayif wifi ayrica hedefin TERSINE calisiyor: baglanti kotulesince
+    // telsiz daha cok yeniden gonderiyor, yani ortalama akim ARTABILIR.
     //
-    // USB'de tavan geri veriliyor: orada akim sorun degil ve menzil
-    // bedava.
-    const int8_t tx = pilde ? 60 : 80;
-    const esp_err_t tx_hata = esp_wifi_set_max_tx_power(tx);
-    if (tx_hata != ESP_OK) {
-        ESP_LOGW(ETIKET, "wifi verici gucu ayarlanamadi: %s",
-                 esp_err_to_name(tx_hata));
-    } else {
-        int8_t okunan = 0;
-        esp_wifi_get_max_tx_power(&okunan);
-        // OKUNAN DEGER YAZILIYOR: istenen ile uygulanan ayni olmayabilir,
-        // surucu kendi izin verdigi basamaga yuvarliyor.
-        ESP_LOGW(ETIKET, "wifi verici gucu: istendi %d, uygulandi %d "
-                         "(%.2f dBm)",
-                 tx, okunan, static_cast<double>(okunan) / 4.0);
-    }
+    // Tekrar denenecekse 18 dBm gibi daha kucuk bir adim mantikli, ve
+    // once wifi kapsamasi duzeltilmeli — Pati'nin sinyali zaten dusuk
+    // ve bu ayri bir sorun (TESHIS.md'de 10 saniyelik TCP takilmalari).
 
     // ---- GOZLER: pilde yavas, konusurken daha yavas ---------------------
     //
