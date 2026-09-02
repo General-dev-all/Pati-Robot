@@ -1,2 +1,2 @@
-3.0.6
-Pati artık iki düğmeyle yönetiliyor: yan düğmeye tek tık tamamen kapatıyor, tekrar tek tık açıyor. Mavi tuşa kısa basınca pil ve wifi bilgisi çıkıyor, uzun basınca uyuyor. Pil azalınca ekranda "şarja tak" hatırlatması gösteriliyor. Pilde çalışırken çok daha seyrek kapanı
+3.0.7
+Pati wifi'ye bağlanamadığında ekranda artık arayan bir wifi işareti gösteriyor; eskiden sessizce cevap vermiyordu ve sebebi görünmüyordu. Yeni sürüm çıktığında da açılışta haber veriyor: mavi tuşa bir kez basmak güncellemeyi başlatıyor ve yüzde ekranda ilerliyor. Pil azken güncelleme teklif edilmiyor, önce şarj isteniyor.

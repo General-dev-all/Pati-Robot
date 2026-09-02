@@ -12,6 +12,7 @@
 #include "pati_ekran.hpp"
 #include "pati_goz_uretilmis.h"
 #include "pati_guc.hpp"
+#include "pati_guncelleme.hpp"
 #include "pati_pinler.h"
 
 namespace pati {
@@ -239,6 +240,55 @@ void kutu(int x, int y, int gen, int yuk, std::uint16_t renk)
         std::uint16_t* satir =
             g_serit + static_cast<std::size_t>(j - g_serit_y0) * PATI_EKR_G;
         for (int i = xbas; i < xson; ++i) satir[i] = renk;
+    }
+}
+
+// Serit icinde tek piksel. Yay ve daire cizimi bunu cok cagiriyor, o
+// yuzden kutu() gibi genel degil: sinir kontrolu cagiranin isi.
+inline void nokta_hizli(int x, int y, std::uint16_t renk)
+{
+    if (x < 0 || x >= PATI_EKR_G) return;
+    const int sy = y - g_serit_y0;
+    if (sy < 0 || sy >= g_serit_yuk) return;
+    g_serit[static_cast<std::size_t>(sy) * PATI_EKR_G + x] = renk;
+}
+
+// Dolu daire — wifi sembolunun altindaki nokta.
+void daire(int cx, int cy, int r, std::uint16_t renk)
+{
+    const int r2 = r * r;
+    const int ybas = std::max(cy - r, g_serit_y0);
+    const int yson = std::min(cy + r + 1, g_serit_y0 + g_serit_yuk);
+    for (int y = ybas; y < yson; ++y) {
+        const int dy = y - cy;
+        for (int x = cx - r; x <= cx + r; ++x) {
+            const int dx = x - cx;
+            if (dx * dx + dy * dy <= r2) nokta_hizli(x, y, renk);
+        }
+    }
+}
+
+// Wifi yayi: merkezden YUKARI dogru, 90 derecelik bir dilim.
+//
+// Gercek bir yay cizmek yerine iki kosul yetiyor: nokta halkanin
+// icinde mi (r1 <= uzaklik <= r2) ve 45 derecelik koninin icinde mi
+// (|dx| <= dy). Ikisi birlesince wifi sembolunun tanidik dilimi
+// cikiyor. Bu boyutta kenar yumusatmaya gerek yok — yaylar kalin.
+void yay(int cx, int cy, int r_ic, int r_dis, std::uint16_t renk)
+{
+    const int i2 = r_ic * r_ic;
+    const int d2 = r_dis * r_dis;
+    const int ybas = std::max(cy - r_dis, g_serit_y0);
+    const int yson = std::min(cy, g_serit_y0 + g_serit_yuk);
+    for (int y = ybas; y < yson; ++y) {
+        const int dy = cy - y;              // pozitif: merkezin ustundeyiz
+        for (int x = cx - r_dis; x <= cx + r_dis; ++x) {
+            const int dx = x - cx;
+            if (std::abs(dx) > dy) continue;         // 45 derece koni
+            const int u = dx * dx + dy * dy;
+            if (u < i2 || u > d2) continue;          // halka
+            nokta_hizli(x, y, renk);
+        }
     }
 }
 
@@ -539,6 +589,113 @@ esp_err_t perde_bilgi()
         }
 
         const esp_err_t hata = serit_bas_ve_nefes(sy, yuk);
+        if (hata != ESP_OK) return hata;
+    }
+
+    return ESP_OK;
+}
+
+// ---------------------------------------------------------------------------
+// WiFi araniyor
+// ---------------------------------------------------------------------------
+//
+// Yerlesim: merkez alt ortada, uzerinde uc yay. En dis yayin tepesi
+// y = 96 - 62 = 34, yani ustte pay var; altta yazi icin 39 piksel
+// kaliyor.
+
+esp_err_t perde_wifi(int faz)
+{
+    if (!ekran_hazir()) return ESP_ERR_INVALID_STATE;
+
+    const std::uint16_t zemin = ekran_renk(0, 0, 0);
+    const std::uint16_t vurgu = ekran_renk(GOZ_ACIK.r, GOZ_ACIK.g, GOZ_ACIK.b);
+    const std::uint16_t golge = ekran_renk(10, 60, 60);
+
+    constexpr int CX = 120;
+    constexpr int CY = 96;
+
+    // Dalga YUKARIDAN ASAGI iniyor: once en genis yay parliyor, sonra
+    // ortadaki, sonra dar olan, en son ortadaki nokta. Yani "sinyal
+    // disaridan geliyor ve Pati'ye ulasmaya calisiyor" okunuyor —
+    // asagidan yukari olsaydi "Pati yayin yapiyor" gibi gorunurdu.
+    const int p = ((faz % 4) + 4) % 4;
+
+    for (int y = 0; y < PATI_EKR_Y; y += EKRAN_SERIT_YUKSEK) {
+        const int yuk = std::min(EKRAN_SERIT_YUKSEK, PATI_EKR_Y - y);
+        g_serit = ekran_serit();
+        g_serit_y0 = y;
+        g_serit_yuk = yuk;
+
+        for (int i = 0; i < PATI_EKR_G * yuk; ++i) g_serit[i] = zemin;
+
+        yay(CX, CY, 54, 62, (p == 0) ? vurgu : golge);
+        yay(CX, CY, 36, 44, (p == 1) ? vurgu : golge);
+        yay(CX, CY, 18, 26, (p == 2) ? vurgu : golge);
+        daire(CX, CY, 7,   (p == 3) ? vurgu : golge);
+
+        metin_orta(108, "WiFi aranıyor", 2, vurgu);
+
+        const esp_err_t hata = serit_bas_ve_nefes(y, yuk);
+        if (hata != ESP_OK) return hata;
+    }
+
+    return ESP_OK;
+}
+
+// ---------------------------------------------------------------------------
+// Guncelleme
+// ---------------------------------------------------------------------------
+
+esp_err_t perde_guncelleme(const char* surum, int yuzde, const char* uyari)
+{
+    if (!ekran_hazir()) return ESP_ERR_INVALID_STATE;
+
+    const std::uint16_t zemin = ekran_renk(0, 0, 0);
+    const std::uint16_t vurgu = ekran_renk(GOZ_ACIK.r, GOZ_ACIK.g, GOZ_ACIK.b);
+    const std::uint16_t golge = ekran_renk(10, 60, 60);
+
+    const bool iniyor = (yuzde >= 0);
+    const int y0 = (yuzde < 0) ? 0 : std::min(yuzde, 100);
+
+    char surum_metni[24] = {};
+    std::snprintf(surum_metni, sizeof(surum_metni), "%s",
+                  (surum != nullptr && surum[0] != ' ') ? surum : "");
+
+    char yuzde_metni[8] = {};
+    std::snprintf(yuzde_metni, sizeof(yuzde_metni), "%%%d", y0);
+
+    // Ilerleme cubugu
+    constexpr int CUB_X = 30;
+    constexpr int CUB_Y = 88;
+    constexpr int CUB_GEN = 180;
+    constexpr int CUB_YUK = 16;
+
+    for (int y = 0; y < PATI_EKR_Y; y += EKRAN_SERIT_YUKSEK) {
+        const int yuk = std::min(EKRAN_SERIT_YUKSEK, PATI_EKR_Y - y);
+        g_serit = ekran_serit();
+        g_serit_y0 = y;
+        g_serit_yuk = yuk;
+
+        for (int i = 0; i < PATI_EKR_G * yuk; ++i) g_serit[i] = zemin;
+
+        metin_orta(14, iniyor ? "GÜNCELLENİYOR" : "YENİ SÜRÜM", 2, vurgu);
+        if (surum_metni[0] != ' ') {
+            metin_orta(44, surum_metni, 3, vurgu);
+        }
+
+        if (uyari != nullptr && uyari[0] != ' ') {
+            // Dusuk pil hali: tus satirinin yerine uyari.
+            metin_orta(96, uyari, 2, vurgu);
+        } else if (iniyor) {
+            cerceve(CUB_X, CUB_Y, CUB_GEN, CUB_YUK, 2, golge);
+            const int dolgu = ((CUB_GEN - 6) * y0) / 100;
+            if (dolgu > 0) kutu(CUB_X + 3, CUB_Y + 3, dolgu, CUB_YUK - 6, vurgu);
+            metin_orta(112, yuzde_metni, 2, vurgu);
+        } else {
+            metin_orta(96, "MAVİ TUŞA BAS", 2, vurgu);
+        }
+
+        const esp_err_t hata = serit_bas_ve_nefes(y, yuk);
         if (hata != ESP_OK) return hata;
     }
 

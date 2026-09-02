@@ -126,6 +126,12 @@ void gozler_pil_uyarisi(int yuzde);
 void gozler_bilgi_degistir();
 bool gozler_bilgi_acik();
 
+// Guncelleme perdesi su an ekranda mi.
+//
+// Tus gorevi buna bakiyor: perde aciksa mavi tus bilgi sayfasini degil
+// GUNCELLEMEYI baslatiyor. Ayni tus, ekranda ne yaziyorsa onu yapmali.
+bool gozler_guncelleme_acik();
+
 // Son karenin cizim + gonderim suresi (mikrosaniye).
 std::uint32_t gozler_kare_us();
 

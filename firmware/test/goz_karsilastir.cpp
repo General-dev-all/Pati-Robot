@@ -63,6 +63,12 @@ std::int64_t test_saat_us = 0;
 // dahil ediyor.
 #include "../main/pati_pinler.h"
 #include "../main/pati_ekran.hpp"
+// Goz gorevi artik bu uc katmanin DURUMUNA bakiyor (hangi perdenin
+// cizilecegine karar vermek icin). Sahte gerceklemeleri asagida; tipleri
+// tanimak icin basliklar burada.
+#include "../main/pati_ag.hpp"
+#include "../main/pati_guc.hpp"
+#include "../main/pati_guncelleme.hpp"
 
 // ---------------------------------------------------------------------------
 // TAKLIT EKRAN
@@ -143,6 +149,19 @@ bool ekran_hazir() { return true; }
 // olmadigi icin karsilastirilacak bir referans da yok.
 esp_err_t perde_pil_uyarisi(int) { return ESP_OK; }
 esp_err_t perde_bilgi() { return ESP_OK; }
+esp_err_t perde_wifi(int) { return ESP_OK; }
+esp_err_t perde_guncelleme(const char*, int, const char*) { return ESP_OK; }
+
+// Goz gorevi artik guc, ag ve guncelleme durumuna bakiyor (hangi
+// perdenin cizilecegine karar vermek icin). Testte hicbiri cizilmiyor:
+// ag "bagli", guncelleme "guncel", pil dolu deniyor ve gorev hep
+// gozleri ciziyor — karsilastirilan sey de bu.
+GucKaynagi guc_kaynak() { return GucKaynagi::Usb; }
+int pil_yuzde() { return 100; }
+AgDurumu ag_durumu() { return AgDurumu::Bagli; }
+GuncellemeDurumu guncelleme_durumu() { return GuncellemeDurumu::Guncel; }
+int guncelleme_yuzde() { return 0; }
+const char* guncelleme_yeni_surum() { return ""; }
 
 }  // namespace pati
 

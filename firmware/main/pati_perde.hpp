@@ -51,4 +51,27 @@ esp_err_t perde_pil_uyarisi(int yuzde);
 // bir sey hazirlamiyor.
 esp_err_t perde_bilgi();
 
+// "WiFi araniyor" — ag baglantisi yokken gozlerin yerine.
+//
+// NEDEN GEREKLI: wifi olmadan Pati konusamiyor ve cocuk icin sebebi
+// gorunmuyordu — gozler normal bakiyor ama robot cevap vermiyordu.
+// Susan bir robotun neden sustugunu soylemesi gerekiyor.
+//
+// `faz` 0..3, animasyonu suren sayac. Cagiran taraf her karede bir
+// artiriyor; hangi yayin parladigini bu belirliyor ve dalga YUKARIDAN
+// ASAGI iniyor.
+esp_err_t perde_wifi(int faz);
+
+// Guncelleme sayfasi.
+//
+// Iki hali var ve ikisini de bu fonksiyon ciziyor:
+//   - yeni surum bekliyor  -> surum numarasi + "MAVI TUSA BAS"
+//   - iniyor               -> yuzde cubugu
+//
+// `yuzde` negatifse "bekliyor" hali, 0-100 ise "iniyor" hali ciziliyor.
+// `surum` bekleme halinde gosterilecek numara (nullptr olabilir).
+// `uyari` doluysa yuzde/tus satirinin yerine o yaziliyor — dusuk pilde
+// "once sarja tak" demek icin.
+esp_err_t perde_guncelleme(const char* surum, int yuzde, const char* uyari);
+
 }  // namespace pati

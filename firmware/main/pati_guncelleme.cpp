@@ -511,6 +511,29 @@ void guncelleme_onayla()
     }
 }
 
+GuncellemeDurumu guncelleme_durumu()
+{
+    std::lock_guard<std::mutex> k(g_kilit);
+    return g_durum;
+}
+
+int guncelleme_yuzde()
+{
+    std::lock_guard<std::mutex> k(g_kilit);
+    return g_yuzde;
+}
+
+const char* guncelleme_yeni_surum()
+{
+    // ⚠️ Kilit ALTINDA kopyalanmiyor, isaretci donuyor. Guvenli olmasinin
+    // sebebi g_yeni_surum'un yalnizca kontrol gorevinde ve yalnizca
+    // "Var"a gecerken yazilmasi; okuyan taraf (goz gorevi) o andan sonra
+    // hep ayni dizeyi goruyor. Buraya baska bir yazan eklenirse bu
+    // varsayim bozulur.
+    std::lock_guard<std::mutex> k(g_kilit);
+    return g_yeni_surum.c_str();
+}
+
 std::string guncelleme_json()
 {
     std::lock_guard<std::mutex> k(g_kilit);

@@ -183,6 +183,35 @@ bir çocuğun tutturabileceği bir şey değil ve yan düğme sert.
 Bilgi sayfası 15 saniyede kendiliğinden kapanıyor; çocuk unutursa Pati
 yüzsüz kalmasın diye.
 
+**Mavi tuş ekranda ne yazıyorsa onu yapar.** Güncelleme sayfası
+açıkken kısa basış bilgi sayfasını değil **güncellemeyi** başlatıyor.
+Aynı tuşun ekrandaki yazıyla çelişmesi, çocuğa tuşun bozuk olduğunu
+düşündürürdü.
+
+### Gözlerin yerine geçen perdeler
+
+Hepsi göz görevinden çiziliyor — şerit tamponları ve SPI onun malı,
+başka görevden çizmek ekranı bozar (`pati_perde.hpp`).
+
+| Perde | Ne zaman | Nasıl kapanır |
+|---|---|---|
+| Düşük pil | %20 altı, dakikada bir | 3 saniye sonra |
+| Bilgi | mavi tuş | tuş, uyarı, ya da 15 sn |
+| **WiFi aranıyor** | ağ yokken (kurulum kipi hariç) | ağ gelince |
+| **Güncelleme** | açılışta yeni sürüm varsa | tuş, ya da 20 sn |
+
+**WiFi perdesi neden var:** wifi olmadan Pati konuşamıyor ve çocuk için
+sebebi görünmüyordu — gözler normal bakıyor, robot cevap vermiyor.
+Çocuk bunu "bozuldu" diye okur. Susan bir robot neden sustuğunu
+söylemeli.
+
+⚠️ **Güncelleme pilde %40 altında teklif edilmiyor.** İndirme, wifi
+alıcısı ile flash yazmayı aynı anda çalıştırıyor — Pati'nin en yüksek
+akım çektiği iş, ve pilde brownout henüz çözülmedi (`PIL.md`). Yarım
+kalan OTA güvenli (önyükleyici eski sürüme döner) ama çocuk için
+"güncelliyorum" deyip kapanmak kötü. Ekranda "önce şarja tak" yazıyor
+ve tuş o sırada bir şey yapmıyor.
+
 **Derin uyku gerçek kapanma değil.** Ekran söner, ses biter, L3B kesilir
 — ama M5PM1 ayakta kalır (yeşil ışık yanar) ve pil yavaş akar. Karşılığı
 aynı tuşla geri gelebilmek: ESP32 tamamen kapalıyken hiçbir yazılım

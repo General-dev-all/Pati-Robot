@@ -120,4 +120,17 @@ void guncelleme_onayla();
 // Panelin gosterecegi hali (JSON parcasi, disi suslu parantez yok).
 std::string guncelleme_json();
 
+// ---------------------------------------------------------------------------
+// Ekran perdesi icin ham durum
+// ---------------------------------------------------------------------------
+//
+// NEDEN JSON YETMIYOR: guncelleme_json() panel icin var ve dize
+// uretiyor. Ekrandaki guncelleme sayfasi her karede ciziliyor; orada
+// dize ayristirmak hem israf hem de goz gorevinde ayirma yapmak demek.
+//
+// Uc soru soruluyor: hangi asamada, ne kadari indi, hangi surume.
+GuncellemeDurumu guncelleme_durumu();
+int guncelleme_yuzde();
+const char* guncelleme_yeni_surum();   // "Var" degilse bos dize
+
 }  // namespace pati

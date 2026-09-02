@@ -167,6 +167,27 @@ void tusa_basildi(int, bool uzun)
         // Derin uyku ayni tusla geri gelebilmeyi mumkun kiliyor.
         pati::guc_derin_uyku();
     }
+    // Guncelleme perdesi aciksa mavi tus BASKA BIR IS yapiyor.
+    //
+    // Ayni tus, ekranda ne yaziyorsa onu yapmali: ekranda "MAVI TUSA
+    // BAS" yaziyorken bilgi sayfasi acmak, cocuga tusun bozuk oldugunu
+    // dusundururdu.
+    if (pati::gozler_guncelleme_acik()) {
+        // Dusuk pilde baslatmiyoruz — ekranda zaten "once sarja tak"
+        // yaziyor ve basmanin bir sey yapmamasi o yazinin karsiligi.
+        // Gerekce pati_gozler.cpp'de GUNC_EN_AZ_PIL.
+        const int y = pati::pil_yuzde();
+        const bool pil_zayif = pati::guc_kaynak() != pati::GucKaynagi::Usb
+                               && y >= 0 && y < 40;
+        if (!pil_zayif) {
+            ESP_LOGW(ETIKET, "guncelleme cocugun istegiyle basliyor");
+            pati::guncelleme_indir();
+        } else {
+            ESP_LOGW(ETIKET, "guncelleme istendi ama pil %%%d — reddedildi", y);
+        }
+        return;
+    }
+
     pati::gozler_bilgi_degistir();
 }
 
@@ -664,6 +685,20 @@ extern "C" void app_main()
     pati::panel_kurulum_bitti();
     pati::kullanim_saat_ayarla();
     ESP_LOGI(ETIKET, "ag hazir (%s)", pati::ag_ip());
+
+    // ---- ACILISTA GUNCELLEME YOKLAMASI ----------------------------------
+    //
+    // NEDEN BURADA: ag yeni hazir oldu ve sohbet henuz baslamadi, yani
+    // manifest cekmenin kimseyi bekletmedigi tek an burasi.
+    //
+    // Eskiden yoklama YALNIZCA panelden tetikleniyordu: ebeveyn panele
+    // girip "guncellemeleri kontrol et" demedikce Pati eskimis surumde
+    // kaliyordu. Cocuk paneli acmiyor, ebeveyn her gun acmiyor.
+    //
+    // Sonuc ekrana dusuyor: yeni surum varsa gozlerin yerine bir sayfa
+    // gelip mavi tusu isaret ediyor (pati_gozler.cpp, guncelleme
+    // perdesi). BLOKLAMIYOR — kendi gorevinde kosuyor.
+    pati::guncelleme_kontrol_et();
 
     // 🔴 BURADA ANAHTAR SINAMASI VARDI, KALDIRILDI. Geri eklemeyin.
     //

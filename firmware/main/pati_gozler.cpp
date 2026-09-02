@@ -15,6 +15,9 @@
 #include "pati_ekran.hpp"
 #include "pati_goz_uretilmis.h"
 #include "pati_pinler.h"
+#include "pati_ag.hpp"
+#include "pati_guc.hpp"
+#include "pati_guncelleme.hpp"
 #include "pati_perde.hpp"
 
 namespace pati {
@@ -153,6 +156,48 @@ constexpr std::int64_t BILGI_SURE_US = 15LL * 1000000LL;
 // 1 saniyede 15 kez tam ekran cizmek gereksiz, 2 saniyede 7 kez ayni
 // bilgiyi veriyor.
 constexpr int BILGI_TAZELE_MS = 2000;
+
+// ---------------------------------------------------------------------------
+// WiFi araniyor perdesi
+// ---------------------------------------------------------------------------
+//
+// NEDEN VAR: wifi olmadan Pati konusamiyor ve cocuk icin sebebi
+// GORUNMUYORDU — gozler normal bakiyor, robot cevap vermiyor. Cocuk
+// bunu "bozuldu" diye okur. Susan bir robot neden sustugunu
+// soylemelidir.
+//
+// 3 fps. Animasyon "araniyor" hissi icin var, akicilik icin degil; ve
+// tam ekran cizim tepe akim uretiyor (pati_perde.cpp,
+// serit_bas_ve_nefes). 333 ms'de bir cizmek goz cizicisinden COK daha
+// hafif: 65 KB x 3 = 195 KB/s, gozler 20 fps'te ~800 KB/s.
+constexpr int WIFI_TAZELE_MS = 333;
+
+// ---------------------------------------------------------------------------
+// Guncelleme perdesi
+// ---------------------------------------------------------------------------
+//
+// Acilista yeni surum bulunursa cocuga gosteriliyor: mavi tusa basarsa
+// guncelleme basliyor ve yuzde ekranda ilerliyor.
+//
+// TEKLIF SURELI, indirme DEGIL. Cocuk basmazsa 20 saniye sonra gozler
+// geri geliyor — yoksa ebeveyn guncellemeyi panelden yapana kadar Pati
+// yuzsuz kalirdi. Indirme baslamissa perde sonuna kadar duruyor; orada
+// kaybolup "ne oluyor" dedirtmek yanlis olurdu.
+constexpr std::int64_t GUNC_TEKLIF_US = 20LL * 1000000LL;
+constexpr int GUNC_TAZELE_MS = 500;
+
+// Pilde guncelleme icin en az doluluk.
+//
+// ⚠️ 40 OLCULMUS DEGIL. Gerekcesi su: indirme birkac dakika suruyor ve
+// bu surede wifi alicisi ile flash yazma birlikte calisiyor — Pati'nin
+// en yuksek akim cektigi is. Pilde brownout zaten cozulmemis bir sorun
+// (PIL.md), o yuzden pay birakiliyor.
+//
+// USB takiliysa sinir HIC uygulanmiyor: akim oradan geliyor.
+constexpr int GUNC_EN_AZ_PIL = 40;
+
+// Guncelleme perdesi su an ekranda mi — tus gorevi buna bakiyor.
+std::atomic<bool> g_gunc_acik{false};
 
 // ---------------------------------------------------------------------------
 // Kucuk yardimcilar — gozler240.js'teki adlarla ayni
@@ -970,7 +1015,9 @@ void gozler_gorevi(void*)
     hedefe_otur(g_istenen.load(std::memory_order_relaxed));
 
     TickType_t son_uyanma = xTaskGetTickCount();
-    bool onceki_bilgi = false;
+    bool onceki_bilgi = false;          // "gecen turda perde vardi"
+    int wifi_faz = 0;
+    std::int64_t gunc_ilk_us = 0;       // teklif penceresinin baslangici
     while (true) {
         // Dusuk pil uyarisi: gozlerin YERINE tam ekran ciziliyor.
         if (g_uyari_var.exchange(false, std::memory_order_relaxed)) {
@@ -1005,11 +1052,62 @@ void gozler_gorevi(void*)
         // "Acikti, artik degil" gecisini burada gormek hepsini
         // kapsiyor ve kimin kapattigi onemsiz hale geliyor.
         const bool bilgi = g_bilgi.load(std::memory_order_relaxed);
-        if (onceki_bilgi && !bilgi) {
+
+        // ---- GUNCELLEME PERDESI --------------------------------------
+        //
+        // Iki hal: yeni surum bekliyor (sureli teklif) ve iniyor
+        // (sonuna kadar). Ikisi de gozlerin yerine geciyor.
+        const GuncellemeDurumu gd = guncelleme_durumu();
+        bool gunc = false;
+        if (gd == GuncellemeDurumu::Iniyor || gd == GuncellemeDurumu::Bitti) {
+            gunc = true;
+        } else if (gd == GuncellemeDurumu::Var) {
+            if (gunc_ilk_us == 0) gunc_ilk_us = esp_timer_get_time();
+            gunc = (esp_timer_get_time() - gunc_ilk_us) < GUNC_TEKLIF_US;
+        } else {
+            gunc_ilk_us = 0;   // durum degisti, teklif penceresi sifirlansin
+        }
+        g_gunc_acik.store(gunc, std::memory_order_relaxed);
+
+        // ---- WIFI PERDESI --------------------------------------------
+        //
+        // Kurulum kipi HARIC. Orada ag gercekten yok ama anlami bambaska:
+        // "beni ayarla". O hali gozler anlatiyor (uykulu) ve panel
+        // acik — "WiFi araniyor" yazmak yanlis yere baktirirdi.
+        const AgDurumu ag = ag_durumu();
+        const bool wifi_yok =
+            (ag != AgDurumu::Bagli && ag != AgDurumu::Kurulum);
+
+        // Perdeden gozlere donuste ekran TEK YERDE temizleniyor —
+        // hangi perde oldugu onemsiz.
+        const bool perde = bilgi || gunc || wifi_yok;
+        if (onceki_bilgi && !perde) {
             g_onceki_kirli = Dikdortgen{0, 0, PATI_EKR_G, PATI_EKR_Y};
             son_uyanma = xTaskGetTickCount();
         }
-        onceki_bilgi = bilgi;
+        onceki_bilgi = perde;
+
+        if (gunc) {
+            const bool iniyor = (gd != GuncellemeDurumu::Var);
+
+            // Dusuk pilde guncelleme TEKLIF EDILMIYOR. Indirme wifi ve
+            // flash yazmayi ayni anda calistiriyor, yani en yuksek akimi
+            // ceken is; pilde brownout sorunu da henuz cozulmedi
+            // (PIL.md). Yarim kalan OTA guvenli — onyukleyici eski
+            // surume doner — ama cocuk icin "gunculuyorum" deyip
+            // kapanmak kotu.
+            const int y = pil_yuzde();
+            const bool pil_zayif = !iniyor
+                                   && guc_kaynak() != GucKaynagi::Usb
+                                   && y >= 0 && y < GUNC_EN_AZ_PIL;
+
+            perde_guncelleme(guncelleme_yeni_surum(),
+                             iniyor ? guncelleme_yuzde() : -1,
+                             pil_zayif ? "ÖNCE ŞARJA TAK" : nullptr);
+            vTaskDelay(pdMS_TO_TICKS(GUNC_TAZELE_MS));
+            son_uyanma = xTaskGetTickCount();
+            continue;
+        }
 
         if (bilgi) {
             if (esp_timer_get_time() - g_bilgi_us.load(std::memory_order_relaxed)
@@ -1034,6 +1132,13 @@ void gozler_gorevi(void*)
                 if (!g_bilgi.load(std::memory_order_relaxed)) break;
                 vTaskDelay(pdMS_TO_TICKS(100));
             }
+            son_uyanma = xTaskGetTickCount();
+            continue;
+        }
+
+        if (wifi_yok) {
+            perde_wifi(wifi_faz++);
+            vTaskDelay(pdMS_TO_TICKS(WIFI_TAZELE_MS));
             son_uyanma = xTaskGetTickCount();
             continue;
         }
@@ -1121,6 +1226,11 @@ void gozler_bilgi_degistir()
         g_bilgi_us.store(esp_timer_get_time(), std::memory_order_relaxed);
         g_bilgi.store(true, std::memory_order_relaxed);
     }
+}
+
+bool gozler_guncelleme_acik()
+{
+    return g_gunc_acik.load(std::memory_order_relaxed);
 }
 
 bool gozler_bilgi_acik()
