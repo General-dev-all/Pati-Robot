@@ -74,12 +74,52 @@ cümle ortasında kaybolmak kabul edilemez.
 | Ses 1.00 → 0.70 | amfi akımı azalsın | ❌ çökme sürdü |
 | Ekran %100 → %45 | taban akım düşsün, tepeye pay kalsın | ❌ çökme sürdü |
 | PSRAM 80 → 40 MHz | veri yolu kilitleniyordu | ✅ ama **başka bir sınıfı** çözdü (bkz. TESHIS.md), brownout'u değil |
-| Gözler 20 → 10 fps (pilde) | CPU doluluğu yarıya insin | 🔄 **şu an sınanıyor** |
+| Gözler 20 → 10 fps (pilde) | CPU doluluğu yarıya insin | ✅ **çökme arası ~40 sn → ~4,5 dk** (aşağıda) |
+| Gözler konuşurken 10 → 5 fps | çökmelerin hepsi konuşma anında | 🔄 sınanmadı |
+| Açılışta güç kipinin geç girmesi | 6 sn boyunca tam yük | ✅ kusur, düzeltildi (aşağıda) |
 
 ⚠️ İlk ikisi **sağlam akıl yürütmeye** dayanıyordu ve tutmadı. Ders:
 akım üzerine akıl yürütmek bu projede işe yaramıyor, çünkü **hiç akım
-ölçülmedi.** İşe yarayan tek değişiklik (PSRAM), mekanizması çözümlenmiş
-program sayacıyla görülen tekti.
+ölçülmedi.** İşe yarayan iki değişikliğin de mekanizması sayıyla
+görülmüştü: PSRAM'de program sayacı, gözlerde kare süresi.
+
+### Göz kare hızı ölçümü — 02.09.2026 akşamı
+
+2. kart, 9 dakika 6 saniye pilde, sallamadan, normal sohbet.
+
+| | Zemin (20 fps) | 10 fps |
+|---|---|---|
+| Çökme | 20-60 sn'de bir | 2 çökme / 9 dk |
+| Dağılım | düzenli | 4 dk 52 sn → 49 sn → **3 dk 19 sn temiz** |
+| Pil aralığı | 3,8-4,0 V | **3,83 → 3,68 V** |
+
+Yaklaşık **yedi kat seyrelme**, üstelik zeminden **daha düşük gerilimde**.
+Göz yükü gerçek bir etken — bu artık tahmin değil.
+
+**Ama çökme sıfırlanmadı.** Göz yükü tek sebep değil.
+
+İkinci bulgu: çökmeler 3744 ve 3732 mV'ta oldu, ardından **3682 mV'ta
+3,5 dakika hiç çökme olmadı.** Yani "pil azaldıkça daha sık çöker"
+tek başına doğru değil. Tek ölçüm bunu kesinleştirmiyor; `cokme_mv`
+alanı (panel → `guc.cokme_mv`) tam bu soruyu biriktirmek için var.
+
+### Açılış penceresi — bulunmuş ve düzeltilmiş kusur
+
+Aynı kayıtta görüldü:
+
+```
+19:16:04  cokme=1  goz_fps=20   <- yeniden basladi, gozler HALA tam hizda
+19:16:10  cokme=1  goz_fps=10   <- pil kipi ANCAK simdi girdi
+```
+
+Güç kipi ana döngüde uygulanıyordu ve o döngü **wifi bağlanıp ilk Gemini
+oturumu açıldıktan sonra** başlıyor. Yani Pati brownout'tan yeni
+kalkmışken — pil zaten düşük, telsiz bağlanıyor (en yüksek akım), TLS
+el sıkışması CPU yiyor — gözleri de tam hızda çiziyordu. Wifi yavaş
+bağlansa bu pencere yirmi saniye olurdu.
+
+Çözüm: ayrı bir **güç gözcüsü görevi** (`app_main.cpp` → `guc_gozcusu`),
+gözler açılır açılmaz başlıyor ve hiçbir şey beklemiyor.
 
 ---
 
@@ -100,18 +140,47 @@ ses tamponu kuruyor ve konuşma kesiliyor. Kullanıcının kırmızı çizgisi
 tam da bu.
 
 **Akıllı göz optimizasyonu** — kare hızını düşürmek kaba bir çözüm.
-Gerçek kazanç şurada:
+Kalan gerçek kazanç şurada:
 - *Sadece değişeni çiz.* Gözler kırpma aralarında sabit; o karelerde iş
   yapılmamalı.
 - *Boştayken yavaşla, hareket olunca hızlan.*
-- *Konuşma başlarken yükü bırak.* En hedefli olanı: brownout tam o anda
-  oluyor.
+- ~~*Konuşma başlarken yükü bırak.*~~ → yapıldı: pilde `konusuyor`
+  ifadesinde kare aralığı 200 ms (`PIL_KONUSMA_FPS`). Henüz ölçülmedi.
 
-**Pil gerilimine bağlı kademeli geri çekilme + uyarı.** Kullanıcının
-fikri: %20 altında "şarja tak" uyarısı. Doğru ama tek başına yetmez —
-çocuk uyarıyı okumaz. Pati pil düştükçe **kendiliğinden** yük bırakmalı
-(önce gözler, sonra ekran) ve uyarıyı da vermeli. Eşiklerin hangi
-gerilimde başlayacağını ölçüm söyleyecek.
+**Ekranı düşük pilde daha da kısmak.** Yapılmadı, bilerek. Kullanıcının
+sırasında ekran ışığı sesin altında ama gözlerin üstünde, ve düşük
+gerilim–çökme ilişkisi henüz ölçümle görülmedi. Önce `cokme_mv` verisi
+birikmeli.
+
+---
+
+## Düşük pil uyarısı
+
+**Neden var:** çocuk Pati'yi her zaman dolu pille kullanmayacak, ve
+"şarja tak" diye bir şey söylenmezse pilin bittiğini ancak Pati
+sustuğunda anlayacak. Cümlenin ortasında sessizce ölmektense uyarmak
+iyi. Kullanıcının kendi isteği.
+
+- Eşik **%20**, histerezisli (%25'in üstüne çıkmadan sönmüyor)
+- **Dakikada bir, üç saniye**, tam ekran — turuncu pil sembolü, yüzde,
+  altında **ŞARJA TAK**
+- USB'de hiç çıkmıyor: şarj olan pil için uyarmak saçma
+
+**Yüzde ham gerilimden hesaplanmıyor.** Gerilim yük altında sarkıyor
+(02.09.2026: konuşurken 3784 → 3664 mV, 120 mV). Anlık okumayla yüzde
+verilse çocuk her konuştuğunda pil düşüp çıkardı. Onun yerine **son 30
+saniyenin tepe değeri** kullanılıyor — sarkma hep aşağı doğru olduğu
+için tepe, dinlenmiş gerilime en yakın olan. Cihazda doğrulandı: anlık
+3752 mV okunurken yüzde 54'te kaldı, gerilim 3870'e dönünce 55 oldu.
+
+⚠️ **Gerilim → yüzde tablosu ölçülmüş değil** (`pati_guc.cpp`, `EGRI`).
+Lityum hücrelerin bilinen boşalma eğrisi. Gerçekten ölçmek için pili
+tam doludan tam boşa sabit yükte boşaltmak gerekir; yapılmadı. Yüzde
+bir gösterge, yakıt ölçer değil.
+
+🔴 **Uyarı ekranı yalnızca göz görevinden çizilebilir.** Şerit tamponları
+ve SPI onun malı; başka görevden çizmek ekranı bozar. `pati_uyari.hpp`
+bunu anlatıyor, `gozler_pil_uyarisi()` sadece bayrak bırakıyor.
 
 ---
 
@@ -123,8 +192,10 @@ gerilimde başlayacağını ölçüm söyleyecek.
 (Invoke-WebRequest http://pati.local/api/durum -UseBasicParsing).Content
 ```
 
-`guc` alanı: `kaynak`, `pil_mv`, `vin_mv`, `sicaklik_c`, `ses_tavani`,
-`goz_fps`, `acilis`, **`cokme`**.
+`guc` alanı: `kaynak`, `pil_mv`, **`pil_yuzde`**, `pil_dusuk`, `vin_mv`,
+`sicaklik_c`, `ses_tavani`, `goz_fps`, `acilis`, **`cokme`**,
+**`cokme_mv`** (son çökmedeki pil gerilimi — "pil azalınca daha sık mı
+çöküyor" sorusunu sınayan tek veri).
 
 **`cokme` sayacı cihazda, NVS'te durur** ve açılışı atlatır. Yalnızca
 arıza sayılır (brownout, panic, bekçi); düğmeye basmak ve kabloyla

@@ -359,6 +359,16 @@ std::uint32_t cokme_sayisi()
     return n;
 }
 
+int son_cokme_mv()
+{
+    nvs_handle_t h;
+    if (nvs_open("pati", NVS_READONLY, &h) != ESP_OK) return 0;
+    std::uint32_t mv = 0;
+    nvs_get_u32(h, "cokme_mv", &mv);
+    nvs_close(h);
+    return static_cast<int>(mv);
+}
+
 void cokme_sayaci_sifirla()
 {
     nvs_handle_t h;
@@ -408,6 +418,97 @@ float yonga_sicakligi()
 int vin_mv()
 {
     return pm1_16bit(PATI_PM1_VIN_L, PATI_PM1_VIN_H);
+}
+
+// ---------------------------------------------------------------------------
+// Pil doluluk yuzdesi — yuk altindaki sarkmaya ragmen
+// ---------------------------------------------------------------------------
+//
+// Gerekce pati_guc.hpp'de. Ozeti: ani gerilim konusurken 120 mV sarkiyor,
+// o yuzden son 30 saniyenin TEPE degeri kullaniliyor.
+
+namespace {
+
+// 2 saniyede bir ornek x 15 = 30 saniyelik pencere.
+constexpr int PENCERE = 15;
+int g_pencere[PENCERE] = {};
+int g_yaz = 0;
+int g_dolu = 0;
+
+// Lityum bosalma egrisi. ⚠️ OLCULMUS DEGIL — hucrenin kendisi
+// bosaltilip egri cikarilmadi, bu hucre sinifinin bilinen davranisi.
+// Aradaki degerler dogrusal ara deger.
+//
+// Ilk sutun mV (dinlenmis), ikinci sutun yuzde. Buyukten kucuge.
+struct EgriNoktasi { int mv; int yuzde; };
+constexpr EgriNoktasi EGRI[] = {
+    {4200, 100}, {4100, 90}, {4000, 78}, {3920, 65}, {3870, 55},
+    {3820,  45}, {3770, 35}, {3720, 25}, {3670, 18}, {3620, 12},
+    {3550,   7}, {3480,  3}, {3400,  0},
+};
+constexpr int EGRI_SAYISI = sizeof(EGRI) / sizeof(EGRI[0]);
+
+// Histerezis: bu esigin altinda uyari basliyor, ustundekinde bitiyor.
+constexpr int DUSUK_ESIK = 20;
+constexpr int DUSUK_CIKIS = 25;
+bool g_dusuk = false;
+
+}  // namespace
+
+void pil_ornekle()
+{
+    const int mv = pil_mv();
+    if (mv <= 0) return;   // I2C okunamadi — pencereyi bozmuyoruz
+
+    g_pencere[g_yaz] = mv;
+    g_yaz = (g_yaz + 1) % PENCERE;
+    if (g_dolu < PENCERE) ++g_dolu;
+}
+
+int pil_yuzde()
+{
+    // En az birkac ornek olsun; tek ornek tam sarkmanin dibine denk
+    // gelebilir.
+    if (g_dolu < 3) return -1;
+
+    // Pencerenin TEPESI — gerekce basliktaki yorumda.
+    int tepe = 0;
+    for (int i = 0; i < g_dolu; ++i) {
+        if (g_pencere[i] > tepe) tepe = g_pencere[i];
+    }
+    if (tepe <= 0) return -1;
+
+    if (tepe >= EGRI[0].mv) return 100;
+    if (tepe <= EGRI[EGRI_SAYISI - 1].mv) return 0;
+
+    for (int i = 0; i < EGRI_SAYISI - 1; ++i) {
+        if (tepe <= EGRI[i].mv && tepe > EGRI[i + 1].mv) {
+            const int mv_araligi = EGRI[i].mv - EGRI[i + 1].mv;
+            const int yuzde_araligi = EGRI[i].yuzde - EGRI[i + 1].yuzde;
+            const int uzaklik = tepe - EGRI[i + 1].mv;
+            return EGRI[i + 1].yuzde + (uzaklik * yuzde_araligi) / mv_araligi;
+        }
+    }
+    return -1;
+}
+
+bool pil_dusuk()
+{
+    // USB'de uyari yok: pil sarj oluyor, "sarja tak" demek sacma olurdu.
+    if (guc_kaynak() == GucKaynagi::Usb) {
+        g_dusuk = false;
+        return false;
+    }
+
+    const int y = pil_yuzde();
+    if (y < 0) return false;   // henuz bilinmiyor — uyarma
+
+    if (g_dusuk) {
+        if (y >= DUSUK_CIKIS) g_dusuk = false;
+    } else {
+        if (y < DUSUK_ESIK) g_dusuk = true;
+    }
+    return g_dusuk;
 }
 
 }  // namespace pati

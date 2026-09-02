@@ -88,13 +88,32 @@ std::uint32_t gozler_piksel();
 // kaynak pati_gozler.cpp'deki HEDEF_FPS.
 int gozler_hedef_fps();
 
-// Pil kipi: goz kare hizini dusurur (20 -> 10 fps).
+// Pil kipi: goz kare hizini dusurur (20 -> 10 fps), ve Pati KONUSURKEN
+// bir kademe daha (10 -> 5 fps).
 //
 // NEDEN: goz cizici en buyuk surekli CPU musterisi (kare basina 24-30 ms,
 // butce 50 ms). Pilde brownout tam Pati konusmaya baslarken oluyor ve
-// CPU'nun o anda bos olmasi pay birakiyor. Gerekcesi ve olculecek sey
-// pati_gozler.cpp'de PIL_FPS'in yaninda.
+// CPU'nun o anda bos olmasi pay birakiyor.
+//
+// 02.09.2026'da OLCULDU: 20 -> 10 fps, pilde cokme arasini ~40 saniyeden
+// ~4,5 dakikaya cikardi (9 dakikada 2 cokme, oncesi 20-60 sn'de bir).
+// Yani goz yuku gercek bir etken. Konusma kademesi bunun hedefli hali:
+// cokmelerin HEPSI Pati konusurken oldu.
+//
+// Gerekcesi ve olculecek sey pati_gozler.cpp'de PIL_FPS'in yaninda.
 void gozler_pil_kipi(bool pilde);
+
+// Dusuk pil uyarisini TAM EKRAN gosterir: bir sonraki karede gozlerin
+// yerine cizilir, birkac saniye durur, sonra gozler geri gelir.
+//
+// NEDEN BURADAN: cizim serit tamponlarini kullaniyor ve o tamponlar bu
+// gorevin malı. Baska bir gorevden cizmek iki gorevin ayni tamponu ayni
+// anda doldurmasi demek olurdu (bkz. pati_uyari.hpp).
+//
+// BLOKLAMIYOR — sadece istek birakiyor.
+//
+// `yuzde` 0-100; negatifse yuzde satiri cizilmiyor.
+void gozler_pil_uyarisi(int yuzde);
 
 // Son karenin cizim + gonderim suresi (mikrosaniye).
 std::uint32_t gozler_kare_us();

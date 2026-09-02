@@ -73,6 +73,122 @@ void bekle_ve_dur()
 }
 
 // -------------------------------------------------------------------------
+// GUC GOZCUSU — kaynagi izler, kipi uygular, dusuk pili haber verir
+// -------------------------------------------------------------------------
+//
+// 🔴 NEDEN AYRI GOREV. Bu is eskiden ana dongudeydi ve ana dongu ancak
+// SU UCU BITINCE basliyor: wifi baglanmasi, anahtarin girilmis olmasi,
+// ilk Gemini oturumunun acilmasi. Yani acilistan itibaren saniyelerce
+// guc kipi HIC uygulanmiyordu.
+//
+// 02.09.2026'da olculdu — brownout'tan yeni kalkmis bir cihazda:
+//
+//     19:16:04  cokme=1  goz_fps=20   <- yeniden basladi, gozler tam hizda
+//     19:16:10  cokme=1  goz_fps=10   <- pil kipi ANCAK simdi girdi
+//
+// Alti saniye boyunca Pati en kirilgan aninda — pil zaten dusuk, telsiz
+// baglaniyor (en yuksek akim), TLS el sikismasi CPU yiyor — ustune
+// gozleri de tam hizda cizti. Wifi yavas baglansa bu pencere yirmi
+// saniye olurdu.
+//
+// Ayri gorev bunu ORTADAN KALDIRIYOR: gozler acilir acilmaz basliyor ve
+// hicbir seyi beklemiyor.
+//
+// Yigin 3072: I2C okumasi, birkac karsilastirma ve ESP_LOG. Olculen
+// tepe kullanim buna rahat siginiyor.
+
+// Yoklama araligi. 2 saniye, cunku pil yuzdesi 30 saniyelik pencerenin
+// TEPESINDEN hesaplaniyor (pati_guc.cpp) ve 15 ornek istiyor.
+constexpr int GOZCU_ARALIK_MS = 2000;
+
+// Dusuk pil uyarisi ne siklikta gorunsun.
+//
+// Kullanicinin istegi: "pil %20'nin altina dusunce dakikada bir sarja
+// tak diye bir sey gosterebiliriz". Dakikada bir, uc saniye — sohbeti
+// bolmeyecek kadar seyrek, unutturmayacak kadar sik.
+constexpr std::int64_t UYARI_ARALIK_US = 60LL * 1000000LL;
+
+// Guc kipini uygular. Kaynak degisince ve acilista bir kez cagriliyor.
+void guc_kipi_uygula(pati::GucKaynagi kaynak)
+{
+    const bool pilde = (kaynak != pati::GucKaynagi::Usb);
+
+    // ---- ARKA ISIK: pilde kisik ----------------------------------------
+    //
+    // Sesi kismak yerine BURADAN tasarruf. Brownout'u hoparlorun anlik
+    // tepe akimi yapiyor, ama o tepe taban akimin uzerine biniyor:
+    // taban dusunce ray daha yuksekte durur ve tepe icin pay kalir.
+    //
+    // ⚠️ 0.45 OLCULMUS BIR DEGER DEGIL, makul bir baslangic. Tek basina
+    // denendi ve cokmeyi durdurmadi (bkz. PIL.md); yine de taban akimi
+    // dusurdugu icin duruyor.
+    pati::ekran_parlaklik_ayarla(pilde ? 0.45f : 1.00f);
+
+    // ---- GOZLER: pilde yavas, konusurken daha yavas ---------------------
+    //
+    // Kullanicinin oncelik sirasi: once cokmeme, sonra SES, sonra
+    // gorunum. Ses tavanina DOKUNULMUYOR (0.70'te sabit); pilde feda
+    // edilebilir tek yer gozler.
+    //
+    // 02.09.2026 olcumu: 20 -> 10 fps, cokme arasini ~40 saniyeden
+    // ~4,5 dakikaya cikardi. Gerekce ve sayilar pati_gozler.cpp'de.
+    pati::gozler_pil_kipi(pilde);
+
+    ESP_LOGW(ETIKET, "GUC KAYNAGI: %s · pil %d mV (%%%d) · VIN %d mV · "
+                     "ses tavani %.2f",
+             kaynak == pati::GucKaynagi::Usb   ? "USB/5VIN"
+             : kaynak == pati::GucKaynagi::Pil ? "PIL"
+                                               : "BILINMIYOR",
+             pati::pil_mv(), pati::pil_yuzde(), pati::vin_mv(),
+             static_cast<double>(
+                 pilde ? std::min(pati::ses_seviyesi(), pati::SES_PIL_TAVANI)
+                       : pati::ses_seviyesi()));
+}
+
+void guc_gozcusu(void*)
+{
+    pati::GucKaynagi onceki = pati::GucKaynagi::Bilinmiyor;
+    bool ilk = true;
+    std::int64_t son_uyari_us = 0;
+
+    while (true) {
+        pati::pil_ornekle();
+
+        const pati::GucKaynagi kaynak = pati::guc_kaynak();
+        if (ilk || kaynak != onceki) {
+            ilk = false;
+            onceki = kaynak;
+            guc_kipi_uygula(kaynak);
+        }
+
+        // ---- DUSUK PIL UYARISI ------------------------------------------
+        //
+        // NEDEN GEREKLI: cocuk Pati'yi her zaman dolu pille kullanmayacak
+        // ve "sarja tak" diye bir sey soylenmezse pilin bittigini ancak
+        // Pati sustugunda anlayacak. Uyari, sohbetin ortasinda sessizce
+        // olmekten iyi.
+        //
+        // pil_dusuk() histerezisli ve USB'de her zaman false — yani
+        // sarj olurken uyari cikmiyor.
+        if (pati::pil_dusuk()) {
+            const std::int64_t simdi = esp_timer_get_time();
+            if (son_uyari_us == 0 || simdi - son_uyari_us >= UYARI_ARALIK_US) {
+                son_uyari_us = simdi;
+                pati::gozler_pil_uyarisi(pati::pil_yuzde());
+                ESP_LOGW(ETIKET, "DUSUK PIL: %%%d (%d mV) — uyari gosterildi",
+                         pati::pil_yuzde(), pati::pil_mv());
+            }
+        } else {
+            // Sarja takildi ya da esigin uzerine cikti: bir dahaki
+            // dususte uyari HEMEN ciksin, dakikayi bekletme.
+            son_uyari_us = 0;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(GOZCU_ARALIK_MS));
+    }
+}
+
+// -------------------------------------------------------------------------
 // Kartin gercekte ne oldugunu yaz
 //
 // NEDEN: StickS3'un N8R8 oldugunu biliyoruz ama KARTIN kendisi ne diyor?
@@ -332,6 +448,20 @@ extern "C" void app_main()
         ESP_LOGW(ETIKET, "ekran acilmadi — Pati yuzsuz devam ediyor");
     } else {
         pati::gozler_bos();
+    }
+
+    // GUC GOZCUSU — TAM BURADA baslamali.
+    //
+    // Gozler acildi (yani kismasi anlamli oldu) ve asagidaki ag beklemesi
+    // HENUZ BASLAMADI. Bir satir asagi konsa, wifi baglanana kadar gecen
+    // saniyelerde pil kipi yine uygulanmamis olurdu — duzeltmeye
+    // calistigimiz kusurun ta kendisi (gerekce gorevin basinda).
+    if (xTaskCreate(guc_gozcusu, "pati_guc", 3072, nullptr, 3, nullptr)
+        != pdPASS) {
+        // Olumcul degil: guc kipi uygulanmaz, Pati calisir. Ama pilde
+        // daha sik coker, o yuzden sessiz gecilmiyor.
+        ESP_LOGE(ETIKET, "guc gozcusu baslatilamadi — pil kipi ve dusuk "
+                         "pil uyarisi CALISMAYACAK");
     }
 
     // AG — artik gomulu wifi yok (§4.3). Kayitli ag varsa baglaniyor,
@@ -658,61 +788,15 @@ extern "C" void app_main()
                      static_cast<unsigned>(gonderilemeyen));
         }
 
-        // Guc kaynagi degistiyse yaz.
+        // 🔴 GUC KAYNAGI BLOGU BURADAN ALINDI — geri koymayin.
         //
-        // NEDEN SADECE DEGISINCE: her raporda basmak gunlugu doldurur ve
-        // kablo takilip cikarilmasi seyrek bir olay. Degisim ise tam
-        // olarak bakmak istedigimiz an — ses tavani o anda devreye
-        // giriyor ya da kalkiyor (SES_PIL_TAVANI).
-        static pati::GucKaynagi onceki_kaynak = pati::GucKaynagi::Bilinmiyor;
-        static bool kaynak_basildi = false;
-        const pati::GucKaynagi kaynak = pati::guc_kaynak();
-        if (!kaynak_basildi || kaynak != onceki_kaynak) {
-            onceki_kaynak = kaynak;
-            kaynak_basildi = true;
-
-            // ---- ARKA ISIK: pilde kisik ------------------------------
-            //
-            // Sesi kismak yerine BURADAN tasarruf. Brownout'u hoparlorun
-            // anlik tepe akimi yapiyor, ama o tepe taban akimin uzerine
-            // biniyor: taban dusunce ray daha yuksekte durur ve tepe icin
-            // pay kalir.
-            //
-            // Arka isik bu kartin en buyuk sabit musterisi ve kismanin
-            // bedeli gorsel — ses kesilmesinin bedeli ise sohbetin
-            // kendisi. Once buradan veriyoruz.
-            //
-            // ⚠️ 0.45 OLCULMUS BIR DEGER DEGIL, makul bir baslangic.
-            // Olculecek olan sunlar: pilde brownout azaldi mi, ve ekran
-            // cocuk icin hala rahat okunuyor mu. Ikisi de iyiyse ses
-            // tavani (SES_PIL_TAVANI) yukari denenebilir.
-            pati::ekran_parlaklik_ayarla(
-                kaynak == pati::GucKaynagi::Usb ? 1.00f : 0.45f);
-
-            // ---- GOZLER: pilde yavas ---------------------------------
-            //
-            // Kullanicinin oncelik sirasi: once cokmeme, sonra SES, sonra
-            // gorunum. Ses tavanina DOKUNULMUYOR (0.70'te sabit); pilde
-            // feda edilebilir tek yer gozler.
-            //
-            // Goz cizici en buyuk surekli CPU musterisi: kare basina
-            // 24-30 ms, butce 50 ms. 10 fps'te ayni kare 125 ms'de bir
-            // ciziliyor, yani CPU dolulugu yariya iniyor — ve brownout
-            // tam Pati konusmaya baslarken oluyor, yani CPU'nun o anda
-            // bos olmasi pay birakiyor.
-            pati::gozler_pil_kipi(kaynak != pati::GucKaynagi::Usb);
-            ESP_LOGW(ETIKET, "GUC KAYNAGI: %s · pil %d mV · VIN %d mV · "
-                             "ses tavani %.2f",
-                     kaynak == pati::GucKaynagi::Usb   ? "USB/5VIN"
-                     : kaynak == pati::GucKaynagi::Pil ? "PIL"
-                                                       : "BILINMIYOR",
-                     pati::pil_mv(), pati::vin_mv(),
-                     static_cast<double>(
-                         kaynak == pati::GucKaynagi::Usb
-                             ? pati::ses_seviyesi()
-                             : std::min(pati::ses_seviyesi(),
-                                        pati::SES_PIL_TAVANI)));
-        }
+        // Eskiden guc kipi (ekran parlakligi + goz kare hizi) bu
+        // dongude uygulaniyordu. Sorun: bu dongu ancak wifi baglanip
+        // ilk Gemini oturumu acildiktan SONRA basliyor, yani acilistan
+        // itibaren saniyelerce guc kipi hic uygulanmiyordu. Olculdu ve
+        // gerekcesi `guc_gozcusu` gorevinin basinda yaziyor.
+        //
+        // Artik o gorev yapiyor ve gozler acilir acilmaz calisiyor.
 
         // Cokme sayaci — cihazda duruyor, A/B olcumunun zemini.
         {

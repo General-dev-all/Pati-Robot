@@ -15,6 +15,7 @@
 #include "pati_ekran.hpp"
 #include "pati_goz_uretilmis.h"
 #include "pati_pinler.h"
+#include "pati_uyari.hpp"
 
 namespace pati {
 namespace {
@@ -72,15 +73,56 @@ constexpr int KARE_MS = 1000 / HEDEF_FPS;
 // gorunum — ve gozler pilde feda edilebilir tek yer: sese
 // DOKUNULMUYOR.
 //
-// ⚠️ BU DEGER OLCUMLE SECILMEDI, denenmek uzere kondu. Olculecek olan
-// cokme sikligi: pilde 20-60 saniyede bir cokuyordu (02.09.2026 gecesi).
-// Azalmazsa goz yuku sebep degil demektir ve geri alinmali — gorunumu
-// bosuna bozmus oluruz.
+// ✅ OLCULDU (02.09.2026 aksami, 2. kart, 9 dakika 6 saniye pilde):
+//
+//     zemin (20 fps) : 20-60 saniyede bir cokme
+//     10 fps         : 2 cokme / 9 dk — ilki 4 dk 52 sn sonra, ikincisi
+//                      49 sn sonra, ardindan 3 dk 19 sn temiz
+//
+// Ustelik bu olcum DAHA ZOR kosulda yapildi: pil 3,83 -> 3,68 V, yani
+// zeminin (3,8-4,0 V) altinda. Yaklasik yedi kat seyrelme.
+//
+// Yani goz yuku GERCEK bir etken — bu satir artik tahmin degil.
+// Ama cokme SIFIRLANMADI: goz yuku tek sebep degil.
 constexpr int PIL_FPS = 10;
 constexpr int PIL_KARE_MS = 1000 / PIL_FPS;
 
+// ---------------------------------------------------------------------------
+// Pilde, KONUSURKEN bir kademe daha
+// ---------------------------------------------------------------------------
+//
+// Yukaridaki olcumun ikinci bulgusu: cokmelerin HEPSI Pati konusurken
+// oldu — 02.09.2026 gecesinde de, aksamki olcumde de. O anda amfi tam
+// yukte basliyor, telsiz veri aliyor ve yeniden ornekleme calisiyor.
+// Goz cizicisinin tam o saniyede en pahali isini yapmasi icin bir sebep
+// yok.
+//
+// 5 fps = 200 ms. Gozler konusma boyunca belirgin sekilde yavasliyor
+// ama DONMUYOR — donmus goz "bozuldu" gibi gorunur, yavas goz
+// gorunmuyor bile, cunku cocuk o sirada sese bakiyor.
+//
+// ⚠️ BU DEGER HENUZ OLCULMEDI. Olculecek olan yine cokme sikligi.
+// 10 fps'in yaninda kalan cokmeleri de aliyorsa kaliyor; almiyorsa
+// geri alinir.
+constexpr int PIL_KONUSMA_FPS = 5;
+constexpr int PIL_KONUSMA_KARE_MS = 1000 / PIL_KONUSMA_FPS;
+
 // Calisma aninda degisiyor: guc kaynagi degisince app_main ayarliyor.
 std::atomic<int> g_kare_ms{KARE_MS};
+
+// Pilde miyiz — konusma kademesi yalnizca pilde devreye giriyor.
+// USB'de akim bol, gozleri yavaslatmanin karsiligi yok.
+std::atomic<bool> g_pilde{false};
+
+// Dusuk pil uyarisi istegi. Gorev bunu goruyor, ciziyor ve temizliyor.
+std::atomic<bool> g_uyari_var{false};
+std::atomic<int>  g_uyari_yuzde{-1};
+
+// Uyari ekranda ne kadar kalsin.
+//
+// 3 saniye: okumaya yeter, sohbeti bolmez. Daha uzunu cocugun Pati'nin
+// yuzunu goremedigi bir bosluk olurdu.
+constexpr int UYARI_MS = 3000;
 
 // ---------------------------------------------------------------------------
 // Kucuk yardimcilar — gozler240.js'teki adlarla ayni
@@ -899,10 +941,34 @@ void gozler_gorevi(void*)
 
     TickType_t son_uyanma = xTaskGetTickCount();
     while (true) {
+        // Dusuk pil uyarisi: gozlerin YERINE tam ekran ciziliyor.
+        if (g_uyari_var.exchange(false, std::memory_order_relaxed)) {
+            uyari_pil_ciz(g_uyari_yuzde.load(std::memory_order_relaxed));
+            vTaskDelay(pdMS_TO_TICKS(UYARI_MS));
+
+            // Ekranin TAMAMI uyariyla doldu, yani "onceki kirli alan"
+            // kaydi artik yalan soyluyor. Tam ekran isaretliyoruz ki
+            // bir sonraki kare her yeri yeniden cizsin — yoksa goz
+            // alaninin disinda kalan uyari pikselleri ekranda oylece
+            // durur ve "ara ara ekranda leke kaliyor" diye aranir.
+            g_onceki_kirli = Dikdortgen{0, 0, PATI_EKR_G, PATI_EKR_Y};
+            son_uyanma = xTaskGetTickCount();
+            continue;
+        }
+
         kare_ciz();
+
+        // Kare araligi uc kademe: USB'de 50 ms, pilde 100 ms, pilde
+        // KONUSURKEN 200 ms. Sonuncusu her karede yeniden bakiliyor
+        // cunku ifade her an degisebiliyor.
+        int kare_ms = g_kare_ms.load(std::memory_order_relaxed);
+        if (g_pilde.load(std::memory_order_relaxed) && g_tanim != nullptr
+            && std::strcmp(g_tanim->ad, "konusuyor") == 0) {
+            kare_ms = std::max(kare_ms, PIL_KONUSMA_KARE_MS);
+        }
+
         // vTaskDelayUntil: kare suresi degisse bile FPS sabit kaliyor.
         // vTaskDelay olsa cizim suresi ustune eklenir ve hiz dalgalanir.
-        const int kare_ms = g_kare_ms.load(std::memory_order_relaxed);
         if (!xTaskDelayUntil(&son_uyanma, pdMS_TO_TICKS(kare_ms))) {
             // Gecikti: kare butcesi asildi.
             g_atlanan.fetch_add(1, std::memory_order_relaxed);
@@ -957,6 +1023,16 @@ int gozler_hedef_fps() { return 1000 / g_kare_ms.load(std::memory_order_relaxed)
 void gozler_pil_kipi(bool pilde)
 {
     g_kare_ms.store(pilde ? PIL_KARE_MS : KARE_MS, std::memory_order_relaxed);
+    g_pilde.store(pilde, std::memory_order_relaxed);
+}
+
+void gozler_pil_uyarisi(int yuzde)
+{
+    // Sadece istek birakiyoruz. Cizimi gorev yapiyor, cunku serit
+    // tamponlari onun malı (bkz. pati_uyari.hpp). Bu fonksiyon guc
+    // gozcusu gorevinden cagriliyor ve BLOKLAMAMALI.
+    g_uyari_yuzde.store(yuzde, std::memory_order_relaxed);
+    g_uyari_var.store(true, std::memory_order_relaxed);
 }
 std::uint32_t gozler_kare_us() { return g_kare_us.load(std::memory_order_relaxed); }
 std::uint32_t gozler_ciz_us() { return g_ciz_us.load(std::memory_order_relaxed); }

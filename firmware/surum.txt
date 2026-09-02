@@ -1,2 +1,2 @@
-3.0.5
-Pati sallandığında ya da yerinden oynatıldığında artık kapanıp açılmıyor. Sebebi bulundu ve giderildi. Çok sert sallanırsa hâlâ bir an susup birkaç saniyede geri gelebilir; bu normal ve kendini toparlıyor.
+3.0.6
+Pati'nin pili azalınca ekranda "şarja tak" hatırlatması çıkıyor. Pilde çalışırken çok daha seyrek kapanıyor: gözler pilde daha yavaş çiziliyor ve bu ölçülerek bulundu. Tamamen bitmedi, üzerinde çalışılmaya devam ediyor.

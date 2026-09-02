@@ -135,7 +135,51 @@ float yonga_sicakligi();
 // mi" karsilastirmasi; sayinin cihazda durmasi sart.
 void cokme_say();              // acilista bir kez, guc_baslat() cagiriyor
 std::uint32_t cokme_sayisi();
+
+// Son cokme aninda pil kac mV'taydi. Hic cokme olmadiysa 0.
+//
+// 🔴 NEDEN AYRI TUTULUYOR: "pil azalinca daha sik mi cokuyor" sorusunun
+// cevabi burada. 02.09.2026 olcumunde cokmeler 3744 ve 3732 mV'ta oldu,
+// sonrasinda 3682 mV'ta uc bucuk dakika HIC cokme olmadi — yani dusuk
+// gerilim tek basina belirleyici DEGIL. Tek bir olcum bunu kesin
+// soylemiyor; sayi biriktikce soyleyecek.
+int son_cokme_mv();
 void cokme_sayaci_sifirla();   // A/B olcumune temiz baslamak icin
+
+// ---------------------------------------------------------------------------
+// Pil doluluk yuzdesi
+// ---------------------------------------------------------------------------
+//
+// 🔴 NEDEN HAM pil_mv() YETMIYOR: gerilim YUK ALTINDA SARKIYOR.
+// 02.09.2026'da olculdu — Pati konusurken 3784 mV'tan 3664 mV'a dustu ve
+// konusma bitince geri cikti. 120 mV sarkma, lityum egrisinde yaklasik
+// %15'lik bir fark demek. Ani okumayla yuzde vermek, cocuk her konustugunda
+// pilin dusup cikmasi gibi gorunurdu.
+//
+// COZUM: son 30 saniyenin EN YUKSEK okumasi kullaniliyor. Sarkma hep
+// asagi dogru oldugu icin tepe deger, dinlenmis gerilime en yakin olan.
+// Bedeli, bosalirken yuzdenin ~30 sn geriden gelmesi — onemsiz.
+//
+// pil_ornekle() DUZENLI cagrilmali (birkac saniyede bir); pencereyi o
+// besliyor. app_main'deki guc gozcusu gorevi cagiriyor.
+void pil_ornekle();
+
+// Doluluk, 0-100. Henuz yeterli ornek yoksa ya da okunamazsa -1.
+//
+// ⚠️ TABLO OLCULMUS DEGIL, lityum hucrelerin bilinen bosalma egrisi.
+// Kapasiteyi gercekten olcmek icin pili tam doludan tam bose kadar
+// sabit yukte bosaltip zaman-gerilim egrisi cikarmak gerekir; bu
+// yapilmadi. Yuzde bir GOSTERGE, yakit olcer degil.
+int pil_yuzde();
+
+// Pil "sarj edilmeli" seviyesinde mi (varsayilan esik %20).
+//
+// HISTEREZISLI: %20'nin altinda true oluyor ama %25'in uzerine
+// cikmadan false donmuyor. Yoksa esigin tam ustunde gezinen bir pil
+// uyariyi dakikada bir acip kapatirdi.
+//
+// USB takiliyken her zaman false — sarj olan pil icin uyari sacma.
+bool pil_dusuk();
 
 // guc_baslat() basarili oldu mu — L3B ve amfi gercekten acildi mi.
 //

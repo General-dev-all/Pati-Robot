@@ -130,6 +130,19 @@ void ekran_arka_isik(bool) {}
 void ekran_test_deseni() {}
 bool ekran_hazir() { return true; }
 
+// Dusuk pil uyarisi — bu testte cizilmiyor.
+//
+// NEDEN SAHTE: test edilen sey goz cizicisinin tarayiciyla ayni
+// pikselleri uretip uretmedigi. Uyari ekrani gozlerin YERINE ciziliyor
+// ve gorev icinde bir bayrakla tetikleniyor; bu testte o bayrak hic
+// kalkmiyor, yani gercek cizim hic cagrilmiyor. Yine de sembol
+// gerekiyor cunku pati_gozler.cpp onu ariyor.
+//
+// Gercegi pati_uyari.cpp'de. Oranin kendi konak testi YOK: cizdigi sey
+// birkac dikdortgen ve bir bitmap font, yani tarayicida bir karsiligi
+// olmadigi icin karsilastirilacak bir referans da yok.
+esp_err_t uyari_pil_ciz(int) { return ESP_OK; }
+
 }  // namespace pati
 
 // Cizim motorunun kendisi. .cpp ice aliniyor ki isimsiz uzaydaki

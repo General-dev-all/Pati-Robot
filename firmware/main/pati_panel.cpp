@@ -216,11 +216,19 @@ esp_err_t durum_isle(httpd_req_t* r)
                             : kaynak == GucKaynagi::Pil ? "pil"
                                                         : "bilinmiyor");
     cJSON_AddNumberToObject(g, "pil_mv", pil_mv());
+    // Yuzde ham gerilimden DEGIL, 30 saniyelik pencerenin tepesinden
+    // hesaplaniyor — gerekce pati_guc.hpp'de (yuk altinda 120 mV
+    // sarkiyor). Henuz ornek birikmediyse -1.
+    cJSON_AddNumberToObject(g, "pil_yuzde", pil_yuzde());
+    cJSON_AddNumberToObject(g, "pil_dusuk", pil_dusuk() ? 1 : 0);
     cJSON_AddNumberToObject(g, "vin_mv", vin_mv());
     cJSON_AddNumberToObject(g, "sicaklik_c", yonga_sicakligi());
     // Arizali acilis sayisi — pilde tek olcum araci. Gerekcesi
     // pati_guc.hpp'de: pilde USB yok, seri port yok.
     cJSON_AddNumberToObject(g, "cokme", cokme_sayisi());
+    // Son cokme hangi gerilimde oldu — "pil azalinca daha sik mi
+    // cokuyor" sorusunu sinayan tek veri.
+    cJSON_AddNumberToObject(g, "cokme_mv", son_cokme_mv());
     cJSON_AddNumberToObject(g, "goz_fps", gozler_hedef_fps());
     // Fiilen uygulanan ses tavani — kullanicinin sectigi degil.
     cJSON_AddNumberToObject(g, "ses_tavani",
