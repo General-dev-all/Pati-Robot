@@ -15,7 +15,8 @@ idf_component_register(
         "pati_ses.cpp"
         "pati_panel.cpp"
         "pati_sohbet.cpp"
-        "pati_uyari.cpp"
+        "pati_tus.cpp"
+        "pati_perde.cpp"
     INCLUDE_DIRS "."
     REQUIRES
         conversation      # stackchan-idf'ten alindi (BSL-1.0): Gemini Live istemcisi

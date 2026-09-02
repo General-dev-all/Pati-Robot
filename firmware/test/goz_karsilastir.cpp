@@ -138,10 +138,11 @@ bool ekran_hazir() { return true; }
 // kalkmiyor, yani gercek cizim hic cagrilmiyor. Yine de sembol
 // gerekiyor cunku pati_gozler.cpp onu ariyor.
 //
-// Gercegi pati_uyari.cpp'de. Oranin kendi konak testi YOK: cizdigi sey
+// Gercegi pati_perde.cpp'de. Oranin kendi konak testi YOK: cizdigi sey
 // birkac dikdortgen ve bir bitmap font, yani tarayicida bir karsiligi
 // olmadigi icin karsilastirilacak bir referans da yok.
-esp_err_t uyari_pil_ciz(int) { return ESP_OK; }
+esp_err_t perde_pil_uyarisi(int) { return ESP_OK; }
+esp_err_t perde_bilgi() { return ESP_OK; }
 
 }  // namespace pati
 

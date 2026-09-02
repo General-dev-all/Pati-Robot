@@ -148,8 +148,57 @@ serbest bırakıyor, nereden alındığını değiştirmiyor. PSRAM için
 `MBEDTLS_EXTERNAL_MEM_ALLOC` gerekiyor. Yorum yıllarca "PSRAM'den
 alınsın" diyordu ve alınmıyordu; dahili SRAM 1903 bayta kadar indi.
 
+**Yığın hesabı görevin kodunu değil, çağırdığı en derin şeyi sayar.**
+`pati_tus` görevine 2048 bayt verilmişti, gerekçesi de yazılıydı: "iki
+GPIO okuması ve bir bayrak". Doğruydu — ta ki o bayrağın arkasına
+`esp_deep_sleep_start()` girene kadar. Yığın taştı ve dışarıdan
+görünüşü tam bir "kapanma" taklidiydi: ekran söndü, cihaz yeniden
+başladı. Seri log olmadan ayırt edilemezdi (`TESHIS.md`).
+
+**Seri portu açmak cihazı sıfırlıyor.** ESP32-S3'te `USB_UART_CHIP_RESET`
+üretiliyor, DTR/RTS kapalı olsa bile. Yani "çalışan cihazı bozmadan
+dinleyeyim" diye port açmak, tam da bozmak oluyor.
+
+**Sürüm notu kabuğa gömülmemeli.** CI notu `${{ }}` ile doğrudan komut
+satırına koyuyordu; nota çift tırnak yazılınca (`"şarja tak"`) tırnak
+kapandı ve yayım koptu. Aynı tuzak tek tırnak, ters bölü ve `$(...)`
+ile de kuruluyor. Not artık `env` üzerinden geçiyor — ebeveyne
+gösterilecek serbest metin, noktalama düşünmeyi gerektirmemeli.
+
 **USB'yi çekince seri kablo da gidiyor.** Pilde ne olduğu seri porttan
 görülemiyor — tek pencere panelin `api/durum` → `guc` alanı.
+
+---
+
+## Tuşlar
+
+Çocuğun kullandığı iki düğme. İkisi de **tek hareket**, çünkü çift tık
+bir çocuğun tutturabileceği bir şey değil ve yan düğme sert.
+
+| | Kısa | Uzun (1,2 sn) |
+|---|---|---|
+| **Mavi tuş** (ekranın sağı) | bilgi sayfası: pil + wifi | derin uyku |
+| **Yan güç düğmesi** | **tamamen kapat / aç** | — |
+
+Bilgi sayfası 15 saniyede kendiliğinden kapanıyor; çocuk unutursa Pati
+yüzsüz kalmasın diye.
+
+**Derin uyku gerçek kapanma değil.** Ekran söner, ses biter, L3B kesilir
+— ama M5PM1 ayakta kalır (yeşil ışık yanar) ve pil yavaş akar. Karşılığı
+aynı tuşla geri gelebilmek: ESP32 tamamen kapalıyken hiçbir yazılım
+çalışmadığı için cihaz kendini **açamaz**. Gerçek kapanma yan düğmede.
+
+🔴 **Yan düğme yazılımdan yönetiliyor.** `pati_pinler.h` uzun süre
+"ESP32'ye görünmüyor, değiştirilemiyor" diyordu ve **ikisi de yanlıştı**:
+durumu I2C'den okunuyor (`BTN_STATUS` 0x48) ve zamanlamaları
+ayarlanabiliyor (`BTN_CFG_1` 0x49). Tek tıkla kapatabilmek için M5PM1'in
+tek-tık-sıfırlaması kapatıldı; açık olsaydı cihaz biz okuyamadan
+yeniden başlardı.
+
+⚠️ **Kurtarma yolları bilerek açık:** indirme modu kilidine (`DL_LOCK`)
+ve çift tıkla kapanmaya **hiç dokunulmuyor**. Yazılım açılmazsa yan
+düğmeye 4 saniye basmak indirme moduna sokuyor. Kapatmanın ve
+yüklemenin bizim koda bağlı olmayan bir yolu her zaman kalmalı.
 
 ---
 

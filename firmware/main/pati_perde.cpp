@@ -1,12 +1,17 @@
-#include "pati_uyari.hpp"
+#include "pati_perde.hpp"
 
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+
+#include "pati_ag.hpp"
 #include "pati_ekran.hpp"
 #include "pati_goz_uretilmis.h"
+#include "pati_guc.hpp"
 #include "pati_pinler.h"
 
 namespace pati {
@@ -77,8 +82,57 @@ constexpr Glif FONT[] = {
     {0x0054, {0x01, 0x01, 0x7F, 0x01, 0x01}, AKSAN_YOK},   // T
     {0x0055, {0x3F, 0x40, 0x40, 0x40, 0x3F}, AKSAN_YOK},   // U
     {0x0056, {0x1F, 0x20, 0x40, 0x20, 0x1F}, AKSAN_YOK},   // V
+    {0x0051, {0x3E, 0x41, 0x51, 0x21, 0x5E}, AKSAN_YOK},   // Q
+    {0x0057, {0x3F, 0x40, 0x38, 0x40, 0x3F}, AKSAN_YOK},   // W
+    {0x0058, {0x63, 0x14, 0x08, 0x14, 0x63}, AKSAN_YOK},   // X
     {0x0059, {0x07, 0x08, 0x70, 0x08, 0x07}, AKSAN_YOK},   // Y
     {0x005A, {0x61, 0x51, 0x49, 0x45, 0x43}, AKSAN_YOK},   // Z
+    // Isaretler — wifi adlarinda sik gecenler.
+    {0x002D, {0x08, 0x08, 0x08, 0x08, 0x08}, AKSAN_YOK},   // -
+    {0x005F, {0x40, 0x40, 0x40, 0x40, 0x40}, AKSAN_YOK},   // _
+    {0x002E, {0x00, 0x60, 0x60, 0x00, 0x00}, AKSAN_YOK},   // .
+    {0x003A, {0x00, 0x36, 0x36, 0x00, 0x00}, AKSAN_YOK},   // :
+    {0x002F, {0x20, 0x10, 0x08, 0x04, 0x02}, AKSAN_YOK},   // /
+    // ---- KUCUK HARFLER ----
+    //
+    // NEDEN EKLENDI: bilgi sayfasi WIFI ADINI yaziyor ve ag adlari
+    // buyuk harfe cevrilirse yanlis okunur — cocuk ekranda gordugu adi
+    // evdeki agla eslestirebilmeli. "HizliVeKotali-v2" ile
+    // "HIZLIVEKOTALI-V2" ayni sey degil.
+    {0x0061, {0x20, 0x54, 0x54, 0x54, 0x78}, AKSAN_YOK},   // a
+    {0x0062, {0x7F, 0x48, 0x44, 0x44, 0x38}, AKSAN_YOK},   // b
+    {0x0063, {0x38, 0x44, 0x44, 0x44, 0x20}, AKSAN_YOK},   // c
+    {0x0064, {0x38, 0x44, 0x44, 0x48, 0x7F}, AKSAN_YOK},   // d
+    {0x0065, {0x38, 0x54, 0x54, 0x54, 0x18}, AKSAN_YOK},   // e
+    {0x0066, {0x08, 0x7E, 0x09, 0x01, 0x02}, AKSAN_YOK},   // f
+    {0x0067, {0x0C, 0x52, 0x52, 0x52, 0x3E}, AKSAN_YOK},   // g
+    {0x0068, {0x7F, 0x08, 0x04, 0x04, 0x78}, AKSAN_YOK},   // h
+    {0x0069, {0x00, 0x44, 0x7D, 0x40, 0x00}, AKSAN_YOK},   // i
+    {0x006A, {0x20, 0x40, 0x44, 0x3D, 0x00}, AKSAN_YOK},   // j
+    {0x006B, {0x7F, 0x10, 0x28, 0x44, 0x00}, AKSAN_YOK},   // k
+    {0x006C, {0x00, 0x41, 0x7F, 0x40, 0x00}, AKSAN_YOK},   // l
+    {0x006D, {0x7C, 0x04, 0x18, 0x04, 0x78}, AKSAN_YOK},   // m
+    {0x006E, {0x7C, 0x08, 0x04, 0x04, 0x78}, AKSAN_YOK},   // n
+    {0x006F, {0x38, 0x44, 0x44, 0x44, 0x38}, AKSAN_YOK},   // o
+    {0x0070, {0x7C, 0x14, 0x14, 0x14, 0x08}, AKSAN_YOK},   // p
+    {0x0071, {0x08, 0x14, 0x14, 0x18, 0x7C}, AKSAN_YOK},   // q
+    {0x0072, {0x7C, 0x08, 0x04, 0x04, 0x08}, AKSAN_YOK},   // r
+    {0x0073, {0x48, 0x54, 0x54, 0x54, 0x20}, AKSAN_YOK},   // s
+    {0x0074, {0x04, 0x3F, 0x44, 0x40, 0x20}, AKSAN_YOK},   // t
+    {0x0075, {0x3C, 0x40, 0x40, 0x20, 0x7C}, AKSAN_YOK},   // u
+    {0x0076, {0x1C, 0x20, 0x40, 0x20, 0x1C}, AKSAN_YOK},   // v
+    {0x0077, {0x3C, 0x40, 0x30, 0x40, 0x3C}, AKSAN_YOK},   // w
+    {0x0078, {0x44, 0x28, 0x10, 0x28, 0x44}, AKSAN_YOK},   // x
+    {0x0079, {0x0C, 0x50, 0x50, 0x50, 0x3C}, AKSAN_YOK},   // y
+    {0x007A, {0x44, 0x64, 0x54, 0x4C, 0x44}, AKSAN_YOK},   // z
+    // Turkce kucukler. 'i' ile 'i' (noktasiz) AYRI HARF — ag adinda
+    // gecerse ikisini karistirmak adi yanlis gosterir.
+    {0x00E7, {0x38, 0x44, 0x44, 0x44, 0x20}, AKSAN_KUYRUK},     // c cedilla
+    {0x00F6, {0x38, 0x44, 0x44, 0x44, 0x38}, AKSAN_IKI_NOKTA},  // o umlaut
+    {0x00FC, {0x3C, 0x40, 0x40, 0x20, 0x7C}, AKSAN_IKI_NOKTA},  // u umlaut
+    {0x011F, {0x0C, 0x52, 0x52, 0x52, 0x3E}, AKSAN_KAVIS},      // g breve
+    {0x0131, {0x00, 0x44, 0x7C, 0x40, 0x00}, AKSAN_YOK},        // i noktasiz
+    {0x015F, {0x48, 0x54, 0x54, 0x54, 0x20}, AKSAN_KUYRUK},     // s cedilla
     // Turkce — govde yukaridakilerin AYNISI, fark yalnizca aksan.
     {0x00C7, {0x3E, 0x41, 0x41, 0x41, 0x22}, AKSAN_KUYRUK},     // C cedilla
     {0x00D6, {0x3E, 0x41, 0x41, 0x41, 0x3E}, AKSAN_IKI_NOKTA},  // O umlaut
@@ -136,6 +190,40 @@ std::uint16_t sonraki_kod(const char*& p)
 std::uint16_t* g_serit = nullptr;
 int g_serit_y0 = 0;
 int g_serit_yuk = 0;
+
+// ---------------------------------------------------------------------------
+// 🔴 SERITLER ARASINDA NEFES — bu satir bir OLCUMDEN geliyor
+// ---------------------------------------------------------------------------
+//
+// 02.09.2026, 2. kart, USB'ye TAKILIYKEN ve pil DOLUYKEN uc brownout:
+//
+//     20:25:45  cokme=3  acilis=brownout  4058 mV  kaynak=usb
+//     20:26:10  cokme=4  acilis=brownout  4060 mV  kaynak=usb
+//     20:28:08  cokme=5  acilis=brownout  4070 mV  kaynak=usb
+//
+// Ucu de, uyarinin 15 saniyede bir cizildigi 2,5 dakikalik test
+// yapisinda oldu. Uyari USB'de kapatilinca durdu.
+//
+// USB'de brownout olmasi tuhaf gorunuyor ama brownout dedektoru 5 V
+// girisini degil YONGANIN 3,3 V RAYINI izliyor, ve o ray M5PM1'in
+// LDO'sundan geliyor. Tam ekran perde 240x135x2 = 65 KB'yi SPI'ye
+// KESINTISIZ basiyor: DMA surekli, PSRAM erisimi surekli, arada
+// hesap yok. Goz cizimi ayni isi yapmiyor — kucuk bir dikdortgen ve
+// serit aralarinda rasterleme hesabi var, yani akim yayiliyor.
+//
+// Bir tik (10 ms) beklemek tepeyi boluyor. Alti serit icin 60 ms
+// ekliyor; uyari zaten 3 saniye duruyor, bilgi sayfasi 2 saniyede bir
+// yenileniyor — ikisinde de gorunur bir bedeli yok.
+//
+// ⚠️ OLCULECEK: bu nefes brownout'lari durduruyor mu. Durdurmuyorsa
+// sebep SPI dolulugu degildir ve baska yere bakilmali.
+esp_err_t serit_bas_ve_nefes(int sy, int yuk)
+{
+    const esp_err_t hata = ekran_serit_bas(0, sy, PATI_EKR_G, yuk);
+    if (hata != ESP_OK) return hata;
+    vTaskDelay(1);
+    return ESP_OK;
+}
 
 void kutu(int x, int y, int gen, int yuk, std::uint16_t renk)
 {
@@ -243,9 +331,59 @@ constexpr int YUZDE_OLCEK = 2;
 constexpr int YAZI_Y = 98;     // govde 98..118, kuyruk 119..124
 constexpr int YAZI_OLCEK = 3;
 
+// ---------------------------------------------------------------------------
+// Bilgi sayfasi yerlesimi
+// ---------------------------------------------------------------------------
+//
+// Ust yari pil, alt yari wifi. Aradaki ince cizgi ikisini ayiriyor —
+// olmadan sayfa tek bir yigin gibi okunuyordu.
+
+constexpr int B_PIL_X   = 22;
+constexpr int B_PIL_Y   = 16;
+constexpr int B_PIL_GEN = 66;
+constexpr int B_PIL_YUK = 30;
+constexpr int B_PIL_KAL = 3;
+constexpr int B_UC_GEN  = 5;
+constexpr int B_UC_YUK  = 14;
+
+constexpr int B_YUZDE_X = 108;   // pil sembolunun sagi
+constexpr int B_YUZDE_Y = 17;
+constexpr int B_YUZDE_OLCEK = 3;
+
+constexpr int B_AYIRAC_Y = 56;
+
+// ⚠️ BU IKI SAYI BIRBIRINE BAGLI — degistirirken ikisine birden bak.
+//
+// Cubuklar TABANDAN yukari buyuyor, yani en yuksek cubugun tepesi
+// B_CUBUK_Y - (8 + 3*6) = B_CUBUK_Y - 26. Wifi adinin govdesi ise
+// B_AD_Y'den B_AD_Y + 7*olcek'e kadar iniyor.
+//
+// Ilk surumde ad 72, cubuk tabani 98 yazilmisti: en yuksek cubugun
+// tepesi tam 72 cikti ve cubuk yazinin uzerine bindi. Ekranda goruldu.
+//
+//   ad govdesi   : 66 .. 80   (olcek 2)
+//   cubuk tepeler: 116, 110, 104, 98
+//   aradaki bosluk: 18 piksel
+constexpr int B_AD_Y = 66;       // wifi adi — govdenin USTU
+constexpr int B_CUBUK_Y = 124;   // sinyal cubuklarinin TABANI
+constexpr int B_CUBUK_GEN = 12;
+constexpr int B_CUBUK_ARA = 6;
+constexpr int B_CUBUK_SAYI = 4;
+
+// Metni verilen x'ten baslayarak yazar (ortalamadan).
+void metin_yaz(int x, int y, const char* s, int olcek, std::uint16_t renk)
+{
+    for (const char* p = s; *p != ' ';) {
+        const std::uint16_t kod = sonraki_kod(p);
+        const Glif* g = glif_bul(kod);
+        if (g != nullptr) glif_ciz(x, y, *g, olcek, renk);
+        x += (GLIF_GEN + GLIF_ARA) * olcek;
+    }
+}
+
 }  // namespace
 
-esp_err_t uyari_pil_ciz(int yuzde)
+esp_err_t perde_pil_uyarisi(int yuzde)
 {
     if (!ekran_hazir()) return ESP_ERR_INVALID_STATE;
 
@@ -310,7 +448,97 @@ esp_err_t uyari_pil_ciz(int yuzde)
         // dizgi olarak birlesiyor.
         metin_orta(YAZI_Y, "\xC5\x9E" "ARJA TAK", YAZI_OLCEK, vurgu);
 
-        const esp_err_t hata = ekran_serit_bas(0, y, PATI_EKR_G, yuk);
+        const esp_err_t hata = serit_bas_ve_nefes(y, yuk);
+        if (hata != ESP_OK) return hata;
+    }
+
+    return ESP_OK;
+}
+
+// ---------------------------------------------------------------------------
+// Bilgi sayfasi — cocuk tusa basinca
+// ---------------------------------------------------------------------------
+
+esp_err_t perde_bilgi()
+{
+    if (!ekran_hazir()) return ESP_ERR_INVALID_STATE;
+
+    const std::uint16_t zemin = ekran_renk(0, 0, 0);
+    const std::uint16_t vurgu = ekran_renk(GOZ_ACIK.r, GOZ_ACIK.g, GOZ_ACIK.b);
+    const std::uint16_t soluk = ekran_renk(GOZ_KOYU.r, GOZ_KOYU.g, GOZ_KOYU.b);
+    // Bos sinyal cubugu ve ayirac cizgisi. Turkuazin cok koyusu —
+    // "yok" demek icin ayri bir renk kullanmiyoruz, ayni rengin
+    // sonugu yetiyor ve sayfa tek renkli kaliyor.
+    const std::uint16_t golge = ekran_renk(10, 60, 60);
+
+    // Veriyi BIR KEZ okuyup sakliyoruz: alti seridin her birinde
+    // yeniden sorulsa pil yuzdesi serit ortasinda degisip sayfayi
+    // kendi icinde tutarsiz birakabilirdi.
+    const int yuzde = pil_yuzde();
+    const bool bagli = (ag_durumu() == AgDurumu::Bagli);
+    const char* ad = ag_adi();
+    const int guc = ag_gucu();
+
+    const int ic_gen = B_PIL_GEN - B_PIL_KAL * 2 - 4;
+    const int y = (yuzde < 0) ? -1 : std::min(yuzde, 100);
+    const int dolgu = (y > 0) ? (ic_gen * y) / 100 : 0;
+
+    char yuzde_metni[8] = {};
+    std::snprintf(yuzde_metni, sizeof(yuzde_metni),
+                  (y >= 0) ? "%%%d" : "%%--", y);
+
+    // Wifi adi sigmiyorsa once olcek 1'e dusuyoruz, o da yetmezse
+    // kirpiliyor. Kirpmak son care: cocuk adi evdeki agla
+    // eslestirebilmeli, yarim ad bunun icin yeterli olmayabilir.
+    char ad_metni[40] = {};
+    if (bagli && ad != nullptr && ad[0] != ' ') {
+        std::snprintf(ad_metni, sizeof(ad_metni), "%s", ad);
+    } else {
+        std::snprintf(ad_metni, sizeof(ad_metni), "%s", "WiFi yok");
+    }
+    int ad_olcek = 2;
+    if (metin_genislik(ad_metni, ad_olcek) > PATI_EKR_G - 8) ad_olcek = 1;
+
+    const int cubuk_toplam =
+        B_CUBUK_SAYI * B_CUBUK_GEN + (B_CUBUK_SAYI - 1) * B_CUBUK_ARA;
+    const int cubuk_x0 = (PATI_EKR_G - cubuk_toplam) / 2;
+
+    for (int sy = 0; sy < PATI_EKR_Y; sy += EKRAN_SERIT_YUKSEK) {
+        const int yuk = std::min(EKRAN_SERIT_YUKSEK, PATI_EKR_Y - sy);
+        g_serit = ekran_serit();
+        g_serit_y0 = sy;
+        g_serit_yuk = yuk;
+
+        for (int i = 0; i < PATI_EKR_G * yuk; ++i) g_serit[i] = zemin;
+
+        // ---- pil ----
+        cerceve(B_PIL_X, B_PIL_Y, B_PIL_GEN, B_PIL_YUK, B_PIL_KAL, vurgu);
+        kutu(B_PIL_X + B_PIL_GEN, B_PIL_Y + (B_PIL_YUK - B_UC_YUK) / 2,
+             B_UC_GEN, B_UC_YUK, vurgu);
+        if (dolgu > 0) {
+            kutu(B_PIL_X + B_PIL_KAL + 2, B_PIL_Y + B_PIL_KAL + 2,
+                 dolgu, B_PIL_YUK - B_PIL_KAL * 2 - 4, vurgu);
+        }
+        metin_yaz(B_YUZDE_X, B_YUZDE_Y, yuzde_metni, B_YUZDE_OLCEK, vurgu);
+
+        // ---- ayirac ----
+        kutu(20, B_AYIRAC_Y, PATI_EKR_G - 40, 1, golge);
+
+        // ---- wifi ----
+        metin_orta(B_AD_Y, ad_metni, ad_olcek, bagli ? vurgu : golge);
+
+        // Sinyal cubuklari: soldan saga yukselen dort cubuk. Dolu
+        // olanlar parlak, kalanlar sonuk — "3/4" gibi bir sayi yerine
+        // cubuk, cunku cocuk icin sayinin anlami yok.
+        for (int i = 0; i < B_CUBUK_SAYI; ++i) {
+            const int c_yuk = 8 + i * 6;
+            const bool dolu = bagli && (i < guc);
+            kutu(cubuk_x0 + i * (B_CUBUK_GEN + B_CUBUK_ARA),
+                 B_CUBUK_Y - c_yuk, B_CUBUK_GEN, c_yuk,
+                 dolu ? vurgu : golge);
+        }
+
+        const esp_err_t hata = serit_bas_ve_nefes(sy, yuk);
         if (hata != ESP_OK) return hata;
     }
 

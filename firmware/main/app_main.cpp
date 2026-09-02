@@ -39,6 +39,7 @@
 #include "pati_pinler.h"
 #include "pati_ses.hpp"
 #include "pati_sohbet.hpp"
+#include "pati_tus.hpp"
 #include "pati_ag.hpp"
 #include "pati_anahtar.hpp"
 #include "pati_ayar.hpp"
@@ -143,6 +144,30 @@ void guc_kipi_uygula(pati::GucKaynagi kaynak)
              static_cast<double>(
                  pilde ? std::min(pati::ses_seviyesi(), pati::SES_PIL_TAVANI)
                        : pati::ses_seviyesi()));
+}
+
+// Tusa basildi.
+//
+// TUS GOREVINDEN cagriliyor, yani BLOKLAMAMALI. Yaptigi tek sey bir
+// atomik bayrak birakmak; sayfayi goz gorevi ciziyor.
+//
+// ⚠️ IKI TUS DA AYNI ISI YAPIYOR. Ekranin sagindaki mavi dugmenin G11
+// mi G12 mi oldugu olculmedi (pati_tus.hpp). Ikisini de baglamak
+// dogru davranisi bugun veriyor; hangisi oldugu seri porttan
+// ogrenilince burasi ayrilabilir.
+void tusa_basildi(int, bool uzun)
+{
+    if (uzun) {
+        // Uzun basis = "kapat". Geri donmuyor.
+        //
+        // ⚠️ GERCEK KAPANMA DEGIL, derin uyku — gerekcesi ve bedeli
+        // pati_guc.hpp'de. Ozeti: ESP32 kapaliyken hicbir yazilim
+        // calismadigi icin cihaz kendini ACAMAZ, o yuzden gercek
+        // kapanma yalnizca yan dugmeden (cift tik) yapilabiliyor.
+        // Derin uyku ayni tusla geri gelebilmeyi mumkun kiliyor.
+        pati::guc_derin_uyku();
+    }
+    pati::gozler_bilgi_degistir();
 }
 
 void guc_gozcusu(void*)
@@ -462,6 +487,16 @@ extern "C" void app_main()
         // daha sik coker, o yuzden sessiz gecilmiyor.
         ESP_LOGE(ETIKET, "guc gozcusu baslatilamadi — pil kipi ve dusuk "
                          "pil uyarisi CALISMAYACAK");
+    }
+
+    // TUSLAR. Gozlerden sonra, agdan once: bilgi sayfasi wifi
+    // baglanmasini beklemek zorunda degil — baglanti YOKKEN de acilip
+    // "WiFi yok" gostermesi dogru davranis, cunku cocugun sordugu soru
+    // tam da bu olabilir.
+    if (pati::tus_baslat(tusa_basildi) != ESP_OK) {
+        // Olumcul degil: tussuz Pati konusabiliyor, sadece bilgi
+        // sayfasi acilamaz.
+        ESP_LOGW(ETIKET, "tuslar kurulamadi — bilgi sayfasi acilamayacak");
     }
 
     // AG — artik gomulu wifi yok (§4.3). Kayitli ag varsa baglaniyor,

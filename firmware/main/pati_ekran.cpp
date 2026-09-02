@@ -136,10 +136,33 @@ esp_err_t ekran_doldur(std::uint16_t renk)
     if (!g_hazir) {
         return ESP_ERR_INVALID_STATE;
     }
-    for (int y = 0; y < PATI_EKR_Y; y += EKRAN_SERIT_YUKSEK) {
-        const int yuk = (y + EKRAN_SERIT_YUKSEK <= PATI_EKR_Y)
+    // 🔴 BIR SATIR TASIRARAK SILIYORUZ (PATI_EKR_Y + 1).
+    //
+    // Panelin kaymasi TAM SAYI DEGIL: cerceve bellegi 240 genis, panel
+    // 135, yani (240-135)/2 = 52,5. Kodda 52 yaziyor ve panelin
+    // gercekte 52'den mi 53'ten mi basladigi olculmedi.
+    //
+    // 53'ten basliyorsa bizim yazdigimiz son satir (bellekte 186)
+    // panelin sondan bir onceki satiri oluyor ve 187 HIC YAZILMIYOR —
+    // orada acilistan kalan ne varsa ekranda oylece kaliyor.
+    //
+    // 02.09.2026'da tam bu gorundu: gozlerin kenarinda ince, renkli
+    // noktacikli bir cizgi. Renkler eski test deseninin o satirdaki
+    // kesitiydi (kirmizi-yesil-mavi-beyaz-siyah-turkuaz cubuklar).
+    //
+    // Bir satir tasirmak iki olasiligi da kapatiyor: panel 52'den
+    // basliyorsa fazladan yazilan satir zaten gorunmuyor, 53'ten
+    // basliyorsa acikta kalan satir da siliniyor. Bu fonksiyon acilista
+    // bir kez cagriliyor, yani bedeli yok.
+    //
+    // Kayma bir gun kesin olcusuyle ogrenilirse (pati_pinler.h,
+    // PATI_EKR_KAYMA_Y) bu tasma kaldirilabilir.
+    constexpr int SILINECEK_Y = PATI_EKR_Y + 1;
+
+    for (int y = 0; y < SILINECEK_Y; y += EKRAN_SERIT_YUKSEK) {
+        const int yuk = (y + EKRAN_SERIT_YUKSEK <= SILINECEK_Y)
                             ? EKRAN_SERIT_YUKSEK
-                            : (PATI_EKR_Y - y);
+                            : (SILINECEK_Y - y);
         std::uint16_t* p = ekran_serit();
         for (size_t i = 0; i < static_cast<size_t>(PATI_EKR_G) * yuk; ++i) {
             p[i] = renk;

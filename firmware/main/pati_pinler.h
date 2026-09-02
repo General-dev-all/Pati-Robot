@@ -123,6 +123,18 @@
 #define PATI_PM1_VIN_L   0x24  // haricî 5 V girisi, mV, kucuk-sonlu 16 bit
 #define PATI_PM1_VIN_H   0x25
 
+// Sistem komutu. Ust dort bit ANAHTAR ve 0xA olmak zorunda; alt iki bit
+// komut: 01 = kapat, 10 = sifirla, 11 = indirme modu.
+// Yani kapatmak icin yazilacak deger 0xA1.
+#define PATI_PM1_SYS_CMD 0x0C
+#define PATI_PM1_KAPAT   0xA1
+
+// Yan guc dugmesi.
+#define PATI_PM1_BTN_STATUS 0x48  // [0] basili mi, [7] basildi bayragi
+#define PATI_PM1_BTN_CFG_1  0x49  // [7] indirme kilidi, [4:3] uzun basma
+                                  // esigi (00=1s..11=4s), [0] tek tik
+                                  // sifirlamayi kapat
+
 #define PATI_PM1_L3B 2  // PYG2 — mikrofon + hoparlor + LCD arka isik gucu
 #define PATI_PM1_AMF 3  // PYG3 — AW8737 hoparlor amfisi anahtari
 
@@ -248,10 +260,29 @@
 // Butonlar
 // ---------------------------------------------------------------------------
 //
-// Yan taraftaki guc dugmesi M5PM1'in kendi kontrolunde ve ESP32'ye
-// gorunmuyor: tek tik = ac/sifirla, cift tik = kapat, uzun basma =
-// indirme modu. Yazilimdan degistirilemiyor, degistirilmesi de
-// gerekmiyor.
+// 🔴 BURADA "YAN DUGME ESP32'YE GORUNMUYOR, YAZILIMDAN
+// DEGISTIRILEMIYOR" YAZIYORDU VE YANLISTI.
+//
+// Ikisi de yanlis. M5PM1'in register haritasi (github.com/m5stack/M5PM1,
+// src/M5PM1.h) sunlari veriyor:
+//
+//   0x48 BTN_STATUS  [0] dugme su an basili mi, [7] basildi bayragi
+//   0x49 BTN_CFG_1   [7] indirme modu kilidi, [6:5] cift tik araligi,
+//                    [4:3] uzun basma esigi, [0] tek tik sifirlamayi kapat
+//   0x4A BTN_CFG_2   [0] cift tikla kapanmayi kapat
+//
+// Yani dugmenin durumu I2C'den OKUNABILIYOR ve zamanlamalari
+// AYARLANABILIYOR. O satir olculmeden yazilmisti ve bir yeteneği
+// gorunmez kilmisti.
+//
+// M5PM1'in kendi davranisi: tek tik = ac/sifirla, cift tik = kapat,
+// uzun basma = indirme modu.
+//
+// ⚠️ "UZUN BASINCA KAPAT" DIYE BIR AYAR YOK. Onu yazilim yapiyor:
+// dugme basili suresi I2C'den sayiliyor ve esik dolunca M5PM1'e
+// kapanma komutu gonderiliyor (pati_guc.cpp, yan_dugme_basili +
+// guc_kapat). Cift tik da yedek olarak ACIK birakiliyor — bizim
+// mantigimiz calismazsa kapatmanin baska yolu kalmasin diye.
 //
 // Asagidaki ikisi programlanabilir olanlar. Cekme direncleri L2
 // katmaninda, yani acilisla birlikte hazirlar.

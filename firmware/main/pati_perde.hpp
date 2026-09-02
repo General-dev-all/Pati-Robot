@@ -1,4 +1,8 @@
-// Tam ekran uyari — su an yalnizca "pilim bitiyor"
+// Perdeler — gozlerin YERINE cizilen tam ekran sayfalar
+//
+// Iki tane var:
+//   1. Dusuk pil uyarisi — Pati kendisi karar verip gosteriyor
+//   2. Bilgi sayfasi     — cocuk tusa basinca aciliyor
 //
 // ===========================================================================
 // 🔴 BU DOSYAYI SADECE GOZ GOREVI CAGIRABILIR
@@ -11,6 +15,8 @@
 // pati_ekran.hpp'de anlatiliyor).
 //
 // Cagri yeri: pati_gozler.cpp icindeki goz gorevi, kare cizmek yerine.
+// Disaridan istek `gozler_pil_uyarisi()` / `gozler_bilgi_ac()` ile
+// birakiliyor; ikisi de bloklamiyor.
 //
 // ===========================================================================
 // NEDEN TAM EKRAN, gozlerin altina serit degil
@@ -21,16 +27,8 @@
 // Geriye altta 20 piksel kaliyor — bir pil sembolu ve okunabilir bir
 // yazi icin dar, ustelik gozler squash & stretch ile o payi yiyebiliyor.
 //
-// Tam ekran ayrica DAHA UCUZ: uyari cizilirken goz cizimi duruyor, yani
+// Tam ekran ayrica DAHA UCUZ: perde cizilirken goz cizimi duruyor, yani
 // o birkac saniye CPU ve SPI yuku dusuyor. Pilde bunu istiyoruz zaten.
-//
-// ===========================================================================
-// NEDEN SUREKLI DEGIL
-// ===========================================================================
-//
-// Uyari dakikada bir, birkac saniye gorunuyor. Surekli gosterilse iki
-// sey birden bozulurdu: cocuk Pati'nin yuzunu goremezdi ve uyari
-// "arka plan" haline gelip okunmaz olurdu.
 
 #pragma once
 
@@ -38,10 +36,19 @@
 
 namespace pati {
 
-// Dusuk pil uyarisini tam ekran cizer ve DONER — bekleme yapmiyor,
-// ekranda ne kadar kalacagina cagiran karar veriyor.
+// Dusuk pil uyarisi. Turuncu degil TURKUAZ — gerekce .cpp'de.
 //
 // `yuzde` 0-100; 0'dan kucukse yuzde satiri cizilmiyor (bilinmiyor).
-esp_err_t uyari_pil_ciz(int yuzde);
+esp_err_t perde_pil_uyarisi(int yuzde);
+
+// Bilgi sayfasi: pil doluluk ve wifi.
+//
+// NEDEN BU IKISI: cocugun bilmek isteyecegi tek iki sey. Sicaklik,
+// gerilim, cokme sayaci gibi seyler ebeveyn panelinde duruyor ve
+// buraya konsa sayfayi okunmaz yapardi.
+//
+// Veriyi kendisi topluyor (pil_yuzde, ag_adi, ag_gucu). Cagiran taraf
+// bir sey hazirlamiyor.
+esp_err_t perde_bilgi();
 
 }  // namespace pati

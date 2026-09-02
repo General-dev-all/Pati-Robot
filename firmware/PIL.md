@@ -206,7 +206,33 @@ işin tamamı "şu değişiklik çökmeyi azalttı mı" karşılaştırması.
 **A/B yöntemi:** sayacı not al → USB'yi çek → 5-10 dakika normal konuş
 (sallamadan; sallama ayrı bir değişken) → sayaca tekrar bak.
 
-Zemin: **dün gece pilde 20-60 saniyede bir çökme.**
+Zemin: **02.09.2026 akşamı, 10 fps ile 9 dakikada 2 çökme.**
+(Ondan önceki zemin 20 fps ile 20-60 saniyede birdi.)
+
+⚠️ **Sayaç geliştirme sırasında kirleniyor.** 02.09.2026 gecesi 2'den
+17'ye çıktı ve artışın neredeyse tamamı yazılım denemelerindendi:
+yığın taşması panic'leri, tam ekran çizim brownout'ları, seri port
+açmanın ürettiği sıfırlamalar. Ölçüme başlarken **o anki değeri not
+al**, mutlak sayıya bakma.
+
+---
+
+## Pili elle korumak — tuşlar
+
+Çocuk Pati'yi kullanmadığında kapatabiliyor artık; bu, pil ömrünü
+uzatmanın yazılımdan bağımsız tek yolu.
+
+- **Yan düğmeye tek tık:** tamamen kapatır (M5PM1 sistem komutu). Pil
+  hiç akmaz. Açmak yine tek tık.
+- **Mavi tuşa uzun bas:** derin uyku. Ekran ve ses gider ama M5PM1
+  ayakta kalır, yani pil **yavaş akmaya devam eder**. Karşılığı aynı
+  tuşla geri gelebilmek.
+
+Uzun süre kullanılmayacaksa doğru olan yan düğme.
+
+⚠️ Derin uykunun akımı **ölçülmedi**. "Haftalarca dokunulmazsa biter"
+tahmini, ölçüm değil. Merak edilirse yöntem basit: dolu pille uykuya
+al, bir gece bekle, panelden `pil_mv`'ye bak.
 
 ---
 

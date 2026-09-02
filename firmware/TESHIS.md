@@ -188,6 +188,81 @@ kırpma.
 
 ---
 
+## 🔴 02.09.2026 — "kapanıyor" sanılan şey aslında çökmeydi
+
+Mavi tuşa uzun basınca Pati'nin derin uykuya girmesi eklendi. Ekranda
+görülen: ekran söndü, cihaz yeniden başladı. "Kapanma çalışıyor ama
+hemen açılıyor" diye okundu.
+
+Seri log başka bir şey söyledi:
+
+```
+W tus: TUS 1 (GPIO 11) UZUN basildi
+W pati.guc: derin uykuya giriliyor
+***ERROR*** A stack overflow in task pati_tus has been detected.
+Rebooting...
+```
+
+**Derin uyku hiç çalışmadı.** `esp_deep_sleep_start()` tuş görevinin
+yığınında koşuyor ve o göreve 2048 bayt verilmişti — gerekçesi de
+yazılıydı: *"iki GPIO okuması ve bir geri çağırım, derin bir çağrı
+zinciri inmiyor."* Kısa basış için doğruydu; uzun basışın arkasındaki
+işi (RTC hazırlığı, uyku kaynakları, önbellek kapatma) saymıyordu.
+
+**Ders:** yığın hesabı görevin *kodunu* değil, çağırdığı en derin şeyi
+sayar. "Sadece bir bayrak bırakıyor" muhakemesi, bayrağın arkasındaki
+işi görmediği için yanlıştı.
+
+**Dışarıdan görünüşü çökmenin kapanmayla aynı olmasıydı** — ikisi de
+"ekran söndü". Seri log olmadan ayırt edilemezdi. 4096'ya çıkarıldı,
+düzeldi.
+
+---
+
+## 02.09.2026 — açılıştaki renkli şeritler ve kenardaki ince çizgi
+
+İki ayrı şey ama aynı kökten.
+
+**Renkli şeritler:** `ekran_test_deseni()` — altı dikey çubuk çizip
+2,5 saniye bekliyordu. İşi bayt sırası ve renk terslığini tek bakışta
+çözmekti; 01.09.2026'da ikisi de doğrulandı, yani o günden beri
+sadece bir gecikmeydi. Kaldırıldı.
+
+**Kenardaki ince renkli çizgi:** aynı desenden kalan **tek bir piksel
+satırı**. Sebebi yarım piksellik bir kayma:
+
+```
+(240 - 135) / 2 = 52,5     <- tam bolunmuyor
+kodda EKR_KAYMA_Y = 52
+```
+
+`ekran_doldur()` 0..134 yazıyor, bellekte 52..186. Panel 53..187
+görüyorsa **187 hiç yazılmıyor** ve orada açılıştan kalan ne varsa
+ekranda kalıyor. X ekseninde bu sorun yok: (320−240)/2 = 40, tam
+bölünüyor.
+
+Çözüm, panelin gerçekte 52'den mi 53'ten mi başladığı ölçülmediği için
+**bir satır taşırarak silmek**. İkisini de kapsıyor ve fonksiyon
+açılışta bir kez çağrıldığı için bedeli yok.
+
+---
+
+## 02.09.2026 — pil geriliminde saçma okuma
+
+M5PM1 bir kez **4336 mV** bildirdi. Tek hücreli lityum için imkânsız
+(tavan 4,2 V); öncesi ve sonrası 4090 civarıydı, yani geçici bir I2C
+bozulması.
+
+Tek başına zararsız görünüyor **ama pil yüzdesi pencerenin TEPESİNDEN
+hesaplanıyor** (yük altındaki sarkmayı yok saymak için, bkz. PIL.md).
+Bir tane çöp okuma yüzdeyi 30 saniye boyunca %100'e kilitliyordu —
+ekranda pil 4074 mV iken sayfa %100 yazıyordu.
+
+3000–4250 mV dışı okumalar artık atılıyor (`pati_guc.cpp`,
+`pil_ornekle`).
+
+---
+
 ## Yolda yapılan yanlış teşhisler
 
 Hepsi o an makul görünüyordu; tekrarlanmasın diye yazılı.

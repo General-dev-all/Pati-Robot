@@ -15,7 +15,7 @@
 #include "pati_ekran.hpp"
 #include "pati_goz_uretilmis.h"
 #include "pati_pinler.h"
-#include "pati_uyari.hpp"
+#include "pati_perde.hpp"
 
 namespace pati {
 namespace {
@@ -123,6 +123,36 @@ std::atomic<int>  g_uyari_yuzde{-1};
 // 3 saniye: okumaya yeter, sohbeti bolmez. Daha uzunu cocugun Pati'nin
 // yuzunu goremedigi bir bosluk olurdu.
 constexpr int UYARI_MS = 3000;
+
+// ---------------------------------------------------------------------------
+// Bilgi sayfasi — tusla acilip kapaniyor
+// ---------------------------------------------------------------------------
+//
+// Cocuk tusa basinca gozlerin yerine pil ve wifi bilgisi geliyor.
+// Kapanmasinin UC yolu var ve ucuncusu sart:
+//   1. tekrar tusa basmak
+//   2. dusuk pil uyarisinin gelmesi (o daha onemli)
+//   3. 15 saniye dolmasi  <- BU OLMAZSA Pati sonsuza kadar yuzsuz kalir
+//
+// Cocuk tusa basip birakabilir, unutabilir, cebine koyabilir. Geri
+// donusu kullanicinin hatirlamasina birakmak, bir gun unutulmasini
+// beklemek olurdu.
+std::atomic<bool> g_bilgi{false};
+std::atomic<std::int64_t> g_bilgi_us{0};
+
+constexpr std::int64_t BILGI_SURE_US = 15LL * 1000000LL;
+
+// Sayfa iki saniyede bir yeniden ciziliyor: pil yuzdesi ve wifi gucu
+// acikken degisebiliyor ve donmus bir sayfa yanlis bilgi olurdu.
+// Goz kare hizinda (50-200 ms) cizmenin anlami yok — bu sayfada
+// animasyon yok.
+//
+// ⚠️ 1 SANIYEDEN 2'YE CIKARILDI. Tam ekran cizim tepe akim uretiyor ve
+// 02.09.2026'da USB'deyken bile brownout'a yol acti (gerekce
+// pati_perde.cpp, serit_bas_ve_nefes). Sayfa 15 saniye acik kaliyor;
+// 1 saniyede 15 kez tam ekran cizmek gereksiz, 2 saniyede 7 kez ayni
+// bilgiyi veriyor.
+constexpr int BILGI_TAZELE_MS = 2000;
 
 // ---------------------------------------------------------------------------
 // Kucuk yardimcilar — gozler240.js'teki adlarla ayni
@@ -940,10 +970,14 @@ void gozler_gorevi(void*)
     hedefe_otur(g_istenen.load(std::memory_order_relaxed));
 
     TickType_t son_uyanma = xTaskGetTickCount();
+    bool onceki_bilgi = false;
     while (true) {
         // Dusuk pil uyarisi: gozlerin YERINE tam ekran ciziliyor.
         if (g_uyari_var.exchange(false, std::memory_order_relaxed)) {
-            uyari_pil_ciz(g_uyari_yuzde.load(std::memory_order_relaxed));
+            // Bilgi sayfasi aciksa kapaniyor: pilin bitmek uzere olmasi
+            // daha onemli ve uyari zaten pil bilgisini tasiyor.
+            g_bilgi.store(false, std::memory_order_relaxed);
+            perde_pil_uyarisi(g_uyari_yuzde.load(std::memory_order_relaxed));
             vTaskDelay(pdMS_TO_TICKS(UYARI_MS));
 
             // Ekranin TAMAMI uyariyla doldu, yani "onceki kirli alan"
@@ -952,6 +986,54 @@ void gozler_gorevi(void*)
             // alaninin disinda kalan uyari pikselleri ekranda oylece
             // durur ve "ara ara ekranda leke kaliyor" diye aranir.
             g_onceki_kirli = Dikdortgen{0, 0, PATI_EKR_G, PATI_EKR_Y};
+            son_uyanma = xTaskGetTickCount();
+            continue;
+        }
+
+        // ---- BILGI SAYFASI -------------------------------------------
+        //
+        // 🔴 KAPANIS TEK YERDE YAKALANIYOR. Sayfa UC ayri sebeple
+        // kapanabiliyor (tusa tekrar basmak, dusuk pil uyarisinin
+        // gelmesi, 15 saniyenin dolmasi) ve ucunde de ayni sey
+        // yapilmali: ekran gozlere geri birakilmali.
+        //
+        // Her kapanis noktasinda ayri ayri temizlemek denendi ve
+        // biri unutuldu — tus gorevi bayragi indirebiliyor ama
+        // g_onceki_kirli GOZ GOREVININ verisi, baska gorevden
+        // yazilmamali. Sonucu: sayfa kalintisi ekranda kaliyordu.
+        //
+        // "Acikti, artik degil" gecisini burada gormek hepsini
+        // kapsiyor ve kimin kapattigi onemsiz hale geliyor.
+        const bool bilgi = g_bilgi.load(std::memory_order_relaxed);
+        if (onceki_bilgi && !bilgi) {
+            g_onceki_kirli = Dikdortgen{0, 0, PATI_EKR_G, PATI_EKR_Y};
+            son_uyanma = xTaskGetTickCount();
+        }
+        onceki_bilgi = bilgi;
+
+        if (bilgi) {
+            if (esp_timer_get_time() - g_bilgi_us.load(std::memory_order_relaxed)
+                >= BILGI_SURE_US) {
+                // Sure doldu. Temizligi yukaridaki gecis yapiyor, yani
+                // burada sadece bayragi indirip bir tur donuyoruz.
+                g_bilgi.store(false, std::memory_order_relaxed);
+                continue;
+            }
+            perde_bilgi();
+
+            // 🔴 UYKU PARCALI — tek bir uzun vTaskDelay DEGIL.
+            //
+            // Tazeleme araligi 2 saniye ve gorev o sure boyunca uyusaydi,
+            // tusa basildiginda bayrak inmis olmasina ragmen gozler iki
+            // saniyeye kadar gec gelirdi. Ekranda goruldu: acilis anlik,
+            // kapanis gecikmeli.
+            //
+            // 100 ms'lik parcalar hem tepkiyi bir tik seviyesine
+            // indiriyor hem de uyanma sayisini makul tutuyor (20 kez).
+            for (int kalan = BILGI_TAZELE_MS; kalan > 0; kalan -= 100) {
+                if (!g_bilgi.load(std::memory_order_relaxed)) break;
+                vTaskDelay(pdMS_TO_TICKS(100));
+            }
             son_uyanma = xTaskGetTickCount();
             continue;
         }
@@ -1026,10 +1108,30 @@ void gozler_pil_kipi(bool pilde)
     g_pilde.store(pilde, std::memory_order_relaxed);
 }
 
+void gozler_bilgi_degistir()
+{
+    const bool acik = g_bilgi.load(std::memory_order_relaxed);
+    if (acik) {
+        // Kapatiyoruz. Kirli alani BURADA tam ekran yapmiyoruz cunku bu
+        // fonksiyon tus gorevinden cagriliyor ve g_onceki_kirli goz
+        // gorevinin verisi — iki gorevden yazilmamali. Gorev kendi
+        // dongusunde bayragi gorup temizligi yapiyor.
+        g_bilgi.store(false, std::memory_order_relaxed);
+    } else {
+        g_bilgi_us.store(esp_timer_get_time(), std::memory_order_relaxed);
+        g_bilgi.store(true, std::memory_order_relaxed);
+    }
+}
+
+bool gozler_bilgi_acik()
+{
+    return g_bilgi.load(std::memory_order_relaxed);
+}
+
 void gozler_pil_uyarisi(int yuzde)
 {
     // Sadece istek birakiyoruz. Cizimi gorev yapiyor, cunku serit
-    // tamponlari onun malı (bkz. pati_uyari.hpp). Bu fonksiyon guc
+    // tamponlari onun malı (bkz. pati_perde.hpp). Bu fonksiyon guc
     // gozcusu gorevinden cagriliyor ve BLOKLAMAMALI.
     g_uyari_yuzde.store(yuzde, std::memory_order_relaxed);
     g_uyari_var.store(true, std::memory_order_relaxed);
@@ -1076,12 +1178,22 @@ esp_err_t gozler_baslat()
         return ESP_ERR_NO_MEM;
     }
 
-    ekran_test_deseni();
-    vTaskDelay(pdMS_TO_TICKS(2500));   // desene bakacak kadar dursun
+    // 🔴 BURADA `ekran_test_deseni()` VARDI — GERI KOYMAYIN.
+    //
+    // Alti renkli dikey cubuk cizip 2,5 saniye bekliyordu. Isi iki
+    // bilinmeyeni tek bakista cozmekti: bayt sirasi ve renk tersligi.
+    // 01.09.2026'da gercek kartta ikisi de dogrulandi, yani soru
+    // cevaplandi ve desen o gunden beri sadece bir gecikme.
+    //
+    // Cocugun gordugu sey de guzel degildi: Pati her acildiginda once
+    // renkli seritler, sonra 2,5 saniye bekleme, sonra gozler.
+    //
+    // Renk sorusu bir gun geri gelirse fonksiyon pati_ekran.cpp'de
+    // duruyor, cagirmak bir satir.
     ekran_doldur(ekran_renk(0, 0, 0));
 
-    // Onceki kirli alani sifirla: test deseni butun ekrani boyadi ama
-    // artik siyah, yani silinecek bir sey yok.
+    // Onceki kirli alani sifirla: ekran simdi bastan asagi siyah,
+    // yani silinecek bir sey yok.
     g_onceki_kirli = Dikdortgen{0, 0, 0, 0};
 
     // Onceligi DUSUK. Ses hattinin onune gecmemesi gerekiyor: gecikme

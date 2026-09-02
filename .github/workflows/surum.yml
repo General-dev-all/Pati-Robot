@@ -184,6 +184,22 @@ jobs:
           fi
 
       - name: surum.json uret
+        # 🔴 NOT METNI ENV UZERINDEN GECIYOR, ${{ }} ile DEGIL.
+        #
+        # 02.09.2026'da yayim tam burada koptu. Nota cift tirnak
+        # yazilmisti ("sarja tak") ve ${{ }} metni komut satirina OLDUGU
+        # GIBI gomuyor:
+        #
+        #     --notes "Pati ekranda "sarja tak" yaziyor"
+        #                           ^ tirnak burada kapandi
+        #
+        # Kabuk bunu ayri kelimelere boldu ve adim coktu. Ayni tuzak tek
+        # tirnakla, ters bolu ve $(...) ile de kuruluyor — yani bir yazim
+        # hatasi degil, ebeveyne gosterilecek SERBEST METNIN kabuga
+        # gomulmesi. env ile gecince metin degiskenin degeri oluyor ve
+        # kabuk onu hic ayristirmiyor.
+        env:
+          NOT: ${{ steps.s.outputs.not }}
         run: |
           set -euo pipefail
           # jq ile uretiliyor, elle dize birlestirerek DEGIL: notta tirnak
@@ -192,7 +208,7 @@ jobs:
           jq -n \
             --arg surum  "${{ steps.s.outputs.surum }}" \
             --arg tarih  "$(date -u +%Y-%m-%d)" \
-            --arg notlar "${{ steps.s.outputs.not }}" \
+            --arg notlar "$NOT" \
             --arg bin    "${{ github.server_url }}/${{ github.repository }}/releases/download/${{ steps.s.outputs.etiket }}/pati.bin" \
             '{surum:$surum, tarih:$tarih, notlar:$notlar, bin:$bin}' \
             > surum.json
@@ -201,6 +217,9 @@ jobs:
       - name: Release ac
         env:
           GH_TOKEN: ${{ github.token }}
+          # Gerekce 'surum.json uret' adiminda: serbest metin kabuga
+          # gomulmuyor.
+          NOT: ${{ steps.s.outputs.not }}
         run: |
           set -euo pipefail
           # Ikisi TEK adimda yukleniyor. Ayri adimlar olsaydi arada
@@ -210,7 +229,7 @@ jobs:
             firmware/build/pati.bin \
             surum.json \
             --title "${{ steps.s.outputs.etiket }}" \
-            --notes "${{ steps.s.outputs.not }}" \
+            --notes "$NOT" \
             --latest
 
       - name: surum.txt'yi geri yaz
@@ -242,11 +261,13 @@ jobs:
           git push || echo "::warning::surum.txt geri yazilamadi; Release yayimlandi, dosya bir sonraki yayimda duzelir"
 
       - name: Ozet
+        env:
+          NOT: ${{ steps.s.outputs.not }}
         run: |
           {
             echo "### Pati ${{ steps.s.outputs.surum }} yayimlandi"
             echo ""
-            echo "${{ steps.s.outputs.not }}"
+            echo "$NOT"
             echo ""
             echo "Anne artik panelden **Güncellemeleri kontrol et** diyebilir."
           } >> "$GITHUB_STEP_SUMMARY"

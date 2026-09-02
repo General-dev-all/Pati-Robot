@@ -108,12 +108,23 @@ void gozler_pil_kipi(bool pilde);
 //
 // NEDEN BURADAN: cizim serit tamponlarini kullaniyor ve o tamponlar bu
 // gorevin malı. Baska bir gorevden cizmek iki gorevin ayni tamponu ayni
-// anda doldurmasi demek olurdu (bkz. pati_uyari.hpp).
+// anda doldurmasi demek olurdu (bkz. pati_perde.hpp).
 //
 // BLOKLAMIYOR — sadece istek birakiyor.
 //
 // `yuzde` 0-100; negatifse yuzde satiri cizilmiyor.
 void gozler_pil_uyarisi(int yuzde);
+
+// Bilgi sayfasini acar/kapatir (tusa basildi).
+//
+// Acikken gozlerin yerine pil ve wifi bilgisi ciziliyor. Kapanmasinin
+// UC yolu var: tekrar basmak, dusuk pil uyarisinin gelmesi, ve 15
+// saniyenin dolmasi. Sonuncusu sart — cocuk tusa basip unutursa Pati
+// sonsuza kadar yuzsuz kalmamali.
+//
+// BLOKLAMIYOR: bayrak birakiyor, cizimi gorev yapiyor.
+void gozler_bilgi_degistir();
+bool gozler_bilgi_acik();
 
 // Son karenin cizim + gonderim suresi (mikrosaniye).
 std::uint32_t gozler_kare_us();

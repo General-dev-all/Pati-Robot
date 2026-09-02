@@ -181,6 +181,50 @@ int pil_yuzde();
 // USB takiliyken her zaman false — sarj olan pil icin uyari sacma.
 bool pil_dusuk();
 
+// ---------------------------------------------------------------------------
+// Derin uyku — "kapatmak"
+// ---------------------------------------------------------------------------
+//
+// GERI DONMUYOR: cagrildiginda Pati uykuya giriyor ve uyandiginda
+// program BASTAN basliyor (app_main). Yani wifi yeniden baglaniyor ve
+// Gemini oturumu yeniden aciliyor; uyanma birkac saniye suruyor.
+//
+// 🔴 BU GERCEK BIR KAPANMA DEGIL. Gercek kapanmayi M5PM1 yapiyor ve
+// yalnizca yan taraftaki guc dugmesinden (cift tik) — ESP32 kapaliyken
+// hicbir yazilim calismadigi icin cihazi kendi kendine ACAMAZ.
+//
+// Derin uyku istenen davranisi veriyor: ekran soner, ses biter, cihaz
+// kapali gorunur ve AYNI TUSA uzun basinca geri gelir. Bedeli, pilin
+// yavas da olsa akmaya devam etmesi — M5PM1 ve RTC calismaya devam
+// ediyor. Haftalarca dokunulmazsa pil biter; bir cocuk oyuncagi icin
+// dogru odunlesme, cunku "kapattim ama bir daha acamiyorum" cok daha
+// kotu.
+//
+// Uyandirma kaynagi iki tus da (PATI_TUS_1 / PATI_TUS_2).
+[[noreturn]] void guc_derin_uyku();
+
+// ---------------------------------------------------------------------------
+// Yan guc dugmesi
+// ---------------------------------------------------------------------------
+//
+// M5PM1'in dugmesi, ESP32'nin degil — ama durumu I2C'den okunabiliyor
+// (pati_pinler.h'de register haritasi ve orada duzeltilen yanlis bilgi).
+//
+// NEDEN OKUYORUZ: M5PM1'in kendi kapatma hareketi CIFT TIK ve bunu bir
+// cocuk tutturamiyor. "Basili tut, kapansin" dogal olan; ama M5PM1'de
+// oyle bir ayar yok — uzun basma onda indirme moduna gidiyor. O yuzden
+// sureyi biz sayiyoruz ve esik dolunca kapatma komutunu biz
+// gonderiyoruz.
+bool yan_dugme_basili();
+
+// Cihazi GERCEKTEN kapatir (M5PM1 sistem komutu). Yesil guc isigi da
+// soner. GERI DONMUYOR.
+//
+// ⚠️ Bundan sonra cihazi ancak yan dugmeye TEK TIK acar. Yazilim
+// kapaliyken calismadigi icin baska yolu yok — derin uykudan (
+// guc_derin_uyku) farki tam burasi.
+[[noreturn]] void guc_kapat();
+
 // guc_baslat() basarili oldu mu — L3B ve amfi gercekten acildi mi.
 //
 // Acilis kaydinin ILK SANIYESI bu kartta gorulemiyor: konsol USB

@@ -5,6 +5,7 @@
 
 #include <driver/temperature_sensor.h>
 #include <esp_log.h>
+#include <esp_sleep.h>
 #include <esp_system.h>
 #include <nvs.h>
 #include <freertos/FreeRTOS.h>
@@ -266,6 +267,55 @@ esp_err_t guc_baslat()
         return hata;
     }
 
+    // Yan dugmenin UZUN BASMA esigini en uzuna (4 sn) cekiyoruz.
+    //
+    // NEDEN: M5PM1'de uzun basma = indirme modu. Biz uzun basmayi
+    // "kapat" olarak kullanmak istiyoruz ve sureyi kendimiz sayiyoruz
+    // (1,2 sn). Esik 4 saniyede olunca bizim sayacimiz her zaman once
+    // dolar ve indirme moduna KAZARA girilmez.
+    //
+    // İndirme modu KAYBOLMUYOR: cihaz kapaliyken yazilim calismadigi
+    // icin sayac da yok, ve 4 saniye basili tutmak yine indirme moduna
+    // sokuyor. Yani kurtarma yolu duruyor — bu onemli, bir gun yazilim
+    // acilmazsa tek giris orasi.
+    //
+    // [4:3] = 0b11 -> 4 saniye.
+    //
+    // ---- ve TEK TIK SIFIRLAMA KAPATILIYOR ([0] = 1) --------------------
+    //
+    // 🔴 EN RISKLI SATIR BU. M5PM1'in varsayilaninda cihaz ACIKKEN tek
+    // tik = SIFIRLAMA. Kullanicinin istedigi ise "tek tik = kapat", ve
+    // sifirlama acikken bizim kodumuz calisamadan cihaz yeniden
+    // basliyor — yani tek tiki okuyabilmek icin once bunu kapatmak
+    // sart.
+    //
+    // ⚠️ Belgede bu bitin adi "single-click RESET disable". Cihaz
+    // KAPALIYKEN tek tikla ACMANIN ayri bir yol oldugu varsayiliyor ama
+    // BU OLCULMEDI. Yanlissa cihaz tek tikla acilmaz.
+    //
+    // KURTARMA YOLU ACIK BIRAKILDI: indirme modu kilidi [7] bu satirda
+    // da DEGISTIRILMIYOR, ve uzun basma esigi 4 saniyede. Yani cihaz
+    // acilmazsa yan dugmeye 4 saniye basmak indirme moduna sokuyor ve
+    // kabloyla eski yazilim yuklenebiliyor.
+    //
+    // Ayni sebeple cift tikla kapanma da ACIK birakildi (BTN_CFG_2'ye
+    // hic dokunulmuyor): kapatmanin bizim koda bagli olmayan bir yolu
+    // her zaman kalmali.
+    {
+        std::uint8_t v = 0;
+        if (pm1_oku(PATI_PM1_BTN_CFG_1, v) == ESP_OK) {
+            const std::uint8_t yeni =
+                static_cast<std::uint8_t>((v & ~0x18) | 0x18 | 0x01);
+            if (pm1_yaz(PATI_PM1_BTN_CFG_1, yeni) != ESP_OK) {
+                ESP_LOGW(ETIKET, "dugme ayarlari yazilamadi — tek tik hala "
+                                 "sifirliyor olabilir");
+            } else {
+                ESP_LOGI(ETIKET, "yan dugme: tek tik sifirlama kapatildi, "
+                                 "uzun basma esigi 4 sn (0x49 = 0x%02X)", yeni);
+            }
+        }
+    }
+
     g_hazir = true;
 
     // Arizali acilisi say. Buraya kadar gelindi, yani I2C ve M5PM1
@@ -357,6 +407,66 @@ std::uint32_t cokme_sayisi()
     nvs_get_u32(h, "cokme", &n);
     nvs_close(h);
     return n;
+}
+
+bool yan_dugme_basili()
+{
+    if (g_pm1 == nullptr) return false;
+    std::uint8_t v = 0;
+    if (pm1_oku(PATI_PM1_BTN_STATUS, v) != ESP_OK) return false;
+    return (v & 0x01) != 0;
+}
+
+void guc_kapat()
+{
+    ESP_LOGW(ETIKET, "kapatiliyor — M5PM1 sistem komutu");
+
+    // Ekran ve sesi once kes: kapanma komutu ile gucun gercekten
+    // kesilmesi arasinda birkac milisaniye var ve o arada ekranin
+    // yanik kalmasi "kapanmadi" gibi gorunuyor.
+    hoparlor_amfi(false);
+    if (g_pm1 != nullptr) pm1_cikis(PATI_PM1_L3B, false);
+
+    pm1_yaz(PATI_PM1_SYS_CMD, PATI_PM1_KAPAT);
+
+    // Komut islenene kadar bekle. Buradan donmemesi gerekiyor; yine de
+    // donerse (I2C yazilamadi) sonsuza kadar bekliyoruz — yarim kapanmis
+    // bir cihazla devam etmektense durmak dogru.
+    while (true) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        ESP_LOGE(ETIKET, "kapanma komutu islenmedi — I2C yazilamadi mi?");
+    }
+}
+
+void guc_derin_uyku()
+{
+    ESP_LOGW(ETIKET, "derin uykuya giriliyor — uyandirma: tuslar");
+
+    // Ekran arka isigi, mikrofon ve hoparlor L3B'den besleniyor.
+    // Kapatmak hem akimi dusuruyor hem de cihazin GERCEKTEN kapali
+    // gorunmesini sagliyor: yanan bir ekranla "kapattim" denmez.
+    hoparlor_amfi(false);
+    if (g_pm1 != nullptr) pm1_cikis(PATI_PM1_L3B, false);
+
+    // 🔴 TUS BIRAKILANA KADAR BEKLE.
+    //
+    // Uyandirma "tus asagidayken uyan" diye kuruluyor. Kullanici uzun
+    // basmayi henuz birakmadiysa uyku, baslar baslamaz kendi kosulunu
+    // dogru bulur ve cihaz ANINDA uyanir — disaridan gorunusu "kapanip
+    // hemen acildi" olur ve sebebi aranir.
+    //
+    // 50 ms'lik yoklama yeterli; burada aceleye gerek yok, kullanici
+    // zaten parmagini kaldiriyor.
+    while (gpio_get_level(PATI_TUS_1) == 0 || gpio_get_level(PATI_TUS_2) == 0) {
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+    // Sekme bitsin: birakilma aninda pin birkac kez inip cikiyor.
+    vTaskDelay(pdMS_TO_TICKS(150));
+
+    const std::uint64_t maske =
+        (1ULL << PATI_TUS_1) | (1ULL << PATI_TUS_2);
+    esp_sleep_enable_ext1_wakeup(maske, ESP_EXT1_WAKEUP_ANY_LOW);
+    esp_deep_sleep_start();
 }
 
 int son_cokme_mv()
@@ -459,6 +569,45 @@ void pil_ornekle()
 {
     const int mv = pil_mv();
     if (mv <= 0) return;   // I2C okunamadi — pencereyi bozmuyoruz
+
+    // 🔴 SACMA OKUMALAR ATILIYOR — bu da bir OLCUMDEN geliyor.
+    //
+    // 02.09.2026, 20:32:57'de M5PM1 4336 mV bildirdi. Tek hucreli bir
+    // lityum pil icin IMKANSIZ: tavan 4,2 V. Onceki ve sonraki
+    // okumalar 4090 civarindaydi, yani gecici bir I2C bozulmasi.
+    //
+    // Tek basina zararsiz gorunuyor ama yuzde PENCERENIN TEPESINDEN
+    // hesaplaniyor: bir tane cop okuma yuzdeyi 30 saniye boyunca %100'e
+    // kilitliyor. Ekranda goruldu — pil 4074 mV iken sayfa %100
+    // yaziyordu.
+    //
+    // Alt sinir 3000: bunun altinda yonga zaten brownout'a duser, yani
+    // okunan sey pil degildir. Ust sinir 4250: 4,2 V tavan arti olcum
+    // payi.
+    if (mv < 3000 || mv > 4250) {
+        ESP_LOGW(ETIKET, "pil gerilimi sacma: %d mV — ornek atlandi", mv);
+        return;
+    }
+
+    // 🔴 KAYNAK DEGISINCE PENCERE SIFIRLANIYOR.
+    //
+    // USB takiliyken okunan gerilim pilin degil SARJ DEVRESININ
+    // gerilimi — 4,2 V'a kadar cikiyor. Kablo cekildigi anda gercek
+    // pil gerilimi cok daha dusuk olabiliyor, ama pencere TEPE
+    // degerini kullandigi icin eski sarj okumasi 30 saniye boyunca
+    // yuzdeyi yukarida tutardi.
+    //
+    // 02.09.2026'da goruldu: USB'de pil 4074 mV iken yuzde %100
+    // yaziyordu (tepede bir 4,2 V okumasi kalmisti); pencere kendini
+    // yenileyince %87'ye dustu. Pilde bunun anlami "cocuga dolu
+    // gorunen bir pil birkac dakika sonra bitiyor" olurdu.
+    static GucKaynagi onceki = GucKaynagi::Bilinmiyor;
+    const GucKaynagi simdi = guc_kaynak();
+    if (simdi != onceki) {
+        onceki = simdi;
+        g_dolu = 0;
+        g_yaz = 0;
+    }
 
     g_pencere[g_yaz] = mv;
     g_yaz = (g_yaz + 1) % PENCERE;
