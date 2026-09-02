@@ -53,6 +53,36 @@ constexpr int HEDEF_FPS = 20;
 constexpr int KARE_MS = 1000 / HEDEF_FPS;
 
 // ---------------------------------------------------------------------------
+// Pilde dusuk kare hizi
+// ---------------------------------------------------------------------------
+//
+// 🔴 GOZ CIZICI PATI'NIN EN BUYUK SUREKLI CPU MUSTERISI. Olculdu
+// (02.09.2026, gercek kart): kare basina cizim 24-30 ms ve butce 50 ms,
+// yani bir cekirdegin YARISINDAN FAZLASI kesintisiz doluyor. Isin %85'i
+// sekil rasterlemesinde.
+//
+// Pilde brownout tam Pati konusmaya baslarken oluyor: amfi, telsiz ve
+// PSRAM ayni anda akim cekiyor. CPU'nun o anda bos olmasi pay birakiyor.
+//
+// 100 ms = 10 fps. FreeRTOS tiki 100 Hz oldugu icin aralik yalnizca
+// 10'un katlari olabiliyor; 10 fps bu yuzden secildi, 12 ya da 15 degil.
+//
+// GOZLE FARK EDILIYOR MU: evet, biraz. Gozler daha az akici. Ama
+// kullanicinin oncelik sirasi net — once cokmeme, sonra ses, sonra
+// gorunum — ve gozler pilde feda edilebilir tek yer: sese
+// DOKUNULMUYOR.
+//
+// ⚠️ BU DEGER OLCUMLE SECILMEDI, denenmek uzere kondu. Olculecek olan
+// cokme sikligi: pilde 20-60 saniyede bir cokuyordu (02.09.2026 gecesi).
+// Azalmazsa goz yuku sebep degil demektir ve geri alinmali — gorunumu
+// bosuna bozmus oluruz.
+constexpr int PIL_FPS = 10;
+constexpr int PIL_KARE_MS = 1000 / PIL_FPS;
+
+// Calisma aninda degisiyor: guc kaynagi degisince app_main ayarliyor.
+std::atomic<int> g_kare_ms{KARE_MS};
+
+// ---------------------------------------------------------------------------
 // Kucuk yardimcilar — gozler240.js'teki adlarla ayni
 // ---------------------------------------------------------------------------
 
@@ -872,7 +902,8 @@ void gozler_gorevi(void*)
         kare_ciz();
         // vTaskDelayUntil: kare suresi degisse bile FPS sabit kaliyor.
         // vTaskDelay olsa cizim suresi ustune eklenir ve hiz dalgalanir.
-        if (!xTaskDelayUntil(&son_uyanma, pdMS_TO_TICKS(KARE_MS))) {
+        const int kare_ms = g_kare_ms.load(std::memory_order_relaxed);
+        if (!xTaskDelayUntil(&son_uyanma, pdMS_TO_TICKS(kare_ms))) {
             // Gecikti: kare butcesi asildi.
             g_atlanan.fetch_add(1, std::memory_order_relaxed);
 
@@ -921,7 +952,12 @@ void gozler_konusuyor() { gozler_durum("konusuyor"); }
 
 std::uint32_t gozler_kare() { return g_kare.load(std::memory_order_relaxed); }
 std::uint32_t gozler_piksel() { return g_piksel.load(std::memory_order_relaxed); }
-int gozler_hedef_fps() { return HEDEF_FPS; }
+int gozler_hedef_fps() { return 1000 / g_kare_ms.load(std::memory_order_relaxed); }
+
+void gozler_pil_kipi(bool pilde)
+{
+    g_kare_ms.store(pilde ? PIL_KARE_MS : KARE_MS, std::memory_order_relaxed);
+}
 std::uint32_t gozler_kare_us() { return g_kare_us.load(std::memory_order_relaxed); }
 std::uint32_t gozler_ciz_us() { return g_ciz_us.load(std::memory_order_relaxed); }
 std::uint32_t gozler_gonder_us()

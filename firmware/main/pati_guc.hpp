@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include <driver/i2c_master.h>
 #include <esp_err.h>
 
@@ -119,6 +121,21 @@ int vin_mv();
 // Beklenen: oda sicakliginda 40-60 C normal (240 MHz + telsiz surekli
 // acik). 80 C uzeri sureklilik arz ediyorsa isi gercek bir etken.
 float yonga_sicakligi();
+
+// ---------------------------------------------------------------------------
+// Cokme sayaci — cihazda yasiyor, acilisi atlatiyor
+// ---------------------------------------------------------------------------
+//
+// Yalnizca ARIZA sayiliyor: brownout, panic, bekci. Dugmeye basmak ya da
+// kabloyla yukleme sayilmiyor.
+//
+// NEDEN CIHAZDA: pilde USB yok, yani seri port da yok. Cokmeler ancak
+// agdan yoklanarak sayilabiliyordu ve bu bilgisayarin acik olmasini
+// gerektiriyordu. Yapilacak isin tamami "su degisiklik cokmeyi azaltti
+// mi" karsilastirmasi; sayinin cihazda durmasi sart.
+void cokme_say();              // acilista bir kez, guc_baslat() cagiriyor
+std::uint32_t cokme_sayisi();
+void cokme_sayaci_sifirla();   // A/B olcumune temiz baslamak icin
 
 // guc_baslat() basarili oldu mu — L3B ve amfi gercekten acildi mi.
 //

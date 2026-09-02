@@ -71,6 +71,17 @@ esp_err_t ekran_baslat();
 // renkler dogru mu" sorusu cevaplanacak.
 void ekran_arka_isik(bool ac);
 
+// Arka isik parlakligi, 0.15 - 1.00.
+//
+// NEDEN VAR: arka isik bu kartin en buyuk SABIT akim musterisi.
+// Brownout'u hoparlorun anlik tepesi yapiyor ama o tepe taban akimin
+// uzerine biniyor — tabani dusurmek, sesi kismadan pay kazandiriyor.
+//
+// 0.15'in altina inilmiyor: orasi "kisik ekran" degil "kapali ekran"
+// gibi gorunuyor ve cocuk Pati'yi bozuk sanar.
+float ekran_parlaklik_ayarla(float yeni);
+float ekran_parlaklik();
+
 // Cizim yapilacak serit tamponu. Her `ekran_serit_bas()` cagrisindan
 // sonra OTEKI tampona geciyor — donen isaretciyi saklamayin.
 std::uint16_t* ekran_serit();

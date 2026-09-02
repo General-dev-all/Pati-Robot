@@ -5,6 +5,8 @@
 
 #include <driver/temperature_sensor.h>
 #include <esp_log.h>
+#include <esp_system.h>
+#include <nvs.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
@@ -265,6 +267,11 @@ esp_err_t guc_baslat()
     }
 
     g_hazir = true;
+
+    // Arizali acilisi say. Buraya kadar gelindi, yani I2C ve M5PM1
+    // ayakta; pil gerilimi de okunabiliyor.
+    cokme_say();
+
     ESP_LOGI(ETIKET, "guc hazir — I2C %d/%d @%d kHz, L3B acik, amfi acik",
              PATI_I2C_SCL, PATI_I2C_SDA, PATI_I2C_HZ / 1000);
     return ESP_OK;
@@ -296,6 +303,70 @@ GucKaynagi guc_kaynak()
 int pil_mv()
 {
     return std::max(0, pm1_16bit(PATI_PM1_VBAT_L, PATI_PM1_VBAT_H));
+}
+
+// ---------------------------------------------------------------------------
+// Cokme sayaci — NVS'te, acilistan acilisa yasiyor
+// ---------------------------------------------------------------------------
+//
+// 🔴 NEDEN GEREKLI: pilde cokmeler USB'siz oluyor ve seri port yok.
+// 02.09.2026 gecesi cokmeler ancak disaridan ag uzerinden 2 saniyede bir
+// yoklayarak sayilabildi — yani bilgisayarin acik ve bir betigin
+// calisiyor olmasi gerekiyordu. Cocugun evinde boyle bir sey olmayacak.
+//
+// Ustelik yapilacak isin tamami A/B karsilastirmasi: "goz kare hizini
+// dusurunce cokme azaldi mi". Bunu sayabilmek icin sayinin CIHAZDA
+// durmasi lazim.
+//
+// Bir acilista bir kez yaziliyor, yani flash yipranmasi sorun degil.
+void cokme_say()
+{
+    const esp_reset_reason_t sebep = esp_reset_reason();
+    // Normal acilislar sayilmiyor: dugmeye basmak ya da kabloyla yukleme
+    // bir ariza degil.
+    if (sebep != ESP_RST_BROWNOUT && sebep != ESP_RST_PANIC &&
+        sebep != ESP_RST_TASK_WDT && sebep != ESP_RST_INT_WDT) {
+        return;
+    }
+
+    nvs_handle_t h;
+    if (nvs_open("pati", NVS_READWRITE, &h) != ESP_OK) return;
+
+    std::uint32_t n = 0;
+    nvs_get_u32(h, "cokme", &n);
+    nvs_set_u32(h, "cokme", n + 1);
+    // Son cokme aninda pil ne kadardi — dusuk pil hipotezinin sinandigi
+    // yer burasi.
+    nvs_set_u32(h, "cokme_mv", static_cast<std::uint32_t>(pil_mv()));
+    nvs_commit(h);
+    nvs_close(h);
+
+    ESP_LOGW(ETIKET, "COKME SAYACI: %u (bu acilis: %s, pil %d mV)",
+             static_cast<unsigned>(n + 1),
+             sebep == ESP_RST_BROWNOUT ? "brownout"
+             : sebep == ESP_RST_PANIC  ? "panic"
+                                       : "bekci",
+             pil_mv());
+}
+
+std::uint32_t cokme_sayisi()
+{
+    nvs_handle_t h;
+    if (nvs_open("pati", NVS_READONLY, &h) != ESP_OK) return 0;
+    std::uint32_t n = 0;
+    nvs_get_u32(h, "cokme", &n);
+    nvs_close(h);
+    return n;
+}
+
+void cokme_sayaci_sifirla()
+{
+    nvs_handle_t h;
+    if (nvs_open("pati", NVS_READWRITE, &h) != ESP_OK) return;
+    nvs_set_u32(h, "cokme", 0);
+    nvs_commit(h);
+    nvs_close(h);
+    ESP_LOGW(ETIKET, "cokme sayaci sifirlandi");
 }
 
 float yonga_sicakligi()

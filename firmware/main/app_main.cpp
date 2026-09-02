@@ -670,6 +670,37 @@ extern "C" void app_main()
         if (!kaynak_basildi || kaynak != onceki_kaynak) {
             onceki_kaynak = kaynak;
             kaynak_basildi = true;
+
+            // ---- ARKA ISIK: pilde kisik ------------------------------
+            //
+            // Sesi kismak yerine BURADAN tasarruf. Brownout'u hoparlorun
+            // anlik tepe akimi yapiyor, ama o tepe taban akimin uzerine
+            // biniyor: taban dusunce ray daha yuksekte durur ve tepe icin
+            // pay kalir.
+            //
+            // Arka isik bu kartin en buyuk sabit musterisi ve kismanin
+            // bedeli gorsel — ses kesilmesinin bedeli ise sohbetin
+            // kendisi. Once buradan veriyoruz.
+            //
+            // ⚠️ 0.45 OLCULMUS BIR DEGER DEGIL, makul bir baslangic.
+            // Olculecek olan sunlar: pilde brownout azaldi mi, ve ekran
+            // cocuk icin hala rahat okunuyor mu. Ikisi de iyiyse ses
+            // tavani (SES_PIL_TAVANI) yukari denenebilir.
+            pati::ekran_parlaklik_ayarla(
+                kaynak == pati::GucKaynagi::Usb ? 1.00f : 0.45f);
+
+            // ---- GOZLER: pilde yavas ---------------------------------
+            //
+            // Kullanicinin oncelik sirasi: once cokmeme, sonra SES, sonra
+            // gorunum. Ses tavanina DOKUNULMUYOR (0.70'te sabit); pilde
+            // feda edilebilir tek yer gozler.
+            //
+            // Goz cizici en buyuk surekli CPU musterisi: kare basina
+            // 24-30 ms, butce 50 ms. 10 fps'te ayni kare 125 ms'de bir
+            // ciziliyor, yani CPU dolulugu yariya iniyor — ve brownout
+            // tam Pati konusmaya baslarken oluyor, yani CPU'nun o anda
+            // bos olmasi pay birakiyor.
+            pati::gozler_pil_kipi(kaynak != pati::GucKaynagi::Usb);
             ESP_LOGW(ETIKET, "GUC KAYNAGI: %s · pil %d mV · VIN %d mV · "
                              "ses tavani %.2f",
                      kaynak == pati::GucKaynagi::Usb   ? "USB/5VIN"
@@ -681,6 +712,19 @@ extern "C" void app_main()
                              ? pati::ses_seviyesi()
                              : std::min(pati::ses_seviyesi(),
                                         pati::SES_PIL_TAVANI)));
+        }
+
+        // Cokme sayaci — cihazda duruyor, A/B olcumunun zemini.
+        {
+            static std::uint32_t onceki_cokme = 0;
+            static bool cokme_basildi = false;
+            const std::uint32_t c = pati::cokme_sayisi();
+            if (!cokme_basildi || c != onceki_cokme) {
+                onceki_cokme = c;
+                cokme_basildi = true;
+                ESP_LOGW(ETIKET, "COKME SAYACI (acilisi atlatan): %u",
+                         static_cast<unsigned>(c));
+            }
         }
 
         // Baglanti kac kez koptu.

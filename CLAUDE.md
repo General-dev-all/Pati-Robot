@@ -81,6 +81,11 @@ Bir şey takılıyor, donuyor ya da kendiliğinden yeniden başlıyorsa:
 **`firmware/TESHIS.md`** — belirti → sebep tablosu, sağlıklı sayılar,
 gözlem yöntemleri ve daha önce yapılmış yanlış teşhisler.
 
+**`firmware/PIL.md` — DEVAM EDEN İŞ.** Pati pilde hâlâ çöküyor
+(konuşmaya başlarken brownout, 20-60 sn'de bir). Amaç, kullanıcının
+feda etme sırası (ses 0.70'in altına İNMEZ), denenenler, denenmemiş
+adaylar ve A/B ölçüm yöntemi orada. Pil tarafına dokunmadan önce oku.
+
 Konak testleri (üçü de geçmeli):
 ```
 cd firmware\test && derle.bat

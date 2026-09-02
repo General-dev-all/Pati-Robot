@@ -218,6 +218,10 @@ esp_err_t durum_isle(httpd_req_t* r)
     cJSON_AddNumberToObject(g, "pil_mv", pil_mv());
     cJSON_AddNumberToObject(g, "vin_mv", vin_mv());
     cJSON_AddNumberToObject(g, "sicaklik_c", yonga_sicakligi());
+    // Arizali acilis sayisi — pilde tek olcum araci. Gerekcesi
+    // pati_guc.hpp'de: pilde USB yok, seri port yok.
+    cJSON_AddNumberToObject(g, "cokme", cokme_sayisi());
+    cJSON_AddNumberToObject(g, "goz_fps", gozler_hedef_fps());
     // Fiilen uygulanan ses tavani — kullanicinin sectigi degil.
     cJSON_AddNumberToObject(g, "ses_tavani",
                             kaynak == GucKaynagi::Usb

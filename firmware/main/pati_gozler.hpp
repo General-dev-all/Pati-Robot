@@ -88,6 +88,14 @@ std::uint32_t gozler_piksel();
 // kaynak pati_gozler.cpp'deki HEDEF_FPS.
 int gozler_hedef_fps();
 
+// Pil kipi: goz kare hizini dusurur (20 -> 10 fps).
+//
+// NEDEN: goz cizici en buyuk surekli CPU musterisi (kare basina 24-30 ms,
+// butce 50 ms). Pilde brownout tam Pati konusmaya baslarken oluyor ve
+// CPU'nun o anda bos olmasi pay birakiyor. Gerekcesi ve olculecek sey
+// pati_gozler.cpp'de PIL_FPS'in yaninda.
+void gozler_pil_kipi(bool pilde);
+
 // Son karenin cizim + gonderim suresi (mikrosaniye).
 std::uint32_t gozler_kare_us();
 

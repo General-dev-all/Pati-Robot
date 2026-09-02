@@ -1,5 +1,7 @@
 #include "pati_ekran.hpp"
 
+#include <driver/ledc.h>
+
 #include <cstring>
 #include <new>
 
@@ -150,10 +152,67 @@ esp_err_t ekran_doldur(std::uint16_t renk)
     return ESP_OK;
 }
 
+// ---------------------------------------------------------------------------
+// Arka isik — kisilebilir
+// ---------------------------------------------------------------------------
+//
+// 🔴 EN BUYUK SABIT AKIM MUSTERISI. Brownout'u yapan sey hoparlorun
+// ANLIK tepe akimi, ama tepe her zaman TABAN akimin uzerine biniyor:
+// taban ne kadar dususe ray o kadar yuksekte durur ve tepe icin o kadar
+// pay kalir. Yani arka isigi kismak, sesi kismadan ayni emniyeti
+// saglamanin yolu (02.09.2026 tartismasi, TESHIS.md).
+//
+// Eskiden burasi duz `gpio_set_level` idi: ya tam parlak ya kapali, ara
+// kademe yoktu. LEDC ile PWM'e cevrildi.
+//
+// FREKANS 20 kHz. Iki sebep: kulagin ustunde (arka isik surucusu
+// duyulabilir bir vizilti yapmasin — hoparlorun yaninda duran bir
+// cihazda bu gercek bir risk) ve gozun cok ustunde (titreme gorunmez).
+//
+// COZUNURLUK 10 bit: 0-1023 kademe, gozle ayirt edilemeyecek kadar ince
+// ve LEDC'nin 20 kHz'de rahat verebildigi bir cozunurluk.
+constexpr ledc_timer_t ISIK_ZAMANLAYICI = LEDC_TIMER_1;
+constexpr ledc_channel_t ISIK_KANAL = LEDC_CHANNEL_1;
+constexpr int ISIK_BIT = 10;
+constexpr int ISIK_EN_COK = (1 << ISIK_BIT) - 1;
+
+float g_parlaklik = 1.0f;   // istenen seviye
+bool g_isik_acik = false;   // ekran_arka_isik(true/false)
+bool g_ledc_hazir = false;
+
+void isik_uygula()
+{
+    if (!g_ledc_hazir) {
+        // LEDC kurulamadiysa duz GPIO'ya duserek YINE DE calis: kisik
+        // olmayan bir ekran, hic olmayan ekrandan iyidir.
+        gpio_set_level(PATI_EKR_BLK, g_isik_acik ? 1 : 0);
+        return;
+    }
+    const int duty =
+        g_isik_acik
+            ? static_cast<int>(g_parlaklik * static_cast<float>(ISIK_EN_COK))
+            : 0;
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, ISIK_KANAL,
+                  static_cast<std::uint32_t>(duty));
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, ISIK_KANAL);
+}
+
 void ekran_arka_isik(bool ac)
 {
-    gpio_set_level(PATI_EKR_BLK, ac ? 1 : 0);
+    g_isik_acik = ac;
+    isik_uygula();
 }
+
+float ekran_parlaklik_ayarla(float yeni)
+{
+    // 0.15 taban: daha asagisi kararan degil, KAPANAN bir ekran gibi
+    // gorunuyor ve cocuk Pati'yi bozuk sanir.
+    g_parlaklik = (yeni < 0.15f) ? 0.15f : (yeni > 1.0f ? 1.0f : yeni);
+    isik_uygula();
+    return g_parlaklik;
+}
+
+float ekran_parlaklik() { return g_parlaklik; }
 
 // ---------------------------------------------------------------------------
 
@@ -232,6 +291,32 @@ esp_err_t ekran_baslat()
         ESP_LOGE(ETIKET, "arka isik pini kurulamadi (GPIO%d)", PATI_EKR_BLK);
         return ESP_FAIL;
     }
+
+    // PWM kanali. Basarisiz olursa OLUMCUL DEGIL: isik_uygula() duz
+    // GPIO'ya duser ve ekran tam parlak calisir. Kisilamamak, ekransiz
+    // kalmaktan iyidir.
+    ledc_timer_config_t zam{};
+    zam.speed_mode = LEDC_LOW_SPEED_MODE;
+    zam.timer_num = ISIK_ZAMANLAYICI;
+    zam.duty_resolution = static_cast<ledc_timer_bit_t>(ISIK_BIT);
+    zam.freq_hz = 20000;
+    zam.clk_cfg = LEDC_AUTO_CLK;
+
+    ledc_channel_config_t kan{};
+    kan.gpio_num = PATI_EKR_BLK;
+    kan.speed_mode = LEDC_LOW_SPEED_MODE;
+    kan.channel = ISIK_KANAL;
+    kan.timer_sel = ISIK_ZAMANLAYICI;
+    kan.duty = 0;
+    kan.hpoint = 0;
+
+    if (ledc_timer_config(&zam) == ESP_OK &&
+        ledc_channel_config(&kan) == ESP_OK) {
+        g_ledc_hazir = true;
+    } else {
+        ESP_LOGW(ETIKET, "arka isik PWM kurulamadi — kisilamayacak");
+    }
+
     ekran_arka_isik(false);
 
     // --- DMA-uygun serit tamponlari

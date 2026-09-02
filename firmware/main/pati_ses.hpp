@@ -156,31 +156,39 @@ constexpr float SES_SEVIYESI_BASLANGIC = 1.00f;
 constexpr float SES_SEVIYESI_EN_FAZLA  = 2.00f;
 
 // ---------------------------------------------------------------------------
-// 🔴 PILDE UST SINIR — kullanicinin ayari degil, donanimin siniri
+// 🔴 PILDE UST SINIR — 0.70, ve bu sayi iki kez olculdu
 // ---------------------------------------------------------------------------
 //
-// 01.09.2026'da olculdu: Pati USB'den cikarilip pille calisirken, ses
-// seviyesi 1.00'DE, cocuk "selam" dediginde cevap vermeye baslayacagi
-// anda brownout'a dusup yeniden basladi. Seri gunlukten:
+// 01.09.2026: Pati pille calisirken, ses 1.00'DE, konusmaya baslayacagi
+// anda brownout'a dusup yeniden basliyordu. Tavan 0.70 kondu.
 //
-//     E BOD: Brownout detector was triggered
+// 02.09.2026: PSRAM 40 MHz'e indirilip asil cokme sebebi giderilince
+// (TESHIS.md) bu tavanin gereksiz oldugu dusunuldu ve 1.00'e cikarildi.
+// Gerekce makuldu: 1.00 zaten "kaynagin kendi seviyesi", yukseltme degil.
 //
-// Brownout esigi zaten en musamahakar kademede (CONFIG_ESP_BROWNOUT_DET
-// _LVL 7), yani yazilimdan gevsetilecek yer yok — 250 mAh'lik hucre
-// AW8737'nin tepe akimini karsilayamiyor ve ray cokuyor.
+// 🔴 O KARAR YANLISTI VE OLCUM SOYLEDI. Ayni gece, pilde, MASADA,
+// SALLAMADAN, tavan 1.00'de:
 //
-// USB'de ayni seviye sorun cikarmiyor: akim oradan geliyor.
+//     00:12:46  pil=3696 mV   <- taban 3816-3826, yani 120 mV sarkma
+//     00:13:03  ifade=dusunuyor
+//     00:13:05  COKTU
+//     00:13:10  geri geldi -> acilis=brownout
 //
-// Bu yuzden tavan KAYNAGA GORE. Kullanicinin panelden sectigi seviye
-// olduğu gibi duruyor (`ses_seviyesi()` onu donduruyor); yalnizca
-// hoparlore giden sayi pilde kisiliyor. Ebeveyn ayari kaybetmiyor,
-// USB takilinca sectigi seviye geri geliyor.
+// Tam konusmaya baslarken. Yani hoparlorun cektigi akim, PSRAM sorunu
+// giderildikten SONRA da tek basina brownout yapmaya yetiyor.
 //
-// ⚠️ BU SAYI HENUZ TAM OLCULMEDI. Bilinen tek nokta 1.00'in pilde
-// COKTUGU. 0.70 ondan ~3 dB asagisi, yani tepe akimin ucte biri kadar
-// dusuyor. Pilde hala brownout goruluyorsa (DURUM ozetindeki "acilis"
-// satiri soyluyor) buradan asagi cekilecek; hic gorulmuyorsa ve ses
-// kisik geliyorsa yukari.
+// 0.70 geri alindi: elimizdeki tek destekli deger o.
+//
+// ⚠️ 0.70 ile 1.00 ARASI OLCULMEDI. Cocuk Pati'yi cogunlukla pilde
+// kullanacak ve orada daha yuksek ses gercek bir kazanc olurdu; 0.85
+// denenmeye deger. Denenirse yontem belli: pilde, masada, sallamadan,
+// birkac dakika konus ve DURUM ozetindeki "acilis" satirina bak.
+//
+// ⚠️ TAVAN ASLINDA PIL GERILIMINE BAGLI OLMALI. Dolu hucrede (4,1 V)
+// 1.00 sorun cikarmiyor olabilir; yukaridaki cokme 3,8 V'ta yasandi.
+// `pil_mv()` zaten okunuyor, yani kademeli bir tavan mumkun. Yapilmadi
+// cunku esikleri belirleyecek olcum yok — tahminle yazilsaydi bu
+// yorumdaki hatanin aynisi tekrarlanirdi.
 constexpr float SES_PIL_TAVANI = 0.70f;
 constexpr float SES_SEVIYESI_EN_AZ     = 0.15f;
 constexpr float SES_SEVIYESI_ADIM      = 0.15f;
