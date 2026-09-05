@@ -121,6 +121,7 @@ std::atomic<std::uint32_t> g_ses_bitis_ms{0};
 // Tek atomik değer durum ve başlangıcı birlikte taşır; sıcak yolda I2C yok.
 // Alt iki bit durum, üst bitler 4 ms çözünürlüklü başlangıç damgasıdır.
 std::atomic<std::uint32_t> g_baglanti_damga{0};
+std::atomic<std::uint32_t> g_uyari_son_ms{0};
 // IDF'nin PSRAM atomik düzeltmesi is_always_lock_free'yi false yapar;
 // bu statik nesne iç RAM'dedir ve stdatomic.c donanım yolunu kullanır.
 
@@ -1216,13 +1217,13 @@ void gozler_gorevi(void*)
         if (baglanti != BaglantiUyarisi::Yok) {
             // Sinyal seyrek gözcüden gelir; her karede Wi-Fi sürücüsüne sormayız.
             const int sinyal = g_d_sinyal.load(std::memory_order_relaxed);
-            if (sinyal > 0 && sinyal <= 2) {
+            if (sinyal == 1) {
                 perde_wifi(wifi_faz++, "Wi-Fi zayıf", "Modeme yaklaş");
             } else if (baglanti == BaglantiUyarisi::Baglaniyor) {
                 perde_wifi(wifi_faz++, "Bağlanıyorum", "Biraz bekle");
             } else {
                 // Gecikme sunucudan da gelebilir: internet arızası kesin değil.
-                perde_wifi(wifi_faz++, "İnternet yavaş", "olabilir, bekle");
+                perde_wifi(wifi_faz++, "Cevap gecikti", "Biraz bekle");
             }
             vTaskDelay(pdMS_TO_TICKS(WIFI_TAZELE_MS));
             son_uyanma = xTaskGetTickCount();
@@ -1314,8 +1315,17 @@ BaglantiUyarisi gozler_baglanti_uyarisi()
     const auto durum = static_cast<BaglantiUyarisi>(damga & 3u);
     if (durum == BaglantiUyarisi::Yok) return durum;
     const auto simdi = static_cast<std::uint32_t>(esp_timer_get_time() / 1000);
-    const auto esik = durum == BaglantiUyarisi::Baglaniyor ? 2000u : 5000u;
-    return simdi - (damga & ~3u) >= esik ? durum : BaglantiUyarisi::Yok;
+    const auto gecen = simdi - (damga & ~3u);
+    // Her olayda yalnızca 8–11. saniyeler: gözler kalıcı olarak kaybolmasın.
+    if (gecen < 8000u || gecen >= 11000u) return BaglantiUyarisi::Yok;
+    auto son = g_uyari_son_ms.load(std::memory_order_relaxed);
+    if (son == 0 || simdi - son >= 60000u) {
+        if (g_uyari_son_ms.compare_exchange_strong(son, simdi,
+                                                  std::memory_order_relaxed))
+            return durum;
+    }
+    // Yeni bağlantı denemeleri dakikada birden fazla uyarı açamaz.
+    return simdi - son < 3000u ? durum : BaglantiUyarisi::Yok;
 }
 
 void gozler_ses_bildir(int kalan_ms)

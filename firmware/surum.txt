@@ -1,2 +1,2 @@
-3.0.13
-Cevap gecikince Wi-Fi zayıfsa modeme yaklaşmayı, diğer durumlarda biraz beklemeyi öneren ekran uyarıları eklendi.
+3.0.14
+Gecikme uyarıları artık kısa ve seyrek; ortam sesi yanlış uyarı açmıyor.

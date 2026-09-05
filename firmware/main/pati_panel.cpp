@@ -175,6 +175,10 @@ esp_err_t durum_isle(httpd_req_t* r)
     cJSON* a = cJSON_CreateObject();
     cJSON_AddStringToObject(a, "ad", ag_adi());
     cJSON_AddNumberToObject(a, "guc", ag_gucu());
+    const auto radyo = ag_radyo();
+    cJSON_AddNumberToObject(a, "rssi_dbm", radyo.rssi_dbm);
+    cJSON_AddNumberToObject(a, "tx_ceyrek_dbm", radyo.tx_ceyrek_dbm);
+    cJSON_AddNumberToObject(a, "tasarruf", radyo.tasarruf);
     cJSON_AddBoolToObject(a, "bagli", d == AgDurumu::Bagli);
     cJSON_AddBoolToObject(a, "kurulum", d == AgDurumu::Kurulum);
     cJSON_AddStringToObject(a, "ip", ag_ip());

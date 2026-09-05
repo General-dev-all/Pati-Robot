@@ -404,3 +404,19 @@ bilinmiyorsa gecikmede “İnternet yavaş / olabilir, bekle”, yeniden
 bağlantıda “Bağlanıyorum / Biraz bekle” görünür. RSSI internet hızı
 ölçümü değildir; sıfır/bilinmiyor zayıf sinyal diye yorumlanmaz.
 Sinyal mevcut iki saniyelik gözcüden gelir; göz döngüsü ağ sorgulamaz.
+
+### 3.0.14 — sürekli uyarı gerilemesi
+
+3.0.12–13 yerel ses bekçisinden ekran uyarısı başlatıyordu. Ortam
+sesi gerçek bir soru olmadığı hâlde uyarı açabiliyor; sorun sürdükçe
+perde gözleri kapatıyordu. Bu ekran tetiklemesi kaldırıldı; mevcut
+bağlantı kurtarma bekçisi değişmedi. Yalnızca sohbet olayları uyarı
+açar: 8 saniye beklenir, 3 saniye gösterilir, en az 60 saniye yeni
+uyarı bastırılır. Wi-Fi tamamen yoksa eski Wi-Fi perdesi geçerlidir.
+İki çubuk artık modeme yaklaş önerisi vermez; tek çubukta verilir.
+Gecikme metni “Cevap gecikti / Biraz bekle”; internet hızı ölçülmedi.
+
+Panelde ag.rssi_dbm (0=okunamadı), ag.tx_ceyrek_dbm (-1=okunamadı)
+ve ag.tasarruf (-1=okunamadı, 0=uyku tasarrufu kapalı) eklendi. TX
+değeri sürücü sınırıdır, anlık yayılan güç ölçümü değildir. Mevcut
+derleme PHY üst sınırı 20 dBm; güç azaltma ve modem uykusu kapalı.

@@ -459,10 +459,6 @@ void sessiz_sunucu_bekcisi()
     if (g_son_ses_us <= g_son_sunucu_us) return;
 
     const std::int64_t sessiz_us = esp_timer_get_time() - g_son_ses_us;
-    // Gemini konuşma sonunu ancak cevap vermeye başlayınca bildirir.
-    // Bu yüzden ağ sustuğunda yerel mikrofonun son sesini de kullanırız.
-    if (sessiz_us >= 800000)
-        gozler_baglanti_bildir(BaglantiUyarisi::CevapBekliyor);
     if (sessiz_us < SESSIZ_SUNUCU_US) return;
 
     ++g_bekci_sayisi;
@@ -964,7 +960,6 @@ void mik_gorevi(void* /*arg*/)
                               / PATI_GEMINI_GIRIS_HZ;
             if (bekci_sesli_us >= UYANMA_SESLI_US) {
                 g_son_ses_us = simdi;
-                if (!g_koptu) gozler_baglanti_bildir(BaglantiUyarisi::Yok);
             }
         } else {
             // Araya sessizlik girdi: zincir kirildi.

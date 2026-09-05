@@ -81,6 +81,9 @@ const char* ag_adi();
 
 // 1..4 cubuk. Bagli degilse 0.
 int ag_gucu();
+// Panel isteğinde okunur; RSSI alım gücü, TX ise sürücünün güç sınırıdır.
+struct AgRadyo { int rssi_dbm = 0; int tx_ceyrek_dbm = -1; int tasarruf = -1; };
+AgRadyo ag_radyo();
 
 // Ag taramasi. Kurulum modunda ve bagliyken de calisiyor (APSTA / STA).
 //

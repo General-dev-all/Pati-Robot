@@ -451,6 +451,19 @@ int ag_gucu()
     return cubuk(k.rssi);
 }
 
+AgRadyo ag_radyo()
+{
+    AgRadyo r;
+    wifi_ap_record_t ap{};
+    if (g_durum == AgDurumu::Bagli && esp_wifi_sta_get_ap_info(&ap) == ESP_OK)
+        r.rssi_dbm = ap.rssi;
+    int8_t tx = 0;
+    if (esp_wifi_get_max_tx_power(&tx) == ESP_OK) r.tx_ceyrek_dbm = tx;
+    wifi_ps_type_t ps;
+    if (esp_wifi_get_ps(&ps) == ESP_OK) r.tasarruf = static_cast<int>(ps);
+    return r;
+}
+
 bool ag_kayitli_var()
 {
     std::string a, s;

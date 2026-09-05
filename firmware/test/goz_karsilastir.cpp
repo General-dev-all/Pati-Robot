@@ -227,16 +227,23 @@ int main(int argc, char** argv)
 
     using U = pati::BaglantiUyarisi;
     pati::gozler_baglanti_bildir(U::CevapBekliyor);
-    test_saat_us = 4999000;
+    test_saat_us = 7999000;
     bak(pati::gozler_baglanti_uyarisi() == U::Yok, "normal cevap beklerken uyari yok");
     pati::gozler_baglanti_bildir(U::CevapBekliyor);
-    test_saat_us = 5000000;
+    test_saat_us = 8000000;
     bak(pati::gozler_baglanti_uyarisi() == U::CevapBekliyor, "tekrar bildirim gecikme suresini sifirlamaz");
     pati::gozler_baglanti_bildir(U::Yok);
     bak(pati::gozler_baglanti_uyarisi() == U::Yok, "ses gelince uyari kalkar");
     pati::gozler_baglanti_bildir(U::Baglaniyor);
-    test_saat_us += 2000000;
-    bak(pati::gozler_baglanti_uyarisi() == U::Baglaniyor, "uzayan yeniden baglanma gorunur");
+    test_saat_us += 8000000;
+    bak(pati::gozler_baglanti_uyarisi() == U::Yok, "tekrar baglanma hemen yeni uyari acmaz");
+    test_saat_us = 70000000;
+    pati::gozler_baglanti_bildir(U::Yok);
+    pati::gozler_baglanti_bildir(U::Baglaniyor);
+    test_saat_us += 8000000;
+    bak(pati::gozler_baglanti_uyarisi() == U::Baglaniyor, "bir dakika sonra yeni kopma gorunur");
+    test_saat_us += 3000000;
+    bak(pati::gozler_baglanti_uyarisi() == U::Yok, "sorun surse de uc saniyede gozler geri gelir");
     pati::gozler_baglanti_bildir(U::Yok);
     test_saat_us = 0;
 
