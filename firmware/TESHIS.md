@@ -320,6 +320,87 @@ biriken **bayrağı** okunuyor (böylece seyreltmek tık kaçırmıyor).
 
 ---
 
+## 🔴 05.09.2026 — "Pati duyuyor ama konuşmuyor"
+
+Belirti çocuk açısından basit: Pati cevap vermiyor. Cihaz tarafında
+ise **her şey sağlıklı görünüyor** ve bu teşhisi saatlerce yanlış yere
+çekti.
+
+```
+mikrofon        calisiyor        (tepe genlik yukseliyor)
+ses Gemini'ye   ulasiyor
+Gemini anliyor  "cocuk: Beni duyuyor musun?"   <- transkript DOGRU
+websocket       acik, HATA YOK
+hoparlor        saglam            (sentez ses testiyle kanitlandi)
+cevap           HIC GELMIYOR
+```
+
+### Asıl sebep: Live API kotası
+
+```
+ws close: You exceeded your current quota
+```
+
+**Kota dakikalık** — bir süre beklenince kendiliğinden açılıyor
+(ölçüldü: 16:46 dolu, 16:47:34 açık).
+
+🔴 **Ve kendi kendini besliyor.** Kota dolunca bağlantı kopuyor, Pati
+hemen yeniden bağlanıyor, **her yeniden bağlanma kotadan yiyor**, kota
+bir türlü toparlanamıyor. Logdaki "bağlantı koptu (2. kez), (3. kez)"
+zinciri bu.
+
+⚠️ **`1011 'Internal error occurred.'` büyük olasılıkla kotanın örtülü
+hâli.** Açık bir kota mesajı yerine sunucu iç hatası dönüyor. Bu koda
+bakıp "Google'da geçici arıza" demek yanıltıcı oldu.
+
+### Kotayı yanlış eleme yolları (ikisi de denendi, ikisi de yanlış)
+
+**1. "Kota dolsaydı transkript de gelmezdi."** Yanlış. Girdi
+transkripsiyonu çalışmaya devam ediyor; duran şey yalnızca yanıt
+üretimi.
+
+**2. REST ile `generateContent` denemek.** `gemini-3.1-flash-lite`'a
+istek atıldı, 200 ve gerçek cevap döndü, "kota var" sonucu çıkarıldı.
+**Live API'nin kotası ayrı bir havuz** — o test yanlış soruyu
+cevaplıyor.
+
+### Doğru sınama
+
+Cihaza hiç dokunmadan, bilgisayardan ham WebSocket ile:
+
+```
+wss://generativelanguage.googleapis.com/ws/
+  google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=...
+```
+
+setup gönder → `setupComplete` bekle → bir metin turu gönder → cevap
+gelirse Live API sağlıklı. Kota doluysa kapanış mesajında açıkça
+yazıyor. Betik: `scratchpad/setup_test.ps1` biçiminde, birkaç satır.
+
+### Aynı gün ayrıca bulunanlar (kotadan bağımsız, gerçek eksikler)
+
+- **VAD ayarları Gemini'ye hiç gönderilmiyordu.**
+  `ConversationConfig` bunları taşıyor, panel gösteriyor, ama
+  `send_setup()` iletmiyordu. Sunucu varsayılanıyla çalışıyorduk.
+- **`commit_audio()` boştu.** Gövdesi `return {}` idi ve gerekçesi
+  "sunucu VAD'i turu kendisi bulur" diyordu. Bu gövdede sunucu VAD'i
+  tetiklenemiyor: hoparlörle mikrofon 5 cm arayla, ortam sesi hiç
+  kesilmiyor, beklenen 500 ms sessizlik hiç oluşmuyor.
+- **Mikrofon aralıksız gönderiyordu** — sessizken de, gürültü dahil.
+
+⚠️ **Bu üç düzeltmenin hiçbiri doğrulanamadı**, çünkü doğrulama
+sırasında kota doluydu. Gerekçeleri sağlam ama ölçümleri eksik.
+
+### Sırayla eleme (bir dahakine)
+
+1. **Hoparlör** — açılışta sentez bir ses çal. Duyuluyorsa ses yolu
+   tamamen elenir. (`ses_testi_cal`, geçiciydi, kaldırıldı.)
+2. **Kota** — bilgisayardan ham WebSocket. Cihaza dokunmadan.
+3. **Model** — aynı anahtarla başka bir Live modeli dene.
+4. Ancak bundan sonra cihaz tarafı.
+
+---
+
 ## Yolda yapılan yanlış teşhisler
 
 Hepsi o an makul görünüyordu; tekrarlanmasın diye yazılı.

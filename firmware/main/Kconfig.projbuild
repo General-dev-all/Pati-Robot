@@ -58,10 +58,41 @@ menu "Pati"
 
     config PATI_MODEL
         string "Gemini Live model adi"
-        default "gemini-3.1-flash-live-preview"
+        default "gemini-2.5-flash-native-audio-preview-12-2025"
         help
-            Asama 1'de bu modelle olculdu: medyan 1325 ms, kriter gecti.
-            Degistirilirse olcum tekrarlanmali.
+            Asama 1'de "gemini-3.1-flash-live-preview" ile olculdu:
+            medyan 1325 ms, kriter gecti. Degistirilirse olcum
+            tekrarlanmali.
+
+            🔴 05.09.2026 — O MODEL CEVAP VERMEZ OLDU, degistirildi.
+            Belirtisi tam bir "Pati bozuldu" taklidiydi ve gunun yarisi
+            yanlis yerde arandi:
+
+              - mikrofon calisiyordu
+              - ses Gemini'ye ulasiyordu
+              - Gemini cocugu DOGRU anlayip yaziya dokuyordu
+                (log: "cocuk: Beni duyuyor musun?")
+              - websocket acikti, HATA BILE VERMIYORDU
+              - yalnizca cevap hic gelmiyordu
+
+            Yani "sunucu sagir" degil, "sunucu susuyor". Cihaz tarafinda
+            bakilacak hicbir sey yoktu.
+
+            KANIT tahminle degil, cihazin disinda uretildi: ayni anahtarla
+            bilgisayardan ham bir WebSocket acildi.
+
+              gemini-3.1-flash-live-preview            -> setupComplete, sonra SESSIZLIK
+              gemini-2.5-flash-native-audio-preview-*  -> setupComplete + cevap akiyor
+
+            Anahtar, kota ve fatura da ayrica dogrulandi (REST ile
+            gemini-3.1-flash-lite'a istek atildi, 200 ve gercek cevap).
+
+            ⚠️ ONCE MODELI SINA. Bir gun Pati yine "duyuyor ama cevap
+            vermiyor" haline duserse ilk yapilacak sey budur — cihaza
+            dokunmadan, bilgisayardan ham WebSocket ile. Preview
+            modeller haber vermeden davranis degistirebiliyor.
+
+            ⚠️ Gecikme bu modelle YENIDEN OLCULMEDI.
 
     config PATI_SES
         string "Gemini sesi"

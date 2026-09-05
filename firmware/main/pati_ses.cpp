@@ -1,4 +1,6 @@
 #include "pati_ses.hpp"
+#include <span>
+#include <cmath>
 
 #include <algorithm>
 #include <array>

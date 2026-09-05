@@ -82,7 +82,7 @@ Bir şey takılıyor, donuyor ya da kendiliğinden yeniden başlıyorsa:
 gözlem yöntemleri ve daha önce yapılmış yanlış teşhisler.
 
 **`firmware/PIL.md` — DEVAM EDEN İŞ.** Pati pilde hâlâ çöküyor
-(konuşmaya başlarken brownout, 20-60 sn'de bir). Amaç, kullanıcının
+(konuşurken reset; eski 20 fps zemininde 20-60 sn'de birdi). Amaç, kullanıcının
 feda etme sırası (ses 0.70'in altına İNMEZ), denenenler, denenmemiş
 adaylar ve A/B ölçüm yöntemi orada. Pil tarafına dokunmadan önce oku.
 
@@ -122,12 +122,15 @@ indiriyor. Elle yükleme yok.
 harfini yiyor ve testler sessizce atlanıyor. `.gitattributes` sabitliyor
 ama düzenleyen araca dikkat.
 
-**M5PM1'in L3B katmanı açılışta gelmiyor.** Mikrofon, hoparlör ve ekran
-arka ışığı ondan besleniyor. Açılmazsa üçü de ölü ve her çağrı `ESP_OK`
+**M5PM1'in L3B katmanı açılışta gelmiyor.** Mikrofon, ES8311 kodek ve ekran
+arka ışığı ondan besleniyor. Hoparlör amfisi AW8737A, VBUS_L0'dan
+besleniyor ve PYG3 ile etkinleşiyor (K150 V0.6 şeması, s.3).
+L3B açılmazsa ses ve ekran ölü ve her çağrı `ESP_OK`
 dönüyor — tam bir yazılım hatası gibi görünür. `pati_guc.cpp` açıyor.
 
-**M5Stack'in pin tablosunda `DIN`/`DOUT` kodeğin ağzından.** Kodeğin
-`DOUT`'u ESP32'nin girişi.
+**Doğrulanmış I2S yönleri:** ESP32 çıkışı G14 (hoparlör), girişi G16
+(mikrofon). M5Stack tablosunun çevre birimi etiketi ilk portta ters
+yorumlanmıştı; `pati_pinler.h` tek kaynaktır.
 
 **`esp_codec_dev` 8 bitlik I2C adresi bekliyor** (içeride `>> 1`
 yapıyor). ES8311 için `0x30`, `0x18` değil.
@@ -135,8 +138,8 @@ yapıyor). ES8311 için `0x30`, `0x18` değil.
 **PSRAM 80 MHz sarsıntıya dayanmıyor.** Cihaz sallanınca veri yolu
 kilitleniyor, `panic_enable_cache` donuyor ve donanım bekçisi kartı
 sıfırlıyor — yığın izi basılamıyor çünkü CPU kod çalıştırmıyor.
-40 MHz'de bitti (`TESHIS.md`). Flash hâlâ 80 MHz; aynı sınıftan belirti
-çıkarsa sıradaki yer orası.
+40 MHz'de bu sınıf düzeldi (`TESHIS.md`). Flash da artık 40 MHz;
+flash değişikliğinin pildeki resetlere etkisi ayrıca doğrulanmadı.
 
 **Pilde ses seviyesi.** M5Stack yazıyor: yüksek seviyede çekilen akım
 cihazı yeniden başlatıyor. Varsayılan 1.00 ve bilinçli düşük. Pilde
@@ -147,17 +150,6 @@ veriliyor, "kablo takılı mı"ya değil (`pati_guc.cpp`, `guc_kaynak`).
 serbest bırakıyor, nereden alındığını değiştirmiyor. PSRAM için
 `MBEDTLS_EXTERNAL_MEM_ALLOC` gerekiyor. Yorum yıllarca "PSRAM'den
 alınsın" diyordu ve alınmıyordu; dahili SRAM 1903 bayta kadar indi.
-
-🔴 **"Pati duyuyor ama konuşmuyor" ilk bakılacak yer GEMINI KOTASI.**
-Live API kotası **dakikalık** ve dolduğunda sunucu açık bir kota mesajı
-yerine `1011 'Internal error occurred.'` dönebiliyor. Üstelik kendi
-kendini besliyor: kota dolunca bağlantı kopuyor, Pati yeniden
-bağlanıyor, her bağlanma kotadan yiyor. Cihaz tarafı bu sırada
-tamamen sağlıklı görünür — mikrofon çalışır, transkript **doğru**
-gelir, hata bile çıkmaz. İki eleme yolu yanlıştır: "kota dolsaydı
-transkript de gelmezdi" (girdi transkripsiyonu ayrı çalışıyor) ve REST
-ile `generateContent` denemek (**Live API'nin kotası ayrı havuz**).
-Doğrusu bilgisayardan ham WebSocket ile sınamak — `TESHIS.md`.
 
 🔴 **Sıcak döngüye I2C, kilit ya da NVS koyma.** 02.09.2026'da pilde
 çökme aralığını 4,5 dakikadan **0,7 dakikaya** düşüren gerileme buydu:

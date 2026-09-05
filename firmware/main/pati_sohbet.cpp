@@ -299,6 +299,12 @@ void prompt_kur()
     }
     g_ayar.instructions = std::move(p);
 
+    // Sunucuya da soyleniyor: panelde soz kesme kapaliysa Gemini de
+    // kendi cevabini kesmesin. Eskiden bu ayar YALNIZCA yerel mikrofon
+    // susturmasini etkiliyordu ve sunucu tarafi varsayilanda kaliyordu —
+    // yani Pati kendi yankisiyla susuyordu (gemini_live_client.cpp).
+    g_ayar.allow_interruption = ayar_soz_kesme();
+
     // Ses ve VAD de setup mesajinda gidiyor: yenilemede onlar da
     // guncellenmeli, yoksa panelden ses degistirmek hicbir sey
     // yapmiyor gibi gorunur.
@@ -841,6 +847,14 @@ bool konusma_var_mi(const std::array<std::int16_t, PATI_OKUMA_ORNEK>& p,
     return rms >= 90.0f;
 }
 
+// Konusma bittikten sonra kac us daha GERCEK ses gonderilsin.
+//
+// 400 ms. Gerekce mik_gorevi'ndeki sessizlik bastirma blogunda: cumle
+// sonu RMS esigin altina duserken kelimenin kuyrugu kirpilmasin.
+// Sunucunun tur kapatma esigi 500 ms sessizlik, yani hangover ondan
+// KISA olmali — yoksa sessizlik hic olusmaz ve bastirma isini yapmaz.
+constexpr std::int64_t SESSIZLIK_HANGOVER_US = 400000;
+
 // Uyandirmak icin kac ms KESINTISIZ ses gerekiyor.
 //
 // `prototype/ayarlar.py` §VAD_KONUSMA_MS ile ayni (120 ms) — esik gibi bu
@@ -863,6 +877,11 @@ constexpr std::int64_t UYANMA_SESLI_US = 120 * 1000;
 void mik_gorevi(void* /*arg*/)
 {
     std::array<std::int16_t, PATI_OKUMA_ORNEK> parca{};
+    // Konusmanin en son ne zaman duyuldugu — sessizlik bastirma
+    // penceresi bunu kullaniyor (bkz. SESSIZLIK_HANGOVER_US).
+    std::int64_t son_sesli_us = 0;
+    // Cocuk konustu ve henuz sira sunucuya verilmedi mi.
+    bool tur_kapatilacak = false;
     // Kesintisiz ses ne kadar surdu (bkz. UYANMA_SESLI_US).
     std::int64_t sesli_us = 0;
     // Ayni olcu, ama UYANIKKEN — sessiz sunucu bekcisi icin. Ayri sayac
@@ -901,6 +920,61 @@ void mik_gorevi(void* /*arg*/)
         // continue'dan ONCE duruyor ki pencere hep guncel olsun.
         const std::int64_t simdi = esp_timer_get_time();
         if (g_konusuyor) g_konusma_us = simdi;
+
+        // ---- SESSIZLIK BASTIRMA -----------------------------------
+        //
+        // 🔴 05.09.2026'da bulundu: Pati Gemini'ye ARALIKSIZ ses
+        // gonderiyordu — sessizken bile, ortam gurultusu dahil.
+        //
+        // Sunucunun turu kapatma kurali "500 ms sessizlik". Gurultu
+        // kesintisiz akinca o sessizlik HIC OLUSMUYOR: sunucu cocugun
+        // konusmayi surdurdugunu sanip cevabi hic uretmiyor. Disaridan
+        // gorunusu tam bir "duyuyor ama cevap vermiyor" — girdi
+        // transkripsiyonu VAD'den bagimsiz calistigi icin cocugun
+        // soyledigi ekrana/loga dogru dusuyor, sadece cevap gelmiyor.
+        //
+        // Logda gorulen: mikrofon tepesi 235 ile 4938 arasinda surekli
+        // dalgalaniyor, yani hicbir an gercek sessizlik yok.
+        //
+        // Cozum sesi KESMEK degil SUSTURMAK: parca yine gonderiliyor
+        // (akis kesilmiyor, sunucu "baglanti oldu" sanmiyor) ama icerigi
+        // sifirlaniyor. Boylece sunucu gercek sessizlik goruyor.
+        //
+        // HANGOVER: konusma bittikten hemen sonra kesmiyoruz. Cumlenin
+        // son hecesi RMS esigin altina dusebiliyor ve orayi susturmak
+        // kelimeyi kirpardi. Konusmadan sonraki 400 ms hala gercek ses.
+        {
+            const bool sesli = konusma_var_mi(parca, n);
+            if (sesli) {
+                son_sesli_us = simdi;
+                tur_kapatilacak = true;
+            } else if (son_sesli_us == 0
+                       || (simdi - son_sesli_us) > SESSIZLIK_HANGOVER_US) {
+                // Sessizlik: parcayi sifirla ama GONDER.
+                parca.fill(0);
+
+                // ---- TURU BIZ KAPATIYORUZ ---------------------------
+                //
+                // 🔴 SUNUCU VAD'I BU GOVDEDE TETIKLENEMIYOR. Hoparlorle
+                // mikrofon 5 cm arayla; ortam sesi hic kesilmiyor ve
+                // sunucunun bekledigi 500 ms sessizlik HIC olusmuyor.
+                // Sonucu: tur kapanmiyor, cevap hic gelmiyor, ama girdi
+                // transkripsiyonu calismaya devam ettigi icin disaridan
+                // "duyuyor ama konusmuyor" gibi gorunuyor.
+                //
+                // Cocuk sustu ve hangover doldu: sirayi sunucuya BIR KEZ
+                // veriyoruz. Bayrak, sessizlik boyunca her 20 ms'de bir
+                // tekrar gondermeyi engelliyor — tekrari sunucu "bos tur"
+                // diye okuyabilir.
+                //
+                // Pati konusurken cagirmiyoruz: o sirada sira zaten
+                // sunucuda ve akisi bolmek cevabi kirpardi.
+                if (tur_kapatilacak && !g_konusuyor && g_istemci != nullptr) {
+                    tur_kapatilacak = false;
+                    (void)g_istemci->commit_audio();
+                }
+            }
+        }
 
         // 🔴 YENILEME PENCERESI: ses GONDERILMIYOR, dusuruluyor.
         //

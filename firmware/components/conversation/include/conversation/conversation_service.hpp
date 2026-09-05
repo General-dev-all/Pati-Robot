@@ -56,6 +56,15 @@ struct ConversationConfig {
     // Cloudflare Access service token in front of a proxied API. Empty = none.
     std::string extra_headers;
     bool enable_input_transcription{true};
+    // Sunucu, cocuk konusmaya baslayinca kendi cevabini kessin mi.
+    //
+    // 🔴 BU KARTTA VARSAYILAN "KESMESIN" OLMALI. Hoparlorle mikrofon ayni
+    // 48x24 mm govdede, ~5 cm arayla duruyor; robot konusmaya baslar
+    // baslamaz kendi sesi mikrofona geri geliyor ve sunucu bunu "cocuk
+    // sozumu kesti" diye okuyup susuyor (serverContent.interrupted).
+    // Yani yanki, kullanici hic konusmadan barge-in tetikliyor.
+    bool allow_interruption{true};
+
     std::uint32_t vad_silence_ms{500};
     std::uint32_t vad_prefix_padding_ms{300};
     float vad_threshold{0.5f};
