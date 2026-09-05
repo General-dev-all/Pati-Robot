@@ -10,14 +10,12 @@ managed from a web panel served by the robot itself.
 The hardware is one part — an M5Stack StickS3 — with the microphone,
 speaker, display and battery already inside it. Nothing is soldered.
 
-**Status.** The firmware is complete and builds, and everything that can
-be checked without the board has been: the eye renderer matches the
-browser pixel for pixel at 240×135, and the resampler that gives Pati
-its voice is verified against a real Gemini capture. What has *not* been
-checked is anything that needs the device — the codec registers, the
-display orientation, the power rails. Boards arrive September 2026.
-Points that will need confirming there are marked `⚠️` in the source
-with the symptom to look for.
+**Status.** Microphone, speaker, display, eyes, Wi-Fi, panel and Gemini
+conversation were verified on a real StickS3 on September 1, 2026.
+Battery operation is still unstable: speaking can trigger a reset.
+The September 5 code review fixed a playback-related eye power-mode bug;
+its effect on real battery resets still needs device testing. See
+[`firmware/PIL.md`](firmware/PIL.md) for measurements and remaining work.
 
 ---
 
@@ -52,7 +50,7 @@ soldered.
 | ESP32-S3-PICO-1-N8R8 | 8 MB flash, 8 MB octal PSRAM |
 | ES8311 | mono audio codec, configured over I2C, one shared I2S bus |
 | MEMS microphone | 65 dB SNR |
-| AW8737 + 8 Ω 1 W speaker | amplifier enabled through the M5PM1, not from a GPIO |
+| AW8737A + 8 Ω 1 W speaker | amplifier enabled through the M5PM1, not from a GPIO |
 | ST7789P3 | 135×240 display, used in landscape as 240×135 |
 | M5PM1 | power management, battery charging, the power button |
 | 250 mAh battery, 2 buttons, BMI270 IMU, IR | 48 × 24 × 15 mm |
@@ -74,9 +72,9 @@ sample rate.** Gemini wants 16 kHz in and gives 24 kHz out; neither is
 possible directly. The bus runs at 48 kHz and both directions are
 resampled — see [Voice](#voice).
 
-**The pin table in M5Stack's documentation labels `DIN`/`DOUT` from the
-codec's side.** The codec's `DOUT` is the ESP32's input. Copy the table
-literally and the microphone and speaker end up swapped, both silent.
+**Use the verified ESP32 signal directions:** GPIO14 is output to the
+codec (speaker), GPIO16 is input from the codec (microphone). The
+peripheral row label led to these being reversed during the first port.
 
 First boot, step by step, with the symptom-to-line mapping for
 everything that cannot be checked without the board:

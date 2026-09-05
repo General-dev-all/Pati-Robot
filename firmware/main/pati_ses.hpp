@@ -131,7 +131,7 @@ esp_err_t hoparlor_temizle();
 // sinirini asamiyordu.
 //
 // StickS3'te ucu de degisti: hoparlor 8 ohm / 1 W (2011 kasa), amfi
-// AW8737, ve besleme 250 mAh'lik bir lityum pil.
+// AW8737A, ve besleme 250 mAh'lik bir lityum pil.
 //
 // M5Stack'in kendi urun belgesi (docs.m5stack.com/en/core/StickS3,
 // "Speaker Volume Notice"): pille calisirken hoparlor seviyesini %75'in
@@ -189,41 +189,12 @@ constexpr float SES_SEVIYESI_EN_FAZLA  = 2.00f;
 // `pil_mv()` zaten okunuyor, yani kademeli bir tavan mumkun. Yapilmadi
 // cunku esikleri belirleyecek olcum yok — tahminle yazilsaydi bu
 // yorumdaki hatanin aynisi tekrarlanirdi.
-// ---------------------------------------------------------------------------
-// 02.09.2026 — 0.70'ten 0.60'a indirildi, KULLANICININ ACIK IZNIYLE
-// ---------------------------------------------------------------------------
-//
-// 🔴 BU DEGER UZUN SURE PAZARLIGA KAPALIYDI ve oyle kalmasi dogruydu:
-// pilde kisik ses gercek bir kayip, cocuk duyamiyorsa robot ise
-// yaramiyor. Iki gun boyunca bu satira dokunulmadan cozum arandi.
-//
-// Neden simdi indi: iki gunluk olcumden sonra hoparlorun tepe akimi
-// disinda denenmedik buyuk bir aday kalmadi. Ve olculen sey su —
-// brownout esigi ZATEN en toleransli ayarda (ESP32-S3 LVL_SEL_7 =
-// 2,44 V; kaynak: esp-idf/components/esp_hw_support/power_supply/
-// port/esp32s3/Kconfig.power). Yani 3,3 V rayi gercekten 2,44 V'a
-// dusuyor. Bu kucuk bir dalgalanma degil; tepe akimi cekense M5Stack'in
-// kendi belgesinin de isaret ettigi hoparlor.
-//
-// Kullanicinin sozu: "hatta cok ihtiyacin varsa ve sorunumuzu
-// cozucegine inaniyorsan biraz hoparloru bile kismana izin veriyorum."
-//
-// Bu deger uc adimda buraya geldi ve sirasi anlamli:
-//   0.55 -> kullanici geri cevirdi ("0.55 az olmadi mi?"). Hakliydi;
-//           %21'lik dusus, olculmemis bir kazanc icin buyuk bir odun.
-//   0.65 -> kabul edildi.
-//   0.60 -> wifi verici gucu GERI ALINDIKTAN sonra kullanici kendisi
-//           istedi: "wifiyi kisamiyoruz mecbur bari istemesem de ordan
-//           biraz daha tasaruf edelim."
-//
-// Yani bu son adim bir tercih degil, kapanan bir kapinin telafisi.
-// Wifi tarafi bir gun duzelirse (kapsama iyilesir ve verici gucu
-// kisilabilir hale gelirse) ilk geri verilecek sey BURASI olmali.
-//
-// ⚠️ BU BIR GERI ADIM VE OLCULMESI SART. Cokme belirgin azalmazsa
-// 0.70'e GERI DONULMELI — sesi bedavaya kismis oluruz ve bu, ustunde
-// iki gun durulmus bir degeri bosuna feda etmek olur.
-constexpr float SES_PIL_TAVANI = 0.60f;
+// 05.09.2026: geçici 0.60 denemesinin reseti çözdüğü doğrulanmadı.
+// Güncel proje talimatındaki 0.70 alt sınırı geri getirildi. Bu değer
+// güvenli donanım eşiği değildir; yeni düzeltme kartta ölçülmelidir.
+// M5Unified yüzdeyi karesel ölçekler, burası PCM genliğini doğrusal
+// çarpar: üreticinin %75 önerisiyle doğrudan eşitlenemez.
+constexpr float SES_PIL_TAVANI = 0.70f;
 constexpr float SES_SEVIYESI_EN_AZ     = 0.15f;
 constexpr float SES_SEVIYESI_ADIM      = 0.15f;
 

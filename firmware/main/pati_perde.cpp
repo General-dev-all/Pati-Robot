@@ -603,7 +603,7 @@ esp_err_t perde_bilgi()
 // y = 96 - 62 = 34, yani ustte pay var; altta yazi icin 39 piksel
 // kaliyor.
 
-esp_err_t perde_wifi(int faz)
+esp_err_t perde_wifi(int faz, const char* mesaj)
 {
     if (!ekran_hazir()) return ESP_ERR_INVALID_STATE;
 
@@ -633,7 +633,7 @@ esp_err_t perde_wifi(int faz)
         yay(CX, CY, 18, 26, (p == 2) ? vurgu : golge);
         daire(CX, CY, 7,   (p == 3) ? vurgu : golge);
 
-        metin_orta(108, "WiFi aranıyor", 2, vurgu);
+        metin_orta(108, mesaj, 2, vurgu);
 
         const esp_err_t hata = serit_bas_ve_nefes(y, yuk);
         if (hata != ESP_OK) return hata;

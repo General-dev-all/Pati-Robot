@@ -19,9 +19,11 @@
 // 🔴 EN ONEMLI SEY: L3B GUC KATMANI
 // ---------------------------------------------------------------------------
 //
-// Mikrofon, hoparlor ve LCD arka isigi dogrudan ESP32'den DEGIL, M5PM1
+// Mikrofon, ES8311 kodek ve LCD arka isigi dogrudan ESP32'den DEGIL, M5PM1
 // guc yonetim yongasinin actigi "L3B" katmanindan besleniyor. Ve L3B
 // acilista KENDILIGINDEN GELMIYOR.
+// Hoparlor amfisi AW8737A ise VBUS_L0'dan beslenir (K150 V0.6, s.3).
+// Kodek kapaliyken ses gelmemesi, amfinin de L3B'de oldugu anlamina gelmez.
 //
 // M5Stack'in belgesi (arduino/m5sticks3/m5pm1, "Multi-Level Power
 // Switch Design"): "After the M5PM1 starts up and powers on, L0, L1 and
@@ -135,11 +137,17 @@
                                   // esigi (00=1s..11=4s), [0] tek tik
                                   // sifirlamayi kapat
 
-#define PATI_PM1_L3B 2  // PYG2 — mikrofon + hoparlor + LCD arka isik gucu
-#define PATI_PM1_AMF 3  // PYG3 — AW8737 hoparlor amfisi anahtari
+#define PATI_PM1_L3B 2  // PYG2 — mikrofon + kodek + LCD arka isik gucu
+#define PATI_PM1_AMF 3  // PYG3 — AW8737A hoparlor amfisi anahtari
+
+// StickS3 şeması U19: AW8737A. M5PM1 darbeleri kendi üretir; I2C'den
+// 0,75–10 us aralıkla pin çevirmek mümkün değildir. Üç ek darbe ve
+// son yükselen kenar Mode4'ü seçer (8 ohm için nominal 0,6 W NCN).
+#define PATI_PM1_AMFI_DARBE 0x53  // [7] uygula, [6:5] ek darbe, [4:0] PYG
+#define PATI_AMFI_KIP 4
 
 // ---------------------------------------------------------------------------
-// Ses — ES8311 kodek, MEMS mikrofon, AW8737 amfi
+// Ses — ES8311 kodek, MEMS mikrofon, AW8737A amfi
 // ---------------------------------------------------------------------------
 //
 // 🔴 DIN/DOUT — BURADA BIR KEZ YANLIS OKUNDU, DIKKAT.
@@ -202,10 +210,9 @@
 
 // Mikrofonun hangi I2S yuvasindan okunacagi.
 //
-// ⚠️ GERCEK KARTTA BELIRLENIYOR. IDF'in mono varsayilani SOL ve o
-// yuvadan tam sifir geliyor; ES8311'in ADC'sini SAG yuvaya koydugu
-// dusunuluyor. Yanlissa belirti nettir: mikrofon tepe genligi 0 kalir
-// ve seri porta "MIKROFON SESSIZ" yazilir.
+// 01.09.2026: SOL yuva gerçek kartta çalıştı. Önceki sıfır veri
+// belirtisi DIN/DOUT tersliğinden kaynaklanıyordu; sağ yuva varsayımı
+// doğrulanmadı ve kullanılmıyor.
 #define PATI_SES_GIRIS_YUVA I2S_STD_SLOT_LEFT
 
 // Kodege MCLK'i biz veriyoruz (ES8311 kole). 256 x 48 kHz = 12,288 MHz,
@@ -278,11 +285,9 @@
 // M5PM1'in kendi davranisi: tek tik = ac/sifirla, cift tik = kapat,
 // uzun basma = indirme modu.
 //
-// ⚠️ "UZUN BASINCA KAPAT" DIYE BIR AYAR YOK. Onu yazilim yapiyor:
-// dugme basili suresi I2C'den sayiliyor ve esik dolunca M5PM1'e
-// kapanma komutu gonderiliyor (pati_guc.cpp, yan_dugme_basili +
-// guc_kapat). Cift tik da yedek olarak ACIK birakiliyor — bizim
-// mantigimiz calismazsa kapatmanin baska yolu kalmasin diye.
+// Pati tek basış bayrağını seyrek okuyup guc_kapat() çağırır.
+// Uzun basış indirme moduna ayrılır. Çift tıkla kapanma da bağımsız
+// kurtarma yolu olarak açık kalır.
 //
 // Asagidaki ikisi programlanabilir olanlar. Cekme direncleri L2
 // katmaninda, yani acilisla birlikte hazirlar.

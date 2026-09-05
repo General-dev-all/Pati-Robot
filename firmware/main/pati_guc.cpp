@@ -1,12 +1,14 @@
 #include "pati_guc.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdint>
 
 #include <driver/temperature_sensor.h>
 #include <esp_log.h>
 #include <esp_sleep.h>
 #include <esp_system.h>
+#include <esp_timer.h>
 #include <nvs.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -25,6 +27,13 @@ constexpr int BEKLEME_MS = 100;
 i2c_master_bus_handle_t g_yol = nullptr;
 i2c_master_dev_handle_t g_pm1 = nullptr;
 bool g_hazir = false;
+
+// Tek okuyucu güç gözcüsü; ses ve panel I2C beklemeden son örneği alır.
+// Okuma hatasında eski USB kararı korunmaz: bilinmiyor, pil gibi işlenir.
+std::atomic<int> g_vin_mv{-1};
+std::atomic<int> g_pil_mv{0};
+std::atomic<std::uint32_t> g_ornek_ms{0};
+std::atomic<int> g_amfi_kip{0};
 
 // M5PM1 islemleri BIRKAC KEZ DENENIYOR.
 //
@@ -245,7 +254,7 @@ esp_err_t guc_baslat()
         return ESP_ERR_NOT_FOUND;
     }
 
-    // ---- L3B: mikrofon + hoparlor + LCD arka isik gucu -------------------
+    // ---- L3B: mikrofon + kodek + LCD arka isik gucu ---------------------
     //
     // Bunu acmadan asagidaki hicbir sey calismaz ve hicbiri HATA DA
     // VERMEZ. Ayrintili gerekce pati_pinler.h'nin basinda.
@@ -317,6 +326,7 @@ esp_err_t guc_baslat()
     }
 
     g_hazir = true;
+    pil_ornekle();
 
     // Arizali acilisi say. Buraya kadar gelindi, yani I2C ve M5PM1
     // ayakta; pil gerilimi de okunabiliyor.
@@ -330,8 +340,39 @@ esp_err_t guc_baslat()
 esp_err_t hoparlor_amfi(bool ac)
 {
     if (g_pm1 == nullptr) return ESP_ERR_INVALID_STATE;
-    return pm1_cikis(PATI_PM1_AMF, ac);
+    // AW8737A SHDN'yi yalnızca yükseltmek Mode1 (1,2 W) seçer.
+    // PCM'i kısmak NCN güç sınırını değiştirmez. Mode4 küçük sinyal
+    // kazancını korur; yüksek çıkışı nominal 0,6 W'ta sıkıştırır.
+    // Kaynaklar: AW8737A V1.2 s.8,19,20; M5PM1 setAw8737aMode().
+    g_amfi_kip.store(0, std::memory_order_relaxed);
+    esp_err_t hata = pm1_cikis(PATI_PM1_AMF, false);
+    if (hata != ESP_OK || !ac) return hata;
+
+    // Kip ancak SHDN en az 1 ms düşük kaldıktan sonra değişebilir.
+    // Sadece açılışta çalışır; ses veya göz döngüsünde çağrılmaz.
+    vTaskDelay(pdMS_TO_TICKS(20));
+    constexpr std::uint8_t ayar = ((PATI_AMFI_KIP - 1) << 5) | PATI_PM1_AMF;
+    hata = pm1_yaz(PATI_PM1_AMFI_DARBE, ayar);
+    if (hata != ESP_OK) return hata;
+    std::uint8_t okunan = 0;
+    hata = pm1_oku(PATI_PM1_AMFI_DARBE, okunan);
+    if (hata != ESP_OK) return hata;
+    if ((okunan & 0x7f) != ayar) return ESP_ERR_INVALID_RESPONSE;
+
+    hata = pm1_yaz(PATI_PM1_AMFI_DARBE, ayar | 0x80);
+    if (hata != ESP_OK) return hata;
+    // M5PM1 sürücüsü darbe komutundan sonra 20 ms bekler.
+    vTaskDelay(pdMS_TO_TICKS(20));
+    hata = pm1_oku(PATI_PM1_AMFI_DARBE, okunan);
+    if (hata != ESP_OK) return hata;
+    if ((okunan & 0x7f) != ayar) return ESP_ERR_INVALID_RESPONSE;
+    g_amfi_kip.store(PATI_AMFI_KIP, std::memory_order_relaxed);
+    ESP_LOGI(ETIKET, "AW8737A: kip %d istendi, M5PM1 ayari 0x%02x",
+             PATI_AMFI_KIP, okunan);
+    return ESP_OK;
 }
+
+int amfi_kipi() { return g_amfi_kip.load(std::memory_order_relaxed); }
 
 bool donanim_dogru()
 {
@@ -341,6 +382,12 @@ bool donanim_dogru()
 
 GucKaynagi guc_kaynak()
 {
+    // Gözcü gecikirse eski USB kararı sınırsız süre yüksek sese izin
+    // vermesin. İki örnek aralığı sonunda güvenli pil varsayımına dön.
+    const auto simdi = static_cast<std::uint32_t>(esp_timer_get_time() / 1000);
+    if (simdi - g_ornek_ms.load(std::memory_order_acquire) > 4000) {
+        return GucKaynagi::Bilinmiyor;
+    }
     const int vin = vin_mv();
     if (vin < 0) return GucKaynagi::Bilinmiyor;
 
@@ -352,7 +399,7 @@ GucKaynagi guc_kaynak()
 
 int pil_mv()
 {
-    return std::max(0, pm1_16bit(PATI_PM1_VBAT_L, PATI_PM1_VBAT_H));
+    return g_pil_mv.load(std::memory_order_relaxed);
 }
 
 // ---------------------------------------------------------------------------
@@ -506,7 +553,8 @@ void guc_derin_uyku()
     // gercek kapanmaya cevrilirse) sayac sessizce kirlenmesin.
     kapaniyoruz_isaretle();
 
-    // Ekran arka isigi, mikrofon ve hoparlor L3B'den besleniyor.
+    // Ekran arka isigi, mikrofon ve kodek L3B'den besleniyor.
+    // Amfi VBUS_L0'da; once kendi SHDN girisinden susturulmali.
     // Kapatmak hem akimi dusuruyor hem de cihazin GERCEKTEN kapali
     // gorunmesini sagliyor: yanan bir ekranla "kapattim" denmez.
     hoparlor_amfi(false);
@@ -586,7 +634,7 @@ float yonga_sicakligi()
 
 int vin_mv()
 {
-    return pm1_16bit(PATI_PM1_VIN_L, PATI_PM1_VIN_H);
+    return g_vin_mv.load(std::memory_order_relaxed);
 }
 
 // ---------------------------------------------------------------------------
@@ -626,7 +674,12 @@ bool g_dusuk = false;
 
 void pil_ornekle()
 {
-    const int mv = pil_mv();
+    g_vin_mv.store(pm1_16bit(PATI_PM1_VIN_L, PATI_PM1_VIN_H),
+                   std::memory_order_relaxed);
+    const int mv = std::max(0, pm1_16bit(PATI_PM1_VBAT_L, PATI_PM1_VBAT_H));
+    g_pil_mv.store(mv, std::memory_order_relaxed);
+    g_ornek_ms.store(static_cast<std::uint32_t>(esp_timer_get_time() / 1000),
+                     std::memory_order_release);
     if (mv <= 0) return;   // I2C okunamadi — pencereyi bozmuyoruz
 
     // 🔴 SACMA OKUMALAR ATILIYOR — bu da bir OLCUMDEN geliyor.

@@ -115,6 +115,26 @@ std::atomic<int> g_kare_ms{KARE_MS};
 // USB'de akim bol, gozleri yavaslatmanin karsiligi yok.
 std::atomic<bool> g_pilde{false};
 
+// Sunucunun "üretim bitti" olayı, DMA'daki sesin bittiği an değildir.
+// Süreyi ses sürücüsü uzatır; göz görevi yalnızca kilitsiz 32 bit okur.
+std::atomic<std::uint32_t> g_ses_bitis_ms{0};
+// Tek atomik değer durum ve başlangıcı birlikte taşır; sıcak yolda I2C yok.
+// Alt iki bit durum, üst bitler 4 ms çözünürlüklü başlangıç damgasıdır.
+std::atomic<std::uint32_t> g_baglanti_damga{0};
+// IDF'nin PSRAM atomik düzeltmesi is_always_lock_free'yi false yapar;
+// bu statik nesne iç RAM'dedir ve stdatomic.c donanım yolunu kullanır.
+
+bool ses_penceresi_acik()
+{
+    auto bitis = g_ses_bitis_ms.load(std::memory_order_relaxed);
+    if (bitis == 0) return false;
+    const auto simdi = static_cast<std::uint32_t>(esp_timer_get_time() / 1000);
+    if (static_cast<std::int32_t>(bitis - simdi) > 0) return true;
+    // Süre dolarken yeni ses geldiyse yeni damgayı silmeyiz.
+    g_ses_bitis_ms.compare_exchange_strong(bitis, 0, std::memory_order_relaxed);
+    return false;
+}
+
 // Dusuk pil uyarisi istegi. Gorev bunu goruyor, ciziyor ve temizliyor.
 std::atomic<bool> g_uyari_var{false};
 std::atomic<int>  g_uyari_yuzde{-1};
@@ -1126,7 +1146,9 @@ void gozler_gorevi(void*)
 
         // Perdeden gozlere donuste ekran TEK YERDE temizleniyor —
         // hangi perde oldugu onemsiz.
-        const bool perde = bilgi || gunc || wifi_yok;
+        const auto baglanti = gozler_baglanti_uyarisi();
+        const bool perde = bilgi || gunc || wifi_yok
+                           || baglanti != BaglantiUyarisi::Yok;
         if (onceki_bilgi && !perde) {
             g_onceki_kirli = Dikdortgen{0, 0, PATI_EKR_G, PATI_EKR_Y};
             son_uyanma = xTaskGetTickCount();
@@ -1190,16 +1212,20 @@ void gozler_gorevi(void*)
             continue;
         }
 
+        if (baglanti != BaglantiUyarisi::Yok) {
+            perde_wifi(wifi_faz++, baglanti == BaglantiUyarisi::Baglaniyor
+                                      ? "Bağlanıyorum" : "Cevap gecikiyor");
+            vTaskDelay(pdMS_TO_TICKS(WIFI_TAZELE_MS));
+            son_uyanma = xTaskGetTickCount();
+            continue;
+        }
+
         kare_ciz();
 
         // Kare araligi uc kademe: USB'de 50 ms, pilde 100 ms, pilde
-        // KONUSURKEN 200 ms. Sonuncusu her karede yeniden bakiliyor
-        // cunku ifade her an degisebiliyor.
-        int kare_ms = g_kare_ms.load(std::memory_order_relaxed);
-        if (g_pilde.load(std::memory_order_relaxed) && g_tanim != nullptr
-            && std::strcmp(g_tanim->ad, "konusuyor") == 0) {
-            kare_ms = std::max(kare_ms, PIL_KONUSMA_KARE_MS);
-        }
+        // KONUSURKEN 200 ms. Karar yüz adına değil, ses sürücüsünün
+        // DMA çalma penceresine bağlı; panel de aynı hedefi gösterir.
+        const int kare_ms = 1000 / gozler_hedef_fps();
 
         // vTaskDelayUntil: kare suresi degisse bile FPS sabit kaliyor.
         // vTaskDelay olsa cizim suresi ustune eklenir ve hiz dalgalanir.
@@ -1252,7 +1278,47 @@ void gozler_konusuyor() { gozler_durum("konusuyor"); }
 
 std::uint32_t gozler_kare() { return g_kare.load(std::memory_order_relaxed); }
 std::uint32_t gozler_piksel() { return g_piksel.load(std::memory_order_relaxed); }
-int gozler_hedef_fps() { return 1000 / g_kare_ms.load(std::memory_order_relaxed); }
+int gozler_hedef_fps()
+{
+    const bool ses = ses_penceresi_acik();
+    const int aralik = g_kare_ms.load(std::memory_order_relaxed);
+    return 1000 / ((g_pilde.load(std::memory_order_relaxed) && ses)
+                       ? std::max(aralik, PIL_KONUSMA_KARE_MS) : aralik);
+}
+
+void gozler_baglanti_bildir(BaglantiUyarisi durum)
+{
+    auto eski = g_baglanti_damga.load(std::memory_order_relaxed);
+    const auto kod = static_cast<std::uint32_t>(durum);
+    const auto simdi = static_cast<std::uint32_t>(esp_timer_get_time() / 1000);
+    // Aynı durumun tekrarı bekleme süresini sürekli başa sarmasın.
+    while ((eski & 3u) != kod) {
+        const auto yeni = kod == 0 ? 0 : (simdi & ~3u) | kod;
+        if (g_baglanti_damga.compare_exchange_weak(eski, yeni,
+                                                  std::memory_order_relaxed)) break;
+    }
+}
+
+BaglantiUyarisi gozler_baglanti_uyarisi()
+{
+    const auto damga = g_baglanti_damga.load(std::memory_order_relaxed);
+    const auto durum = static_cast<BaglantiUyarisi>(damga & 3u);
+    if (durum == BaglantiUyarisi::Yok) return durum;
+    const auto simdi = static_cast<std::uint32_t>(esp_timer_get_time() / 1000);
+    const auto esik = durum == BaglantiUyarisi::Baglaniyor ? 2000u : 5000u;
+    return simdi - (damga & ~3u) >= esik ? durum : BaglantiUyarisi::Yok;
+}
+
+void gozler_ses_bildir(int kalan_ms)
+{
+    if (kalan_ms <= 0) {
+        g_ses_bitis_ms.store(0, std::memory_order_relaxed);
+        return;
+    }
+    const auto simdi = static_cast<std::uint32_t>(esp_timer_get_time() / 1000);
+    const auto bitis = simdi + static_cast<std::uint32_t>(kalan_ms);
+    g_ses_bitis_ms.store(bitis == 0 ? 1 : bitis, std::memory_order_relaxed);
+}
 
 void gozler_pil_kipi(bool pilde)
 {

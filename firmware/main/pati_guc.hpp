@@ -4,8 +4,9 @@
 //
 //   1. I2C hattini kuruyor. Uc aygit paylasiyor (ES8311, BMI270, M5PM1),
 //      yani hat tek bir yerde acilmali.
-//   2. L3B guc katmanini aciyor. Mikrofon, hoparlor ve LCD arka isigi
+//   2. L3B guc katmanini aciyor. Mikrofon, kodek ve LCD arka isigi
 //      bundan besleniyor ve acilista KENDILIGINDEN GELMIYOR.
+//      VBUS_L0'daki hoparlor amfisi ayrica PYG3 ile etkinlestiriliyor.
 //   3. Kartin gercekten StickS3 olup olmadigini yokluyor.
 //
 // Ucuncusu bir kolaylik degil, EMNIYET KILIDI — asagida.
@@ -54,12 +55,16 @@ i2c_master_bus_handle_t i2c_yolu();
 // bir butona basmamayi hatirlamasi gerekmiyor.
 bool donanim_dogru();
 
-// Hoparlor amfisini (AW8737) acar/kapatir.
+// Hoparlor amfisini (AW8737A) acar/kapatir.
 //
 // Kapatmanin iki gerekcesi olabilir: guc tasarrufu ve kizilotesi alici
 // (M5Stack'in belgesi amfi acikken IR alimin bozuldugunu yaziyor).
 // Pati kizilotesi kullanmiyor, yani pratikte hep acik.
 esp_err_t hoparlor_amfi(bool ac);
+
+// M5PM1'e gönderilip geri okunan kip isteği; 0=kapalı veya kurulum hatası.
+// AW8737A I2C aygıtı değildir: analog çıkış gücü buradan ölçülmez.
+int amfi_kipi();
 
 // ---------------------------------------------------------------------------
 // Sistemi su an ne besliyor?
@@ -87,21 +92,20 @@ enum class GucKaynagi {
     Bilinmiyor,   // M5PM1 cevap vermedi ya da beklenmeyen deger
 };
 
-// M5PM1'e sorar. I2C islemi yapiyor (~1 ms); her ses karesinde degil,
-// saniyede bir mertebesinde cagrilmali.
-//
-// Bilinmiyor donerse cagiran taraf GUVENLI OLANI secmeli (yani pil
-// varsayimi): yanlis tahminin bedeli bir yanda "ses biraz kisik",
-// obur yanda "Pati cumle ortasinda kapaniyor".
+// Güç gözcüsünün iki saniyede bir aldığı son VIN örneğini kullanır.
+// I2C yapmaz. İlk örnekten önce, okuma hatasında veya örnek dört
+// saniyeden eskiyse Bilinmiyor döner;
+// ses ve ekran bu durumda pil sınırlarını uygular. Kablo geçişi örnek
+// aralığı kadar geç görülebilir; bu doğrudan akım ölçümü değildir.
 GucKaynagi guc_kaynak();
 
-// Pil gerilimi, milivolt. Okunamazsa 0.
+// Son pil örneği, milivolt. Okunamazsa 0; bu çağrı I2C yapmaz.
 //
 // Tek basina yuzdeye cevrilmiyor: lityum egrisi dogrusal degil ve
 // yuk altinda dusuyor. Ham deger raporda daha durust.
 int pil_mv();
 
-// Haricî 5 V girisinin gerilimi, mV. Okunamazsa -1.
+// Son haricî 5 V örneği, mV. Okunamazsa -1; bu çağrı I2C yapmaz.
 //
 // guc_kaynak() kararini buradan veriyor. Ayri acilmasinin sebebi
 // teshis: "USB yok" ile "USB var ama gerilim dusuk" ayri sorunlar.
@@ -145,7 +149,8 @@ float yonga_sicakligi();
 void cokme_say();              // acilista bir kez, guc_baslat() cagiriyor
 std::uint32_t cokme_sayisi();
 
-// Son cokme aninda pil kac mV'taydi. Hic cokme olmadiysa 0.
+// Son arızadan SONRAKİ AÇILIŞTA ölçülen pil gerilimi. Hiç arıza yoksa 0.
+// Çökme anının minimumu değildir; kısa gerilim sarkmasını göstermez.
 //
 // 🔴 NEDEN AYRI TUTULUYOR: "pil azalinca daha sik mi cokuyor" sorusunun
 // cevabi burada. 02.09.2026 olcumunde cokmeler 3744 ve 3732 mV'ta oldu,

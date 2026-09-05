@@ -11,6 +11,7 @@
 #include "es8311_codec.h"
 #include "esp_codec_dev_defaults.h"
 #include "pati_guc.hpp"
+#include "pati_gozler.hpp"
 #include "pati_ornekleyici.hpp"
 #include "pati_pinler.h"
 
@@ -102,6 +103,7 @@ std::array<std::int16_t, PATI_OKUMA_ORNEK * 3> g_ham{};
 // Tanimlayici basina 1024 x 2 = 2048 bayt; IDF'in siniri 4092.
 constexpr int DMA_TANIM = 16;
 constexpr int DMA_CERCEVE = 1024;
+int g_dma_ms = 0;
 
 esp_err_t i2s_kur(int tanim, int cerceve)
 {
@@ -378,6 +380,8 @@ esp_err_t ses_kur()
         return hata;
     }
 
+    // Yukarı yuvarlanır: son örnek bitmeden göz yükü geri gelmesin.
+    g_dma_ms = (tanim * DMA_CERCEVE * 1000 + PATI_SES_HZ - 1) / PATI_SES_HZ;
     g_hazir = true;
     ESP_LOGI(ETIKET,
              "ses hazir — ES8311 %d Hz mono, mik %d Hz, hoparlor %d Hz x %.2f",
@@ -479,21 +483,11 @@ esp_err_t hoparlor_hiz_ayarla(float carpan)
 // Gerekcesi SES_PIL_TAVANI'nin yaninda: pilde 1.00 brownout yapiyor.
 float etkin_seviye()
 {
-    // Zaten tavanin altindaysa kaynagi sormaya bile gerek yok — I2C
-    // islemi bedava degil ve burasi ses yolunun tam ustu.
     if (g_seviye <= SES_PIL_TAVANI) return g_seviye;
 
-    // GUC KAYNAGI ONBELLEKLENIYOR. Sorusu bir I2C islemi (~0,5 ms) ve
-    // hoparlor_yaz() her ses parcasinda cagriliyor. Kablonun takilip
-    // cikarilmasi insan hizinda bir olay; saniyede bir yoklamak hem
-    // yeterince hizli hem de olculebilir bir yuk degil.
-    static GucKaynagi son = GucKaynagi::Bilinmiyor;
-    static std::int64_t son_us = 0;
-    const std::int64_t simdi = esp_timer_get_time();
-    if (son_us == 0 || simdi - son_us > 1000000) {
-        son_us = simdi;
-        son = guc_kaynak();
-    }
+    // Güç gözcüsünün son VIN örneği: ses yolunda I2C, bekleme veya
+    // ikinci bir önbellek yok. Aynı kaynak kararı panelde de kullanılır.
+    const GucKaynagi son = guc_kaynak();
 
     // BILINMIYOR ISE KISIYORUZ. Yanlis tahminin bedeli iki yanda esit
     // degil: bir yanda "ses biraz kisik", obur yanda "Pati cumlenin
@@ -527,10 +521,12 @@ size_t hoparlor_yaz(std::span<const std::int16_t> kaynak, uint32_t timeout_ms)
     return g_ornek.isle(
         kaynak, adim, etkin_seviye(), cikti,
         [&](std::span<const std::int16_t> blok) -> bool {
+            gozler_ses_bildir(g_dma_ms);
             size_t bayt = 0;
             const esp_err_t hata = i2s_channel_write(
                 g_tx, blok.data(), blok.size() * sizeof(std::int16_t),
                 &bayt, timeout_ms);
+            if (bayt != 0) gozler_ses_bildir(g_dma_ms);
             if (hata != ESP_OK && hata != ESP_ERR_TIMEOUT) {
                 ESP_LOGW(ETIKET, "hoparlor yazma: %s", esp_err_to_name(hata));
                 return false;
@@ -557,6 +553,7 @@ esp_err_t hoparlor_temizle()
     // Yeniden ornekleyici de sifirlanmali. Atilan sesin fazini
     // saklamak, sonraki cumleyi yarim bir ornekten baslatmak olurdu.
     g_ornek.sifirla();
+    if (hata == ESP_OK) gozler_ses_bildir(0);
     return hata;
 }
 

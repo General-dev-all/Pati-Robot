@@ -149,7 +149,7 @@ bool ekran_hazir() { return true; }
 // olmadigi icin karsilastirilacak bir referans da yok.
 esp_err_t perde_pil_uyarisi(int) { return ESP_OK; }
 esp_err_t perde_bilgi() { return ESP_OK; }
-esp_err_t perde_wifi(int) { return ESP_OK; }
+esp_err_t perde_wifi(int, const char*) { return ESP_OK; }
 esp_err_t perde_guncelleme(const char*, int, const char*) { return ESP_OK; }
 
 // Goz gorevi artik guc, ag ve guncelleme durumuna bakiyor (hangi
@@ -196,6 +196,49 @@ void kare_uret(const pati::GozDurumu* d)
 int main(int argc, char** argv)
 {
     const std::string kok = (argc > 1) ? argv[1] : ".";
+
+    // Yüz ifadesi ve sunucunun üretim sonu, DMA'daki sesin sonu değildir.
+    test_saat_us = 1000000;
+    pati::gozler_pil_kipi(true);
+    bak(pati::gozler_hedef_fps() == 10, "pilde sessizken 10 fps");
+    pati::gozler_ses_bildir(342);
+    for (int i = 0; i < pati::GOZ_DURUM_SAYISI; ++i) {
+        pati::hedefe_otur(&pati::GOZ_DURUMLARI[i]);
+        bak(pati::gozler_hedef_fps() == 5, "ses tasarrufu ifadeden bagimsiz");
+    }
+    test_saat_us += 341000;
+    bak(pati::gozler_hedef_fps() == 5, "DMA bitmeden tasarruf surer");
+    test_saat_us += 1000;
+    bak(pati::gozler_hedef_fps() == 10, "DMA suresi dolunca 10 fps");
+    pati::gozler_ses_bildir(342);
+    pati::gozler_pil_kipi(false);
+    bak(pati::gozler_hedef_fps() == 20, "USB ses sirasinda da 20 fps");
+    pati::gozler_pil_kipi(true);
+    pati::gozler_ses_bildir(0);
+    bak(pati::gozler_hedef_fps() == 10, "tampon temizlenince tasarruf biter");
+    test_saat_us = (static_cast<std::int64_t>(UINT32_MAX) - 100) * 1000;
+    pati::gozler_ses_bildir(342);
+    test_saat_us += 200000;
+    bak(pati::gozler_hedef_fps() == 5, "32 bit saat tasmasinda ses surer");
+    test_saat_us += 142000;
+    bak(pati::gozler_hedef_fps() == 10, "saat tasmasindan sonra sure dolar");
+    pati::gozler_pil_kipi(false);
+    test_saat_us = 0;
+
+    using U = pati::BaglantiUyarisi;
+    pati::gozler_baglanti_bildir(U::CevapBekliyor);
+    test_saat_us = 4999000;
+    bak(pati::gozler_baglanti_uyarisi() == U::Yok, "normal cevap beklerken uyari yok");
+    pati::gozler_baglanti_bildir(U::CevapBekliyor);
+    test_saat_us = 5000000;
+    bak(pati::gozler_baglanti_uyarisi() == U::CevapBekliyor, "tekrar bildirim gecikme suresini sifirlamaz");
+    pati::gozler_baglanti_bildir(U::Yok);
+    bak(pati::gozler_baglanti_uyarisi() == U::Yok, "ses gelince uyari kalkar");
+    pati::gozler_baglanti_bildir(U::Baglaniyor);
+    test_saat_us += 2000000;
+    bak(pati::gozler_baglanti_uyarisi() == U::Baglaniyor, "uzayan yeniden baglanma gorunur");
+    pati::gozler_baglanti_bildir(U::Yok);
+    test_saat_us = 0;
 
     // Satir tamponu gozler_baslat() icinde ayriliyor; testte elle.
     pati::g_satir = new pati::Satir{};

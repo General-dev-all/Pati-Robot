@@ -103,6 +103,11 @@ int gozler_hedef_fps();
 // Gerekcesi ve olculecek sey pati_gozler.cpp'de PIL_FPS'in yaninda.
 void gozler_pil_kipi(bool pilde);
 
+// Ses sürücüsü DMA'ya yazmadan önce ve sonra kalan en uzun çalma
+// süresini bildirir. Yüz ifadesi değişse de pildeki tasarruf sürmeli.
+// Sıfır, tamponun bilinçli olarak boşaltıldığını bildirir. I2C/kilit yok.
+void gozler_ses_bildir(int kalan_ms);
+
 // Dusuk pil uyarisini TAM EKRAN gosterir: bir sonraki karede gozlerin
 // yerine cizilir, birkac saniye durur, sonra gozler geri gelir.
 //
@@ -179,5 +184,10 @@ std::uint32_t gozler_atlanan_kare();
 
 // Su anki ifadenin adi.
 const char* gozler_su_anki();
+
+// Yüz ifadesinden bağımsız bağlantı uyarısı; çizim yalnızca göz görevinde.
+enum class BaglantiUyarisi { Yok, Baglaniyor, CevapBekliyor };
+void gozler_baglanti_bildir(BaglantiUyarisi durum);
+BaglantiUyarisi gozler_baglanti_uyarisi();
 
 }  // namespace pati

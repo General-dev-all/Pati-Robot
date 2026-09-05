@@ -21,7 +21,9 @@ cd firmware
 python -m esp_idf_monitor --port COM6 --baud 115200 --no-reset build\pati.elf
 ```
 
-⚠️ `--no-reset` şart. DTR/RTS'e dokunmak kartı indirme moduna sokuyor
+⚠️ Seri portu açmak DTR/RTS kapalı olsa bile cihazı sıfırlayabilir.
+`--no-reset` çalışan cihazı bozmadan dinleme garantisi değildir.
+Pildeki koşuyu ağdan izle. DTR/RTS'e dokunmak kartı indirme moduna sokuyor
 (`boot:0x0 DOWNLOAD`, yeşil ışık yanıp söner) ve uygulama hiç açılmıyor.
 
 ⚠️ Monitörden önce kalan python süreçlerini öldür, yoksa port "erişim
@@ -365,3 +367,33 @@ baytı için "high 4 bits" yazıyor; maskelenince pil 4130 yerine 34 mV
 tutmuyor — USB takılıyken 0x05 okunuyor. Bu yüzden güç kaynağı kararı
 **VIN gerilimine** bakılarak veriliyor: ölçülebilir ve anlamı kendinden
 belli.
+
+
+## 05.09.2026 — konuşma tasarrufu ve yanıltıcı gerilim alanı
+
+Gemini, ilk ses paketinden önce Speaking olayı gönderiyor. Bu bayrak,
+paket yolundaki göz geçişini atlatıyordu; yüz adına bağlanan 5 fps
+kararı çalışmayabiliyordu. Tasarruf artık ses sürücüsünün DMA süresine
+bağlı ve panel aynı etkin hedefi gösteriyor. Ayrıntı ve kartta kabul
+ölçümü `PIL.md` içinde.
+
+`guc.cokme_mv` çökme sırasında alınmıyor: **sonraki açılışta** okunup
+NVS'e yazılıyor. Alanın eski açıklaması yanlıştı. Bu değerden rayın
+anlık minimumu hesaplanamaz. `cokme_mv_ani=yeniden_acilis` anlamı açıklar.
+Ayrıca ESP32 sıcaklık sensörü, PMIC/regülatör sıcaklığını ölçmez;
+yonga sıcaklığını kullanarak onların ısıl koruması elenemez.
+
+## 05.09.2026 — bağlantı ve gecikme perdesi
+
+Wi-Fi yoksa mevcut “WiFi aranıyor” görünür. Wi-Fi varken sohbet
+bağlantısı iki saniyeden uzun kuruluyorsa “Bağlanıyorum” görünür.
+Cevap bekleme beş saniyeyi aşarsa “Cevap gecikiyor” görünür; bu
+internet arızası teşhisi değildir, sunucu da gecikebilir. Gemini
+konuşma sonunu geç bildirdiğinden mevcut yerel ses bekçisi de
+800 ms sessizlikten sonra beklemeyi başlatır; bu yolda uyarı yaklaşık
+5,8 saniyede çıkar. Ses gelince, tur bitince veya uykuya girince kalkar.
+
+Durum atomik bildirilir; göz döngüsüne ağ sorgusu veya I2C eklenmez.
+Wi-Fi, bilgi ve güncelleme perdeleri önceliklidir. 3.0.11 pil koşusunda
+sayaç 24 → 25 ve brownout kaydedildi; gecikme uyarısı bu besleme
+sorununun düzeltildiği anlamına gelmez.

@@ -177,6 +177,9 @@ Gemini anahtarı panelden giriliyor; yazılımın içinde anahtar yok.
 
 ## Ne çalışıyor, ne doğrulanmadı
 
+Aşağıdaki ölçümler 01.09.2026 tarihli ilk açılışa aittir. Güncel pil
+çalışması ve 05.09 düzeltmeleri için `PIL.md` esas alınır.
+
 | Doğrulandı (kartsız) | Nasıl |
 |---|---|
 | Göz çizici ↔ tarayıcı | 16 ifade, 240×135, **0 farklı piksel** |
@@ -209,9 +212,9 @@ Gemini anahtarı panelden giriliyor; yazılımın içinde anahtar yok.
 | Açık kalan | Not |
 |---|---|
 | Wifi sinyali 1–2/4 | zayıf; TCP takılması ve kopma buradan geliyor, yeri değişmeli |
-| Hareket + akım → brownout | azınlıkta ama var; ikinci kart hiç denenmedi |
+| Pilde konuşurken reset | iki kartta da görüldü; güncel kayıt `PIL.md` |
 | Pil ömrü | hiç ölçülmedi |
-| Uyku/uyanma | kartta denenmedi |
+| Uyku/uyanma | sonraki tuş/yığın düzeltmeleri için `TESHIS.md`; uyku akımı ölçülmedi |
 
 > Kesilme, donma ve çökme teşhisi için ayrı belge: **`TESHIS.md`**.
 

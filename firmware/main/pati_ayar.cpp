@@ -143,8 +143,8 @@ void ayar_hiz_yaz(float hiz)
     if (std::abs(y - g_hiz) < 0.005f) return;
     g_hiz = y;
     i32_yaz("hiz_yuz", static_cast<std::int32_t>(y * 100.0f + 0.5f));
-    // Tizlik I2S saat ayari. Hoparlor SUSARKEN degistirilmeli, yoksa
-    // calan sesin ortasinda kanal kapaniyor ve cat sesi cikiyor.
+    // I2S saati sabit. Yazılım çarpanı tur sonunda değişir ki
+    // aynı cümlenin ortasında Pati'nin tınısı değişmesin.
     g_yenileme.store(true);
     ESP_LOGI(ETIKET, "tizlik: %.2fx (tur sonunda gecerli)", y);
 }

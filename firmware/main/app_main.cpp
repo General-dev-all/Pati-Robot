@@ -1,16 +1,6 @@
-// Pati — Asama 2 firmware'i, ilk adim
-//
-// BU DOSYA HENUZ SES TASIMIYOR. Su an tek isi:
-//   1. Kartin gercekten ayaga kalktigini gostermek (PSRAM, flash, cekirdek)
-//   2. stackchan'in Gemini Live istemcisinin BIZIM projede derlenip
-//      baglandigini kanitlamak
-//   3. Kablolamayi seri porta yazmak — lehimlerken ekrana bakip
-//      dogrulayabilmek icin
-//
-// NEDEN BOYLE PARCA PARCA: donanim henuz kargoda. Derlenen kod ile
-// CALISAN kod ayri seyler; burada "derlendi ve baglandi" diyebilecegimiz
-// kadarini yapiyoruz. Ses hatti, kart elimize gectiginde adim adim
-// eklenecek ve her adim olculecek.
+// Pati — StickS3 açılışı, güç gözcüsü, panel ve sohbet yaşam döngüsü.
+// Donanım yoklaması OTA onayından önce kalmalı; yanlış karta gelen
+// güncellemenin geri dönebilmesi bu sıraya bağlı.
 
 #include <algorithm>
 #include <array>
@@ -183,8 +173,8 @@ void tusa_basildi(int, bool uzun)
         //
         // ⚠️ GERCEK KAPANMA DEGIL, derin uyku — gerekcesi ve bedeli
         // pati_guc.hpp'de. Ozeti: ESP32 kapaliyken hicbir yazilim
-        // calismadigi icin cihaz kendini ACAMAZ, o yuzden gercek
-        // kapanma yalnizca yan dugmeden (cift tik) yapilabiliyor.
+        // calismadigi icin cihaz kendini ACAMAZ, o yuzden gerçek
+        // kapanma yan düğmeye tek basışla yapılır.
         // Derin uyku ayni tusla geri gelebilmeyi mumkun kiliyor.
         pati::guc_derin_uyku();
     }
@@ -330,7 +320,7 @@ void istemciyi_dene()
              static_cast<int>(durum),
              static_cast<int>(ConversationState::Idle));
     ESP_LOGI(ETIKET, "  -> stackchan conversation bileseni baglandi");
-    ESP_LOGW(ETIKET, "  -> ama HENUZ BAGLANMIYOR: wifi ve olcum yazilmadi");
+    ESP_LOGI(ETIKET, "  -> bu yoklama baglanti acmaz; sohbet agdan sonra baslar");
 }
 
 // -------------------------------------------------------------------------
@@ -661,7 +651,7 @@ extern "C" void app_main()
     //     E BOD: Brownout detector was triggered
     //     rst:0x3 (RTC_SW_SYS_RST)
     //
-    // Hoparlor akim cekince (AW8737 + 8 ohm) ray cokuyor ve yonga
+    // Hoparlor akim cekince (AW8737A + 8 ohm) ray cokuyor ve yonga
     // kendini sifirliyor. Brownout esigi zaten en musamahakar kademede
     // (CONFIG_ESP_BROWNOUT_DET_LVL 7), yani yazilimdan gevsetilecek yer
     // yok — gerilim gercekten dusuyor.

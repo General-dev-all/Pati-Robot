@@ -235,16 +235,19 @@ esp_err_t durum_isle(httpd_req_t* r)
     // Arizali acilis sayisi — pilde tek olcum araci. Gerekcesi
     // pati_guc.hpp'de: pilde USB yok, seri port yok.
     cJSON_AddNumberToObject(g, "cokme", cokme_sayisi());
-    // Son cokme hangi gerilimde oldu — "pil azalinca daha sik mi
-    // cokuyor" sorusunu sinayan tek veri.
+    // Eski alan adı uyumluluk için kalır. Bu değer çökme anında değil,
+    // sonraki açılışta okunur; anlık besleme çöküşünü ölçmez.
     cJSON_AddNumberToObject(g, "cokme_mv", son_cokme_mv());
+    cJSON_AddStringToObject(g, "cokme_mv_ani", "yeniden_acilis");
+    cJSON_AddNumberToObject(g, "amfi_kipi", amfi_kipi());
     cJSON_AddNumberToObject(g, "goz_fps", gozler_hedef_fps());
     // Fiilen uygulanan ses tavani — kullanicinin sectigi degil.
     cJSON_AddNumberToObject(g, "ses_tavani",
                             kaynak == GucKaynagi::Usb
                                 ? ses_seviyesi()
                                 : std::min(ses_seviyesi(), SES_PIL_TAVANI));
-    // Acilis sebebi. "brownout" gorunuyorsa ses o donanim icin yuksek.
+    // Brownout besleme düşmesini bildirir; tek başına hangi yükün
+    // veya bileşenin sorumlu olduğunu kanıtlamaz.
     const esp_reset_reason_t sebep = esp_reset_reason();
     cJSON_AddStringToObject(g, "acilis",
                             sebep == ESP_RST_BROWNOUT   ? "brownout"

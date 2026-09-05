@@ -184,6 +184,15 @@ std::uint32_t g_mik_bos = 0;    // kaci HIC veri dondurmedi
 // ---------------------------------------------------------------------------
 void olay_geldi(const ConversationEvent& olay)
 {
+    // Bağlantı olayı ses kuyruğunda beklerken çocuk boş ekrana bakmasın.
+    if (olay.type == ConversationEventType::StateChanged && !g_uykuda) {
+        if (olay.state == ConversationState::Connecting ||
+            olay.state == ConversationState::Error)
+            gozler_baglanti_bildir(BaglantiUyarisi::Baglaniyor);
+        else if (olay.state == ConversationState::Listening)
+            gozler_baglanti_bildir(BaglantiUyarisi::Yok);
+    }
+
     // KOPMA TESPITI TAM BURADA — kuyruga atmadan once.
     //
     // 🔴 NEDEN KUYRUKTAN SONRA DEGIL: `stop()` cagirdigimizda da ayni
@@ -201,6 +210,7 @@ void olay_geldi(const ConversationEvent& olay)
             || *olay.error == ConversationError::TransportInit)
         && g_calisiyor && !g_uykuda && !g_yenileniyor && !g_koptu) {
         g_koptu = true;
+        gozler_baglanti_bildir(BaglantiUyarisi::Baglaniyor);
         ++g_kopma_sayisi;
     }
 
@@ -324,6 +334,7 @@ void uyu()
              bosta_sn);
 
     g_uykuda = true;
+    gozler_baglanti_bildir(BaglantiUyarisi::Yok);
     g_istemci->stop();
     ++g_uyku_sayisi;
     gozler_durum("uykulu");
@@ -448,11 +459,16 @@ void sessiz_sunucu_bekcisi()
     if (g_son_ses_us <= g_son_sunucu_us) return;
 
     const std::int64_t sessiz_us = esp_timer_get_time() - g_son_ses_us;
+    // Gemini konuşma sonunu ancak cevap vermeye başlayınca bildirir.
+    // Bu yüzden ağ sustuğunda yerel mikrofonun son sesini de kullanırız.
+    if (sessiz_us >= 800000)
+        gozler_baglanti_bildir(BaglantiUyarisi::CevapBekliyor);
     if (sessiz_us < SESSIZ_SUNUCU_US) return;
 
     ++g_bekci_sayisi;
     ++g_kopma_sayisi;
     g_koptu = true;
+    gozler_baglanti_bildir(BaglantiUyarisi::Baglaniyor);
     ESP_LOGW(ETIKET, "cocuk %lld sn once konustu, sunucu o andan beri "
                      "SUSUYOR — oturum olu sayiliyor (hata olayi hic "
                      "gelmedi, bekci %u. kez)",
@@ -593,11 +609,17 @@ void olayi_isle(const ConversationEvent& olay)
 {
     switch (olay.type) {
     case ConversationEventType::StateChanged:
+        // Gemini Speaking olayını ilk ses paketinden ÖNCE gönderir.
+        // Bayrağı önce yükseltmek, paket yolundaki göz geçişini atlatıyordu.
+        if (olay.state == ConversationState::Speaking && !g_konusuyor) {
+            gozler_konusuyor();
+        }
         g_konusuyor = (olay.state == ConversationState::Speaking);
         ESP_LOGD(ETIKET, "durum: %d", static_cast<int>(olay.state));
         break;
 
     case ConversationEventType::SpeechStarted:
+        gozler_baglanti_bildir(BaglantiUyarisi::Yok);
         // Gozler konusma AKISINDAN suruluyor, modelden degil. Model
         // "su an dinliyorum" demeyi beceremez; bunu zaten biliyoruz.
         // (prototype/yuz.py §AKIS_DURUMLARI ile ayni dort ad.)
@@ -623,6 +645,7 @@ void olayi_isle(const ConversationEvent& olay)
         break;
 
     case ConversationEventType::SpeechStopped:
+        gozler_baglanti_bildir(BaglantiUyarisi::CevapBekliyor);
         // OLCUMUN SIFIR NOKTASI. emit_us geciyor: kuyrukta bekleme
         // suresi olcume karismasin.
         damga_sustu(olay.emit_us);
@@ -635,6 +658,7 @@ void olayi_isle(const ConversationEvent& olay)
         if (!olay.audio || olay.audio->empty()) {
             break;
         }
+        gozler_baglanti_bildir(BaglantiUyarisi::Yok);
         const std::size_t bayt = olay.audio->size() * sizeof(std::int16_t);
         damga_ilk_paket(bayt, olay.emit_us);
 
@@ -655,6 +679,7 @@ void olayi_isle(const ConversationEvent& olay)
 
     case ConversationEventType::ResponseDone:
     case ConversationEventType::AssistantAudioDone:
+        gozler_baglanti_bildir(BaglantiUyarisi::Yok);
         // SOZUNU KESME ONAYI.
         //
         // Gemini'nin cevabi kesildiginde sunucu serverContent.interrupted
@@ -939,6 +964,7 @@ void mik_gorevi(void* /*arg*/)
                               / PATI_GEMINI_GIRIS_HZ;
             if (bekci_sesli_us >= UYANMA_SESLI_US) {
                 g_son_ses_us = simdi;
+                if (!g_koptu) gozler_baglanti_bildir(BaglantiUyarisi::Yok);
             }
         } else {
             // Araya sessizlik girdi: zincir kirildi.

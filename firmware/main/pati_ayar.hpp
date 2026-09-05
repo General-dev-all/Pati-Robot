@@ -23,7 +23,7 @@
 //   uyku        ANINDA   — sadece bir sayac degeri
 //   soz_kesme   ANINDA   — mikrofon kapisi
 //   ses_adi     TUR SONU — setup mesajinda gidiyor, oturum yenilenmeli
-//   hiz         TUR SONU — I2S saat ayari, hoparlor susmali
+//   hiz         TUR SONU — yeniden örnekleme çarpanı, cümle içinde değişmesin
 //   vad_ms      TUR SONU — setup mesajinda
 //   yuz_araci   TUR SONU — setup mesajinda (tools + prompt eki)
 //
