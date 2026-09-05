@@ -1,2 +1,2 @@
-3.0.12
-Sohbet bağlantısı kurulurken ve cevap geciktiğinde Pati artık ekranda haber veriyor.
+3.0.13
+Cevap gecikince Wi-Fi zayıfsa modeme yaklaşmayı, diğer durumlarda biraz beklemeyi öneren ekran uyarıları eklendi.

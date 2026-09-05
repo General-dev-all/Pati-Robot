@@ -397,3 +397,10 @@ Durum atomik bildirilir; göz döngüsüne ağ sorgusu veya I2C eklenmez.
 Wi-Fi, bilgi ve güncelleme perdeleri önceliklidir. 3.0.11 pil koşusunda
 sayaç 24 → 25 ve brownout kaydedildi; gecikme uyarısı bu besleme
 sorununun düzeltildiği anlamına gelmez.
+
+3.0.13: gecikme/yeniden bağlantı uyarısında sinyal 1–2 çubuksa
+“Wi-Fi zayıf / Modeme yaklaş” gösterilir. Sinyal daha iyi veya
+bilinmiyorsa gecikmede “İnternet yavaş / olabilir, bekle”, yeniden
+bağlantıda “Bağlanıyorum / Biraz bekle” görünür. RSSI internet hızı
+ölçümü değildir; sıfır/bilinmiyor zayıf sinyal diye yorumlanmaz.
+Sinyal mevcut iki saniyelik gözcüden gelir; göz döngüsü ağ sorgulamaz.

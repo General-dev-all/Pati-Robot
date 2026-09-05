@@ -224,6 +224,7 @@ std::atomic<int>  g_d_gunc{-1};      // GuncellemeDurumu, -1 = bilinmiyor
 std::atomic<int>  g_d_gunc_yuzde{0};
 std::atomic<bool> g_d_ag_bagli{true};
 std::atomic<bool> g_d_ag_kurulum{false};
+std::atomic<int> g_d_sinyal{0};
 std::atomic<int>  g_d_pil{-1};
 std::atomic<bool> g_d_usb{true};
 
@@ -1213,8 +1214,16 @@ void gozler_gorevi(void*)
         }
 
         if (baglanti != BaglantiUyarisi::Yok) {
-            perde_wifi(wifi_faz++, baglanti == BaglantiUyarisi::Baglaniyor
-                                      ? "Bağlanıyorum" : "Cevap gecikiyor");
+            // Sinyal seyrek gözcüden gelir; her karede Wi-Fi sürücüsüne sormayız.
+            const int sinyal = g_d_sinyal.load(std::memory_order_relaxed);
+            if (sinyal > 0 && sinyal <= 2) {
+                perde_wifi(wifi_faz++, "Wi-Fi zayıf", "Modeme yaklaş");
+            } else if (baglanti == BaglantiUyarisi::Baglaniyor) {
+                perde_wifi(wifi_faz++, "Bağlanıyorum", "Biraz bekle");
+            } else {
+                // Gecikme sunucudan da gelebilir: internet arızası kesin değil.
+                perde_wifi(wifi_faz++, "İnternet yavaş", "olabilir, bekle");
+            }
             vTaskDelay(pdMS_TO_TICKS(WIFI_TAZELE_MS));
             son_uyanma = xTaskGetTickCount();
             continue;
@@ -1328,12 +1337,13 @@ void gozler_pil_kipi(bool pilde)
 
 void gozler_durum_bildir(int gunc_durum, int gunc_yuzde,
                          const char* gunc_surum, bool ag_bagli,
-                         bool ag_kurulum, int pil_yuzde, bool usb)
+                         bool ag_kurulum, int pil_yuzde, bool usb, int sinyal)
 {
     g_d_gunc.store(gunc_durum, std::memory_order_relaxed);
     g_d_gunc_yuzde.store(gunc_yuzde, std::memory_order_relaxed);
     g_d_ag_bagli.store(ag_bagli, std::memory_order_relaxed);
     g_d_ag_kurulum.store(ag_kurulum, std::memory_order_relaxed);
+    g_d_sinyal.store(sinyal, std::memory_order_relaxed);
     g_d_pil.store(pil_yuzde, std::memory_order_relaxed);
     g_d_usb.store(usb, std::memory_order_relaxed);
 

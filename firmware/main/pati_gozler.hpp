@@ -151,7 +151,7 @@ bool gozler_bilgi_acik();
 // `gunc_durum` GuncellemeDurumu'nun tam sayi karsiligi (-1 = bilinmiyor).
 void gozler_durum_bildir(int gunc_durum, int gunc_yuzde,
                          const char* gunc_surum, bool ag_bagli,
-                         bool ag_kurulum, int pil_yuzde, bool usb);
+                         bool ag_kurulum, int pil_yuzde, bool usb, int sinyal);
 
 // Guncelleme perdesi su an ekranda mi.
 //

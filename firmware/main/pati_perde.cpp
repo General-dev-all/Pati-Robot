@@ -603,7 +603,7 @@ esp_err_t perde_bilgi()
 // y = 96 - 62 = 34, yani ustte pay var; altta yazi icin 39 piksel
 // kaliyor.
 
-esp_err_t perde_wifi(int faz, const char* mesaj)
+esp_err_t perde_wifi(int faz, const char* mesaj, const char* yardim)
 {
     if (!ekran_hazir()) return ESP_ERR_INVALID_STATE;
 
@@ -612,7 +612,7 @@ esp_err_t perde_wifi(int faz, const char* mesaj)
     const std::uint16_t golge = ekran_renk(10, 60, 60);
 
     constexpr int CX = 120;
-    constexpr int CY = 96;
+    const int CY = yardim ? 78 : 96;
 
     // Dalga YUKARIDAN ASAGI iniyor: once en genis yay parliyor, sonra
     // ortadaki, sonra dar olan, en son ortadaki nokta. Yani "sinyal
@@ -633,7 +633,8 @@ esp_err_t perde_wifi(int faz, const char* mesaj)
         yay(CX, CY, 18, 26, (p == 2) ? vurgu : golge);
         daire(CX, CY, 7,   (p == 3) ? vurgu : golge);
 
-        metin_orta(108, mesaj, 2, vurgu);
+        metin_orta(yardim ? 91 : 108, mesaj, 2, vurgu);
+        if (yardim) metin_orta(113, yardim, 2, vurgu);
 
         const esp_err_t hata = serit_bas_ve_nefes(y, yuk);
         if (hata != ESP_OK) return hata;

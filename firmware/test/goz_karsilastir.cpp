@@ -149,7 +149,7 @@ bool ekran_hazir() { return true; }
 // olmadigi icin karsilastirilacak bir referans da yok.
 esp_err_t perde_pil_uyarisi(int) { return ESP_OK; }
 esp_err_t perde_bilgi() { return ESP_OK; }
-esp_err_t perde_wifi(int, const char*) { return ESP_OK; }
+esp_err_t perde_wifi(int, const char*, const char*) { return ESP_OK; }
 esp_err_t perde_guncelleme(const char*, int, const char*) { return ESP_OK; }
 
 // Goz gorevi artik guc, ag ve guncelleme durumuna bakiyor (hangi

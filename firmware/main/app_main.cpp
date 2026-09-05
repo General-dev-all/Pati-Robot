@@ -234,7 +234,7 @@ void guc_gozcusu(void*)
                 ag == pati::AgDurumu::Bagli,
                 ag == pati::AgDurumu::Kurulum,
                 pati::pil_yuzde(),
-                kaynak == pati::GucKaynagi::Usb);
+                kaynak == pati::GucKaynagi::Usb, pati::ag_gucu());
         }
         if (ilk || kaynak != onceki) {
             ilk = false;

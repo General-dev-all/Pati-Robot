@@ -60,7 +60,8 @@ esp_err_t perde_bilgi();
 // `faz` 0..3, animasyonu suren sayac. Cagiran taraf her karede bir
 // artiriyor; hangi yayin parladigini bu belirliyor ve dalga YUKARIDAN
 // ASAGI iniyor.
-esp_err_t perde_wifi(int faz, const char* mesaj = "WiFi aranıyor");
+esp_err_t perde_wifi(int faz, const char* mesaj = "WiFi aranıyor",
+                     const char* yardim = nullptr);
 
 // Guncelleme sayfasi.
 //
