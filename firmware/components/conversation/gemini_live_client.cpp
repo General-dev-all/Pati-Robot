@@ -208,38 +208,17 @@ public:
 
     tl::expected<void, ConversationError> commit_audio()
     {
-        // "Ses akisim bitti, sira sende."
+        // Server VAD detects turn boundaries automatically.
         //
-        // 🔴 BU FONKSIYON UZUN SURE BOSTU ve gerekcesi soyleydi: "Server
-        // VAD detects turn boundaries automatically." Dogruydu — ta ki
-        // sunucu VAD'i hic tetiklenemeyene kadar.
+        // ⚠️ 05.09.2026'da burasi `audioStreamEnd` gonderecek sekilde
+        // dolduruldu ve GERI ALINDI. Gerekce dogruydu — bu govdede
+        // hoparlorle mikrofon 5 cm arayla ve ortam sesi hic kesilmiyor,
+        // yani sunucunun bekledigi sessizlik olusmayabilir. Ama o gun
+        // asil sebep Live API kotasi cikti (TESHIS.md) ve bu degisiklik
+        // hic dogrulanamadi: olcum yapilan her an kota da doluydu.
         //
-        // 05.09.2026'da olculdu: hoparlorle mikrofon 5 cm arayla duran bu
-        // govdede ortam sesi hic kesilmiyor (mikrofon tepesi 235-4938
-        // arasinda surekli dalgalaniyor). Sunucu tur kapatmak icin 500 ms
-        // sessizlik bekliyor, bulamiyor, cevabi HIC uretmiyor. Disaridan
-        // gorunusu "duyuyor ama konusmuyor": girdi transkripsiyonu VAD'den
-        // bagimsiz calistigi icin cocugun soyledigi dogru yaziya
-        // dokuluyordu, sadece cevap gelmiyordu.
-        //
-        // Artik turu Pati kapatiyor: kendi yerel VAD'i sessizligi gorunce
-        // burayi cagiriyor (pati_sohbet.cpp, mik_gorevi). Sunucu VAD'i
-        // acik kalmaya devam ediyor — ikisi celismiyor, hangisi once
-        // gorurse tur orada kapaniyor.
-        std::lock_guard lock{send_mutex_};
-        if (client_ == nullptr || !esp_websocket_client_is_connected(client_)) {
-            return tl::unexpected{ConversationError::NotConnected};
-        }
-        if (!setup_sent_) {
-            return tl::unexpected{ConversationError::NotConnected};
-        }
-        static constexpr char kEnd[] =
-            "{\"realtimeInput\":{\"audioStreamEnd\":true}}";
-        const int rc = esp_websocket_client_send_text(
-            client_, kEnd, static_cast<int>(std::strlen(kEnd)), kSendTimeout);
-        if (rc <= 0) {
-            return tl::unexpected{ConversationError::TransportInit};
-        }
+        // Geri gelirse cagiran taraf da lazim: pati_sohbet.cpp'de
+        // mikrofon gorevi sessizligi gorunce burayi cagirmali.
         return {};
     }
 
@@ -633,107 +612,24 @@ private:
             cJSON_AddItemToArray(tools, tool);
         }
 
-        // ---- Server VAD sensitivity -------------------------------------
+        // ⚠️ BURADA VAD HASSASIYETI GONDERILIYORDU, GERI ALINDI.
         //
-        // 🔴 THIS BLOCK WAS MISSING AND IT COST A DAY (05.09.2026).
+        // ConversationConfig vad_silence_ms / vad_prefix_padding_ms
+        // tasiyor, panel de gosteriyor, ama Gemini'ye hicbir zaman
+        // gonderilmedi — oturum hep sunucu varsayilanlariyla kosuyor.
+        // Bu GERCEK bir eksik ve bir gun kapatilmali.
         //
-        // ConversationConfig has carried vad_silence_ms / prefix_padding /
-        // threshold all along, and the panel even shows them — but nothing
-        // ever sent them to Gemini, so the session ran on the server's
-        // default (most sensitive) turn detection.
+        // 05.09.2026'da kapatildi ve ayni gun geri alindi. Sebebi kotu
+        // olmasi degil, DOGRULANAMAMASI: o gun Pati'nin susmasinin asil
+        // sebebi Live API kotasiydi (TESHIS.md) ve olcum yapilan her an
+        // kota doluydu. Uc varyant denendi, ucunun de sonucu okunamadi:
         //
-        // On this hardware that default is wrong. Speaker and microphone
-        // sit ~5 cm apart in one 48x24 mm body, so the moment Pati starts
-        // answering, its own voice comes back through the mic. The server
-        // reads that as "the child interrupted" and cancels the reply:
+        //   LOW  / LOW   -> kesilme durdu ama tur hic kapanmadi
+        //   LOW  / HIGH  -> tur yine kapanmadi
+        //   (yok) / HIGH -> okunamadi
         //
-        //     gemini-live: serverContent.interrupted - AssistantAudioDone
-        //
-        // and it cancels BEFORE the first audio packet, so the local
-        // barge-in guard in pati_sohbet.cpp never engages either — that
-        // guard waits for g_konusuyor, which never becomes true. The two
-        // deadlock and the robot goes permanently silent while looking
-        // completely healthy: mic works, audio uploads, transcripts come
-        // back correct, websocket stays open, no error is ever raised.
-        //
-        // 🔴 THE TWO ENDS PULL IN OPPOSITE DIRECTIONS — don't set both LOW.
-        //
-        // First attempt used LOW for both and traded one failure for
-        // another. `interrupted` stopped (good) but no turn ever closed,
-        // so no reply was produced at all (worse): the child stops
-        // talking, the server still thinks they are mid-sentence, and it
-        // waits forever. Measured on the device — interrupted count went
-        // 4+ to 0, replies stayed at 0.
-        //
-        //   startOfSpeech LOW   -> hard to call speech START.
-        //                          This is the one that matters here:
-        //                          Pati's own voice returning through its
-        //                          mic must NOT read as the child talking.
-        //
-        //   endOfSpeech HIGH    -> easy to call speech END.
-        //                          The child finishes, the turn closes,
-        //                          the answer comes. Setting this LOW is
-        //                          what silenced it.
-        //
-        // So: reluctant to start, eager to finish.
-        cJSON* rt = cJSON_AddObjectToObject(setup, "realtimeInputConfig");
-        cJSON* aad = cJSON_AddObjectToObject(rt, "automaticActivityDetection");
-        // 🔴 startOfSpeechSensitivity BILEREK GONDERILMIYOR.
-        //
-        // LOW denendi (05.09.2026) ve sonucu daha kotuydu: sunucu
-        // konusmanin BASLADIGINI hic kabul etmedi, yani tur hic acilmadi
-        // ve cevap hic uretilmedi. Transkript yine geliyordu — girdi
-        // yaziya dokme VAD'den bagimsiz calisiyor — bu yuzden disaridan
-        // "duyuyor ama cevap vermiyor" gibi gorunuyordu.
-        //
-        // Bu kartta mikrofon zaten kisik: konusma tepesi 1342/32767
-        // olculdu (testlerde 21857 gorulmustu). Kisik girise bir de
-        // "zor tetiklen" demek, kapiyi buakiyla kapatmak oluyor.
-        //
-        // Varsayilan birakiliyor; yanki sorunu geri gelirse cozum
-        // hassasiyeti dusurmek DEGIL, Pati konusurken mikrofonu
-        // susturmak (pati_sohbet.cpp'de o koruma zaten var).
-        cJSON_AddStringToObject(aad, "endOfSpeechSensitivity",
-                                "END_SENSITIVITY_HIGH");
-
-        // Barge-in: sunucu, konusma algilayinca cevabini kessin mi.
-        //
-        // 🔴 05.09.2026'da olculdu — kapatilmasi SART oldu. Cevap
-        // uretiliyordu ama her seferinde soyle bitiyordu:
-        //
-        //     gemini-live: serverContent.interrupted - AssistantAudioDone
-        //
-        // Kesen cocuk degildi, Pati'nin KENDI SESIYDI: hoparlorle mikrofon
-        // ayni kucuk govdede. Cocuk hic konusmasa bile robot konusmaya
-        // baslar baslamaz kendini kesiyordu.
-        //
-        // pati_sohbet.cpp'de "robot konusurken mikrofonu sustur" korumasi
-        // zaten var ama tek basina yetmiyor: iptal ILK ses paketinden once
-        // gelebiliyor, o an "konusuyor" bayragi henuz kalkmamis oluyor.
-        // Iki tarafi birden kapatmak gerekiyordu.
-        // ⚠️ BURADA "NO_INTERRUPTION" DENENDI VE GERI ALINDI (05.09.2026).
-        //
-        // Amac dogruydu: yanki yuzunden kesilmeyi durdurmak. Sonuc tersine
-        // cikti — olculdu:
-        //
-        //     NO_INTERRUPTION yok : serverContent 4 kez, interrupted 1
-        //                           (cevap uretiliyor ama kesiliyor)
-        //     NO_INTERRUPTION var : serverContent 0
-        //                           (cevap HIC uretilmiyor)
-        //
-        // Sebep ortam sesi: mikrofon tepesi 235-4938 arasinda surekli
-        // dalgalaniyor, yani gercek sessizlik hic olmuyor. Sunucu 500 ms
-        // sessizlik bekliyor, bulamiyor, turu hic kapatmiyor. Kesmeyi
-        // yasaklamak bu durumda "hic konusma" anlamina geliyor.
-        //
-        // Yankinin dogru caresi sunucuya "kesme" demek DEGIL, Pati'nin
-        // konusurken mikrofonu gercekten susturmasi (pati_sohbet.cpp) ve
-        // hoparlor seviyesini yankiyi doyurmayacak yerde tutmak.
-        (void)config_.allow_interruption;
-        cJSON_AddNumberToObject(aad, "prefixPaddingMs",
-                                static_cast<double>(config_.vad_prefix_padding_ms));
-        cJSON_AddNumberToObject(aad, "silenceDurationMs",
-                                static_cast<double>(config_.vad_silence_ms));
+        // Geri eklenirse once kota ACIK oldugu dogrulanmali, sonra tek
+        // varyant denenmeli.
 
         // Session resumption: if we have a handle from a prior goAway, ask
         // the server to continue from there. Always include the field so

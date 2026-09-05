@@ -748,15 +748,40 @@ esp_err_t panel_baslat()
 
     ESP_LOGI(ETIKET, "panel hazir: http://%s/", ag_ip());
 
-    if (ag_durumu() == AgDurumu::Kurulum && !g_dns_calisiyor.exchange(true)) {
-        if (xTaskCreate(dns_gorevi, "dns", 3072, nullptr, 4, nullptr)
-            != pdPASS) {
-            g_dns_calisiyor.store(false);
-            ESP_LOGW(ETIKET, "DNS gorevi acilamadi — sayfa kendiliginden "
-                             "acilmayacak, adres elle yazilmali");
-        }
-    }
+    panel_dns_baslat();
     return ESP_OK;
+}
+
+void panel_dns_baslat()
+{
+    // 🔴 AYRI FONKSIYON OLMASININ SEBEBI BIR KUSUR (05.09.2026).
+    //
+    // Bu blok panel_baslat() icindeydi ve tek kosulu "su an kurulum
+    // modunda miyiz" idi. Acilis sirasi ise sudur:
+    //
+    //     ag_baslat()     -> BLOKLAMIYOR, durum "Ariyor"
+    //     panel_baslat()  -> hemen ardindan, durum HALA "Ariyor"
+    //                        => DNS atlaniyor
+    //     ...ag bulunamaz -> durum "Kurulum"a geciyor
+    //                        => ama DNS'i baslatacak kimse kalmadi
+    //
+    // Sonuc: kayitli ag yoksa (kutudan yeni cihaz ya da fabrika ayarina
+    // donmus cihaz) captive portal HIC calismiyor. Telefon Pati'nin
+    // agina bagalaniyor, sayfa kendiliginden acilmiyor ve ebeveynin
+    // 192.168.4.1'i bilmesi gerekiyor — oysa tam da bilmemesi icin var.
+    //
+    // Cift cagriya karsi guvenli: exchange(true) ikinci cagriyi eliyor.
+    if (ag_durumu() != AgDurumu::Kurulum) return;
+    if (g_dns_calisiyor.exchange(true)) return;
+
+    if (xTaskCreate(dns_gorevi, "dns", 3072, nullptr, 4, nullptr) != pdPASS) {
+        g_dns_calisiyor.store(false);
+        ESP_LOGW(ETIKET, "DNS gorevi acilamadi — sayfa kendiliginden "
+                         "acilmayacak, adres elle yazilmali");
+    } else {
+        ESP_LOGW(ETIKET, "captive portal DNS acik — telefon baglaninca "
+                         "sayfa kendiliginden acilmali");
+    }
 }
 
 void panel_kurulum_bitti()

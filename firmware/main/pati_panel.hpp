@@ -56,6 +56,15 @@ namespace pati {
 // hizmet veriyor.
 esp_err_t panel_baslat();
 
+// Captive portal DNS'ini baslatir (yalnizca kurulum modunda is yapar).
+//
+// NEDEN AYRI: panel, ag daha "ariyor" halindeyken aciliyor; kurulum
+// moduna GECIS ondan sonra oluyor. Panelin icinde kalsaydi kayitli ag
+// olmayan cihazda captive portal hic calismazdi — gerekce .cpp'de.
+//
+// Birden fazla kez cagrilabilir, ikincisi hicbir sey yapmaz.
+void panel_dns_baslat();
+
 // Kurulum modundan cikildi (ag baglandi): DNS ele gecirme kapansin.
 // Acik kalirsa ev agindaki butun DNS sorgularina cevap vermeye
 // devam eder ve baska cihazlarin internetini bozar.

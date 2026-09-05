@@ -1,2 +1,2 @@
-3.0.14
-Gecikme uyarıları artık kısa ve seyrek; ortam sesi yanlış uyarı açmıyor.
+3.0.15
+Telefon Pati'nin ağına bağlanınca kurulum sayfası artık kendiliğinden açılıyor; kayıtlı ağı olmayan cihazlarda hiç açılmıyordu. Ayrıca sunucu geçici hata verdiğinde Pati sonsuz yeniden bağlanma döngüsüne girmiyor.

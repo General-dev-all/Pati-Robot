@@ -695,6 +695,17 @@ extern "C" void app_main()
     int kurulum_tik = 0;
     while (pati::ag_durumu() != pati::AgDurumu::Bagli) {
         if (pati::ag_durumu() == pati::AgDurumu::Kurulum) {
+            // Captive portal DNS'i BURADA aciliyor.
+            //
+            // panel_baslat() sirasinda durum henuz "Ariyor" oluyor ve
+            // orada acilan bir DNS kurulum modunu hic gormuyordu; kayitli
+            // agi olmayan cihazda telefon baglaninca sayfa kendiliginden
+            // acilmiyordu (gerekce pati_panel.cpp). Burasi kurulum
+            // modunun gercekten basladigi ilk yer.
+            //
+            // Her turda cagriliyor ama ikinci cagri hicbir sey yapmiyor.
+            pati::panel_dns_baslat();
+
             pati::gozler_durum("uykulu");   // "beni ayarla" hali
             if (++kurulum_tik % 5 == 0) {
                 ESP_LOGI(ETIKET,
