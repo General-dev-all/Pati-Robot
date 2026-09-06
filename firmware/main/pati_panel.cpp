@@ -374,8 +374,11 @@ esp_err_t ayar_isle(httpd_req_t* r)
         // Sinir ayar katmaninda (10-100); panel gonderse bile disina
         // cikmiyor. Uygulandigi yer beden_surus(), yani cihaz.
         ayar_beden_hiz_yaz(static_cast<int>(json_sayi(k, "deger", 70)));
-    } else if (alan == "sevinc") {
-        ayar_sevinc_yaz(json_sayi(k, "deger", 0) != 0);
+    } else if (alan == "hareket") {
+        // Varsayilan 1: eksik `deger` gelirse ozellik ACIK kalsin.
+        // Sifir varsayilani, bozuk bir istekle Pati'yi sessizce
+        // hareketsiz birakirdi.
+        ayar_beden_hareket_yaz(json_sayi(k, "deger", 1) != 0);
     } else if (alan == "ad" || alan == "yas") {
         hafiza_cocugu_tanimla(json_dize(k, "ad"),
                               static_cast<int>(json_sayi(k, "yas", 0)));

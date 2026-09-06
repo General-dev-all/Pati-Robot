@@ -231,24 +231,126 @@ Panelin sıfır göndermesine **güvenmiyoruz**: unutan bir panel, kaçan bir
 robot demek. Panel ayrıca sekme arka plana atılınca da durduruyor
 (`pointerup` o durumda hiç gelmiyor), ama güvenlik ona bağlı değil.
 
-### Kollar özerk, tekerlekler değil
+### 🔴 Özerk hareket — Pati döner, ilerlemez
 
-Kollar Pati konuşurken kendiliğinden hareket ediyor: konuşma başlayınca
-bir jest, sonra **3–7 saniye rastgele** bekleme, konuşma sürüyorsa yeni
-jest. Sabit aralık iki cümlede fark ediliyor ve mekanik görünüyor.
+Pati konuşurken kendiliğinden kıpırdıyor: konuşma başlayınca bir jest,
+sonra **3–7 saniye rastgele** bekleme, konuşma sürüyorsa yeni jest.
+Sabit aralık iki cümlede fark ediliyor ve mekanik görünüyor.
 
-Tekerlekler yalnızca panelden. Sebebi teknik: **Pati'de uçurum sensörü
-yok.** Masanın kenarını görebileceği hiçbir yol yok, dolayısıyla kendi
-kararıyla ilerleyen bir Pati eninde sonunda düşer.
+06.09.2026'da tekerlekler de bu jestlere katıldı. Ondan önce tekerlek
+tamamen panele bağlıydı ve gerekçesi şuydu: **Pati'de uçurum sensörü
+yok**, masanın kenarını görebileceği hiçbir yol yok, kendi kararıyla
+ilerleyen bir Pati eninde sonunda düşer.
 
-Tek istisna **sevinç dönüşü** (varsayılan kapalı): iki motor ters yönde,
-2 × 150 ms. Robot yerinde döner, yer değiştirmez — yapı gereği masadan
-düşemez.
+**Karar değişti, gerekçe değişmedi.** Eski kural yanlış yerde
+duruyordu: yasaklanması gereken *tekerlek* değil, *yer değiştirme*ydi.
 
-**Tekerlekler dönerken yeni jest başlamıyor.** İkisi de aynı AA
-hattından besleniyor; motor kalkışı gerilimde çöküntü yapıyor ve o anda
-servo hareket ederse titriyor. Kondansatör gerektirmeyen bedava bir
-önlem.
+Şimdi özerkliğin tamamı tek bir sayıyla anlatılıyor:
+
+```
+sol = +teker        sag = -teker
+```
+
+İki tekerlek her zaman ters yönde → Pati yerinde döner, yer
+değiştirmez. **Bu bir yorumdaki uyarı değil, tipin kendisi:** jest
+karesinin tek bir `teker` alanı var, dolayısıyla ileri giden bir jest
+*yazılamıyor*. Kuralı bilmeyen biri de bozamıyor.
+
+#### Jest tablosunun üç kuralı
+
+Üçü de `firmware/test/beden_karsilastir.cpp` §7'de zorlanıyor.
+
+| # | Kural | Bozulursa ne olur |
+|---|---|---|
+| 1 | Tekerlek dönen kare **kol oynatmaz** | Motor kalkışı AA hattında çöküntü yapıyor; o anda hareket eden servo titriyor ya da sıfırlanıyor (06.09.2026'da yaşandı) |
+| 2 | Yön değiştirmeden önce **sıfır karesi** var | `motor_rampa` yön değişimini bilerek yavaş geçiyor (5/tik = 400 ms). Araya sıfır konmazsa 150 ms'lik kare boyunca motor yalnızca yavaşlar, hiç dönmez — belirtisi "jest çalışmıyor" olur ve sebebi rampada aranmaz |
+| 3 | **Net dönüş sıfır** | Pati her jestten sonra biraz daha başka yöne bakar; çocuğun "ileri" sandığı yön kayar ve kumanda öğrenilemez olur |
+
+Ayrıca bir jestin toplam tekerlek süresi **900 ms**'yi aşamıyor.
+
+| Jest | Tekerlek | Ne anlatıyor |
+|---|---|---|
+| `dinlen` `selam` `iki_kol` `alkis` `dusun` | — | yalnızca kol |
+| `sevin` | 400 ms | sağ dön, sol dön, iki kol yukarı |
+| `titre` | 480 ms | çok kısa hızlı titreşim — kıkırdama |
+| `hayir` | 680 ms | küçük sağ-sol: **kafa sallayıp "hayır" demek** |
+| `bak_etrafina` | 440 ms | yavaş dön, dur ve bak, geri dön |
+| `dans` | 720 ms | kol ve dönüş sırayla, koreografi |
+
+`hayir` ve `dans` **kendiliğinden seçilmiyor** — yalnızca istenince.
+Biri anlam taşıyor (rastgele "hayır" demek tuhaf olurdu), diğeri uzun.
+
+#### Sıklık — seyreklik bir süs değil
+
+Sırası gelen jestin tekerlekli olma ihtimali **üçte bir**, ve iki
+tekerlekli jest arasında **en az 12 saniye** var. Yerinde dönüş yer
+değiştirmiyor ama tekerlek kayması her dönüşte birkaç milimetrelik
+**ikinci dereceden** bir sürünme bırakıyor; 12 saniye o milimetrelerin
+birikmesine izin vermiyor. Sürekli kıpırdayan bir robot ayrıca sevimli
+değil, huzursuz görünüyor.
+
+Konuşma **başında** tekerlek yok, bilerek: her cümlenin başında dönmek
+hem sıkıcı hem gereksiz motor kalkışı olurdu.
+
+#### Tek boğaz
+
+Pati'nin kendi kararıyla dönen tekerlek **tek bir yerden** geçiyor
+(`pati_beden.cpp`, "OZERK HAREKET — TEK BOGAZ"). Özerk jest, sesli
+komut, panelin jest düğmesi — hepsi. Üç kural, sırasıyla:
+
+1. **Çocuğun parmağı her şeyi yener.** Joystick'ten komut geldiyse akan
+   jest iptal ve tekerlek onun.
+2. **Anahtar kapalıysa tekerlek yok.** Kollar çalışmaya devam ediyor.
+3. **Hız tavanı özerk harekete de uygulanıyor.** Kaydırıcıyı kısan
+   ebeveyn Pati'nin kendi hareketlerini de kısmış oluyor; iki ayrı sayı
+   olsaydı panel yalan söylerdi.
+
+#### Kol ile tekerlek hiç aynı anda hareket etmiyor
+
+Üç ayrı önlem, hepsi aynı ölçülmüş sebep için (aynı AA hattı, motor
+kalkışında gerilim çöküntüsü):
+
+- Jest tablosu aynı karede ikisini birden komut edemiyor (kural 1)
+- Tekerlek dönerken **servo darbesi kesiliyor** — hedefe yeni varmış
+  bir servo 250 ms daha tutma torku uyguluyor ve asıl akım orada
+- Tekerlek dönerken **kol duruyor** (hedefini unutmadan; dönüş bitince
+  kaldığı yerden devam ediyor)
+
+⚠️ **Tekerlek karesi kolun varmasını beklemiyor.** Beklemek tekerleği
+kola bağlardı: kol yolda takılırsa kare hiç ilerlemez ve tekerlek
+**sınırsız** dönerdi. Bir motorun durma koşulu asla başka bir şeyin
+varması olmamalı — yer değiştirme sıfır olsa bile.
+
+### Sesli komut — asıl risk yanlış anlama değil
+
+Çocuk "dans et" deyince Pati dans ediyor. Bunu model, zaten açık olan
+`yuz_ifadesi` aracına eklenen `hareket` alanıyla istiyor.
+
+**İkinci bir araç eklenmedi ve bu ölçüme dayanıyor:** araç çağrısı
+medyanı ~682 ms artırıyor ve cihazda araçlar **sıralı** çalışıyor
+(istemci `NON_BLOCKING` alanını setup'a yazmıyor). İkinci bir araç,
+modele durup beklemek için ikinci bir sebep olurdu; oysa model bu aracı
+duygusu değiştiğinde nasılsa çağırıyor.
+
+Alan ve bedeni anlatan prompt eki **yalnızca beden takılıyken**
+gönderiliyor — olmayan bir bedeni anlatmak, Pati'ye yapamayacağı bir
+şey vaat ettirirdi. Beden takılıp çıkarıldığında beden katmanı oturum
+tazelemesi istiyor (`ayar_yenileme_iste`), yani karar bayatlamıyor.
+
+⚠️ **"Nasılsın" deyince ileri gider mi?** Sorunun kendisi yanlış yerde
+duruyor. Yanlış anlama ihtimali zaten düşük — bu ASR'de kelime yakalama
+değil, dil modelinin tanımlı bir aracı seçmesi. Ama önemli olan o
+değil: **"ileri git" DOĞRU anlaşılırsa da Pati masadan düşer.** Üstelik
+joystick'in aksine sesli komutun üstünde parmak yok, yani ölü adam
+zamanlayıcısı onu koruyamaz — onay sürekli değil, tek seferlik.
+
+Bu yüzden çözüm "model daha iyi anlasın" değil, **sözlükte ilerlemenin
+hiç olmaması**. Yanlış anlamanın en kötü sonucu: Pati garip bir anda
+sevimli bir dönüş yapar.
+
+Pati yürüyemediğini ayrıca **söylüyor**: *"Ben kendim yürüyemem, gözüm
+yok, masadan düşerim! Ama telefondaki düğmelerden beni sen
+sürebilirsin."* Bu doğru, ve karakterin parçası.
 
 ---
 
@@ -256,7 +358,14 @@ servo hareket ederse titriyor. Kondansatör gerektirmeyen bedava bir
 
 Kumanda kartı **yalnızca beden takılıyken** görünüyor. Joystick, kol
 düğmeleri (her dokunuşta çeyrek adım), hazır jestler, hız sınırı
-(varsayılan %60) ve sevinç anahtarı.
+(varsayılan panelde %50 = cihazda %70) ve **"Konuşurken kıpırdasın"**
+anahtarı (varsayılan AÇIK).
+
+Tekerlek kullanan jest düğmeleri `data-teker` işaretli ve anahtar
+kapalıyken **sönüyor**. Gizlenmiyor: düğmenin varlığı anahtarı açınca
+ne kazanılacağını gösteriyor. Basıp hiçbir şey olmaması ise çocuğa
+düğmenin bozuk olduğunu düşündürürdü — mavi tuş için de aynı karar
+verilmişti.
 
 `POST /api/beden` — sıcak yol, dokunma sürerken 150 ms'de bir çağrılıyor.
 İçinde NVS, I2C ve kilit yok.
@@ -264,7 +373,10 @@ düğmeleri (her dokunuşta çeyrek adım), hazır jestler, hız sınırı
 ```json
 { "x": 40, "y": 80 }          joystick konumu, -100..100
 { "kol_sol": 75 }             kaldırma yüzdesi 0..100
-{ "jest": "selam" }           dinlen · selam · iki_kol · alkis · dusun
+{ "jest": "selam" }           yalnızca kol: dinlen · selam · iki_kol
+                              · alkis · dusun
+                              tekerlekli:   sevin · titre · hayir
+                              · bak_etrafina · dans
 ```
 
 Karıştırma (`sol = y+x`, `sağ = y−x`) ve hız tavanı **cihazda**. Panel
@@ -273,8 +385,14 @@ dursun (panel gönderse bile aşılamasın), ve karıştırmanın işareti konak
 testinde yakalanabilsin — JS'te olsaydı "sola bas, sağa gitsin" hatası
 ancak robot masadayken fark edilirdi.
 
-Hız sınırı ve sevinç anahtarı `/api/ayar` üzerinden NVS'e yazılıyor
-(`beden_hiz`, `sevinc`).
+Hız sınırı ve hareket anahtarı `/api/ayar` üzerinden NVS'e yazılıyor
+(`beden_hiz`, `hareket`).
+
+⚠️ NVS anahtarı `sevinc` değil `hareket` — bilerek yeni. Aynı anahtar
+kullanılsaydı, eski "sevinince yerinde dönsün" anahtarını bir kez
+kapatmış bir cihaz yeni özelliği **kapalı** görürdü; yani "varsayılan
+açık" o cihazda hiç gerçekleşmezdi. Eski anahtar `ayar_sifirla`'da
+hâlâ siliniyor.
 
 ### 🔴 Hız sınırı: panel 0–100 gösterir, cihaz 40–100 saklar
 

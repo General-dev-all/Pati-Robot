@@ -48,6 +48,41 @@ IFADELER = [
     "uykulu",
 ]
 
+# ---------------------------------------------------------------------------
+# HAREKETLER — modelin bedene yaptirabilecegi seyler
+# ---------------------------------------------------------------------------
+#
+# 🔴 HICBIRI PATI'YI YERINDEN GOTURMUYOR. Listedeki her hareket ya kol
+# oynatiyor ya YERINDE donuyor (iki tekerlek ters yonde). Pati'de ucurum
+# sensoru yok, masanin kenarini goremiyor; ilerleyen bir hareket eninde
+# sonunda dusmek demek.
+#
+# Bu kisitlama BURADA bir liste degil, firmware'de bir YAPI: jest
+# tablosunun tek bir `teker` alani var ve anlami "yerinde donus hizi"
+# (pati_beden_matematik.hpp). Ileri giden bir jest YAZILAMIYOR.
+#
+# ⚠ SESLI KOMUTUN ASIL RISKI YANLIS ANLAMA DEGIL, DOGRU ANLAMA.
+# Cocuk "ileri git" dedigini Pati dogru anlarsa da masadan duser.
+# Ustelik joystick'in aksine sesli komutun ustunde parmak yok: olu
+# adam zamanlayicisinin koruyabilecegi bir sey degil, cunku onay
+# surekli degil tek seferlik. Bu yuzden cozum "daha iyi anlasin"
+# degil, sozlukte ilerlemenin HIC OLMAMASI.
+#
+# Adlar firmware'deki jest tablosuyla birebir ayni olmali; konak testi
+# (firmware/test/beden_karsilastir.cpp) her adin tabloda karsiligi
+# oldugunu dogruluyor.
+HAREKETLER = [
+    "sevin",         # yerinde donup kollari kaldirir
+    "dans",          # kol + donus koreografisi
+    "hayir",         # kucuk sag-sol: kafa sallayip "hayir" demek
+    "bak_etrafina",  # yavas don, dur, geri don
+    "titre",         # cok kisa hizli titresim: kikirdama
+    "selam",         # el sallar (yalnizca kol)
+    "alkis",         # alkislar (yalnizca kol)
+    "iki_kol",       # iki kol yukari (yalnizca kol)
+]
+
+
 # Konusma akisina gore Python'un kendi surdugu durumlar. Bunlar
 # modele SORULMUYOR — cunku model "su an dinliyorum" demeyi
 # beceremez, bunu zaten biz biliyoruz.
@@ -69,7 +104,38 @@ AKIS_DURUMLARI = ("bos", "dinliyor", "dusunuyor", "konusuyor")
 ARAC_ADI = "yuz_ifadesi"
 
 
-def arac_tanimi() -> dict:
+def arac_tanimi(beden: bool = False) -> dict:
+    """Arac tanimi. `beden=True` ise `hareket` alani da var.
+
+    🔴 IKINCI BIR ARAC EKLEMIYORUZ, BU ARACA ALAN EKLIYORUZ.
+
+    Sebep olculmus: arac cagrisi medyani 2007 -> 1325 ms'ye dusurmustu,
+    yani ~682 ms EKLIYOR, ve cihazda araclar SIRALI calisiyor (istemci
+    NON_BLOCKING alanini setup'a yazmiyor). Ikinci bir arac, modele
+    durup beklemek icin ikinci bir sebep olurdu.
+
+    Oysa model bu araci duygusu degistiginde nasilsa cagiriyor;
+    `hareket` alani o cagriya bedavaya biniyor.
+
+    `beden=False` iken alan SEMADA HIC YOK: beden takili degilken
+    modele yapamayacagi bir sey teklif etmenin anlami yok, ve
+    olmayan bir sey icin sema buyutmenin de.
+    """
+    ozellikler = {
+        "ifade": {
+            "type": "STRING",
+            "enum": IFADELER,
+            "description": "Gosterilecek yuz ifadesi",
+        },
+    }
+    if beden:
+        ozellikler["hareket"] = {
+            "type": "STRING",
+            "enum": HAREKETLER,
+            "description": ("Bedenin yapacagi hareket. Istege bagli. "
+                            "Hicbiri robotu yerinden goturmez."),
+        }
+
     return {
         "functionDeclarations": [{
             "name": ARAC_ADI,
@@ -82,13 +148,7 @@ def arac_tanimi() -> dict:
             ),
             "parameters": {
                 "type": "OBJECT",
-                "properties": {
-                    "ifade": {
-                        "type": "STRING",
-                        "enum": IFADELER,
-                        "description": "Gosterilecek yuz ifadesi",
-                    },
-                },
+                "properties": ozellikler,
                 "required": ["ifade"],
             },
         }]
@@ -105,9 +165,43 @@ degistiriyorsun: sevinince "mutlu" ya da "cok_mutlu", uzulunce
 "uzgun", sasirinca "saskin", sitem edince "somurtkan", sakalasirken
 "afacan", merak edince "meraklı".
 
-SADECE IFADEN DEGISTIGINDE CAGIR. Ayni ifade devam ediyorsa cagirma,
-"notr" demek icin de cagirma — her cagri cevabini geciktiriyor ve
-cocuk seni beklemis oluyor. Coguu turda cagirmana gerek yok."""
+IFADEN DEGISTIGINDE ya da HAREKET ETMEK ISTEDIGINDE cagir. Ayni
+ifade devam ediyorsa ve hareket de etmeyeceksen cagirma, "notr"
+demek icin de cagirma — her cagri cevabini geciktiriyor ve cocuk
+seni beklemis oluyor. Coguu turda cagirmana gerek yok."""
+
+
+# Beden TAKILIYKEN sistem promptunun sonuna ayrica ekleniyor
+# (pati_sohbet.cpp · prompt_kur). Beden yokken hic gonderilmiyor:
+# olmayan bir bedeni anlatmak, Pati'ye yapamayacagi bir sey vaat
+# ettirirdi.
+BEDEN_PROMPT_EKI = """
+
+BEDENIN VAR:
+Su an bir govdeye takilisin: iki kolun ve iki tekerlegin var.
+`yuz_ifadesi` aracini cagirirken `hareket` alanini da doldurursan o
+hareketi yaparsin:
+
+  sevin         sevindiginde — yerinde donup kollarini kaldirirsin
+  dans          "dans et" denince
+  hayir         bir seye "hayir" derken, kafani sallar gibi
+  bak_etrafina  merak edince, etrafi arastirirken
+  titre         cok heyecanlanince, gulerken
+  selam         merhaba ya da gule gule derken
+  alkis         cocugu tebrik ederken
+  iki_kol       "yasasin!" derken
+
+⚠ YURUYEMIYORSUN. Gozun yok, masanin kenarini goremiyorsun; ilerlersen
+dusersin. Cocuk "ileri git", "yanima gel", "biraz yuru", "sag tarafa
+git" derse GITME ve gidiyormus gibi de yapma. Dogruyu soyle ve yolu
+goster, ornegin: "Ben kendim yuruyemem, gozum yok, masadan duserim!
+Ama telefondaki dugmelerden beni sen surebilirsin." Istersen yaninda
+`hayir` hareketini yap.
+
+Yukaridaki hareketlerin hepsi ya kol oynatmak ya YERINDE donmektir;
+hicbiri seni yerinden goturmez, o yuzden hepsi guvenli.
+
+Her turda hareket etme — arada bir yap ki ozel kalsin."""
 
 
 class IfadeDefteri:

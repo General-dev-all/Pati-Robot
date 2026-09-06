@@ -626,3 +626,8 @@ button.tehlike { color: var(--kalir); border-color: rgba(248, 81, 73, .5); }
    sakliyor; iki sayi farkli oldugu icin gercegi de yaziyoruz. Kucuk ve
    soluk: ebeveynin okudugu sayi ustteki, bu yalnizca teshis icin. */
 #vBedenGercek { display: block; margin-top: 4px; opacity: .75; }
+
+/* Anahtar kapaliyken tekerlekli jest dugmeleri sonuyor. Gizlemek
+   yerine SONDURUYORUZ: dugmenin varligi, anahtari acinca ne
+   kazanilacagini gosteriyor. */
+[data-teker]:disabled { opacity: .35; cursor: not-allowed; }

@@ -55,12 +55,22 @@ bool ayar_yuz_araci();
 // sinir cihazda dursun, panel gonderse bile asilamasin.
 int ayar_beden_hiz();
 
-// "Pati sevinince yerinde donsun" — varsayilan KAPALI.
+// "Pati konusurken kendi kendine kipirdasin" — varsayilan ACIK
+// (06.09.2026, kullanicinin karari).
 //
-// Iki motor TERS yonde donuyor, yani robot yerinde doner ve yer
-// degistirmez; yapi geregi masadan dusemez. Tekerlekleri Pati'nin kendi
-// kararina acmanin tek guvenli bicimi bu.
-bool ayar_sevinc();
+// KAPALIYKEN TEKERLEK YALNIZCA JOYSTICK'TEN DONER. Kollar her iki
+// halde de calisiyor; anahtarin ebeveyne verdigi soz tam olarak bu,
+// ve tek cumleyle anlatilabilmesi bilincli.
+//
+// Anahtar hem ozerk jestleri hem cocugun SESLI komutunu kapsiyor:
+// ikisi de Pati'nin ustunde parmak olmadan hareket etmesi demek.
+// Panelin jest dugmeleri ayri — orada cocugun parmagi var.
+//
+// ⚠ Yer degistirme riski bu anahtarla DEGIL, jest tablosunun yapisiyla
+// kapatiliyor: karenin tek `teker` alani var ve iki tekerlek her zaman
+// ters yonde donuyor (pati_beden_matematik.hpp). Anahtar kapatilsa da
+// acilsa da Pati ilerleyemiyor.
+bool ayar_beden_hareket();
 
 // Hepsi NVS'e isliyor. Tur sonu gerektirenler bayragi kaldiriyor.
 void ayar_ses_adi_yaz(const std::string& ad);
@@ -70,7 +80,7 @@ void ayar_soz_kesme_yaz(bool acik);
 void ayar_vad_yaz(int ms);
 void ayar_yuz_yaz(bool acik);
 void ayar_beden_hiz_yaz(int yuzde);
-void ayar_sevinc_yaz(bool acik);
+void ayar_beden_hareket_yaz(bool acik);
 
 void ayar_sifirla();
 
@@ -78,6 +88,19 @@ void ayar_sifirla();
 // tazeledikten sonra temizliyor.
 bool ayar_yenileme_gerekli();
 void ayar_yenileme_temizle();
+
+// Ayar disi bir sebeple tazeleme iste.
+//
+// Tek cagirani beden algilama (pati_beden.cpp): beden takilip
+// cikarildiginda modele giden arac semasi ve prompt eki degisiyor —
+// `hareket` alani yalnizca beden takiliyken gonderiliyor, cunku
+// olmayan bir bedeni anlatmak Pati'ye yapamayacagi bir sey vaat
+// ettirirdi.
+//
+// 🔴 SICAK DONGUDEN CAGRILIYOR: govdesi tek bir atomik store olmali.
+// NVS, kilit ya da I2C eklenirse CLAUDE.md'deki sicak dongu tuzagina
+// dusulur (02.09.2026: cokme arasi 4,5 dk -> 0,7 dk).
+void ayar_yenileme_iste();
 
 // Panelin gosterdigi degerler (JSON parcasi, disi suslu parantez yok).
 std::string ayar_json();

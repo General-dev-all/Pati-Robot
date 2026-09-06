@@ -286,11 +286,29 @@ void prompt_kur()
     // PC'de ayni is canli.py §80-94'te yapiliyor. Iki tarafin ayni
     // metni ve ayni semayi kullanmasi sart, yoksa "PC'de gozler
     // degisiyor, robotta degismiyor" diye aranacak bir fark cikar.
+    //
+    // BEDEN TAKILIYSA ayni araca `hareket` alani ekleniyor ve bedeni
+    // anlatan prompt eki gidiyor.
+    //
+    // 🔴 IKINCI BIR ARAC DEGIL, AYNI ARACA BIR ALAN. Her arac cagrisi
+    // cevabin onune bir gidis-donus koyuyor (PC'de olculdu: ~682 ms) ve
+    // cihazda araclar SIRALI calisiyor. Ikinci bir arac, modele durup
+    // beklemek icin ikinci bir sebep olurdu; oysa model bu araci duygusu
+    // degistiginde nasilsa cagiriyor ve hareket o cagriya biniyor.
+    //
+    // BEDEN YOKKEN ALAN DA EK DE HIC GONDERILMIYOR: olmayan bir bedeni
+    // anlatmak, Pati'ye yapamayacagi bir sey vaat ettirirdi — cocuk
+    // "dans et" der, Pati "tamam!" der ve hicbir sey olmaz. Beden
+    // takilip cikarildiginda beden katmani oturum tazelemesi istiyor
+    // (pati_beden.cpp · ayar_yenileme_iste), yani bu karar bayatlamiyor.
     g_ayar.tools.clear();
     if (ayar_yuz_araci()) {
         p += YUZ_PROMPT_EKI;
+        const bool beden = beden_takili();
+        if (beden) p += BEDEN_PROMPT_EKI;
         g_ayar.tools.push_back(stackchan::conversation::ToolDefinition{
-            YUZ_ARAC_ADI, YUZ_ARAC_ACIKLAMA, YUZ_ARAC_SEMA});
+            YUZ_ARAC_ADI, YUZ_ARAC_ACIKLAMA,
+            beden ? YUZ_ARAC_SEMA_BEDEN : YUZ_ARAC_SEMA});
     }
 
     const std::string blok = hafiza_prompt_blogu();
@@ -741,25 +759,40 @@ void olayi_isle(const ConversationEvent& olay)
         break;
 
     case ConversationEventType::ToolCallRequested:
-        // MODEL KENDI IFADESINI SECTI.
+        // MODEL KENDI IFADESINI (ve varsa HAREKETINI) SECTI.
         //
-        // Tek aracimiz bu. Isin tamami bir atomik isaretci yazmak
-        // (gozler_durum), yani BEKLETMIYOR — cizim ayri gorevde.
+        // Tek aracimiz bu. Isin tamami iki atomik isaretci yazmak
+        // (gozler_durum, beden_jest), yani BEKLETMIYOR — cizim de
+        // servo/motor surusu de ayri gorevlerde.
         //
         // 🔴 CEVAP HEMEN GONDERILIYOR. Cihazda arac SIRALI calisiyor
         // (NON_BLOCKING alani istemcide yok, bkz. uretilmis baslik):
         // cevap gecikirse model susmus halde bekler ve cocuk robotun
         // dondugunu sanar. Basarisiz olursa da SESSIZ kalmiyoruz —
         // model sonsuza kadar bekleyebilir ve sebebi gorunmez olurdu.
+        //
+        // ⚠ HAREKETIN YER DEGISTIRME RISKI BURADA KONTROL EDILMIYOR,
+        // cunku EDILEMEZ HALE GETIRILDI: modelin isteyebilecegi her ad
+        // jest tablosunda duruyor ve tablonun tek `teker` alani
+        // "yerinde donus" demek (pati_beden_matematik.hpp). Model
+        // uydurma bir ad gonderse beden_jest reddediyor; gecerli bir ad
+        // gonderse de Pati yerinden gitmiyor. Ebeveynin anahtari da
+        // ayrica beden gorevinde bakiliyor — tek bogazdan geciyor.
         if (olay.tool_call.has_value()) {
             const auto& c = *olay.tool_call;
             std::string ifade;
+            std::string hareket;
             if (cJSON* a = cJSON_Parse(c.arguments_json.c_str());
                 a != nullptr) {
                 const cJSON* i =
                     cJSON_GetObjectItemCaseSensitive(a, "ifade");
                 if (cJSON_IsString(i) && i->valuestring != nullptr) {
                     ifade = i->valuestring;
+                }
+                const cJSON* h =
+                    cJSON_GetObjectItemCaseSensitive(a, "hareket");
+                if (cJSON_IsString(h) && h->valuestring != nullptr) {
+                    hareket = h->valuestring;
                 }
                 cJSON_Delete(a);
             }
@@ -768,9 +801,17 @@ void olayi_isle(const ConversationEvent& olay)
                 // ve gunluge yaziyor; burada ayrica susturmuyoruz.
                 gozler_durum(ifade.c_str());
                 ESP_LOGI(ETIKET, "ifade: %s", ifade.c_str());
-            } else {
-                ESP_LOGW(ETIKET, "yuz araci bos 'ifade' ile cagrildi: %s",
+            } else if (hareket.empty()) {
+                ESP_LOGW(ETIKET, "yuz araci bos cagrildi: %s",
                          c.arguments_json.c_str());
+            }
+            if (!hareket.empty()) {
+                // beden_jest bilinmeyen adi zaten gunluge yaziyor.
+                // Beden takili degilse sessizce hicbir sey yapmiyor;
+                // o durumda `hareket` alani semada da yok, yani
+                // buraya normalde hic gelinmiyor.
+                beden_jest(hareket.c_str());
+                ESP_LOGI(ETIKET, "hareket: %s", hareket.c_str());
             }
             if (const auto r = g_istemci->submit_tool_result(
                     c.call_id, R"({"tamam":true})");

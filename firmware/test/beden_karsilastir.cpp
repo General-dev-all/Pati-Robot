@@ -25,6 +25,12 @@
 //      cikmali; cikmazsa tekerlek donmeyip yalnizca vizildiyor ve
 //      "motor bozuk" saniliyor.
 //
+//   5. 🔴 OZERK JESTIN YER DEGISTIRMESI. Pati konusurken ve cocugun
+//      sesli komutuyla kendi kararıyla kipirdiyor. Ucurum sensoru YOK:
+//      yer degistiren bir ozerk hareket, eninde sonunda masadan
+//      dusmek demek. Tablodaki tek bir isaret hatasi bunu yapar ve
+//      ancak robot masadayken fark edilir.
+//
 // Dordu de saf tam sayi aritmetigi, yani konak makinede bedava
 // sininiyor. Donanima dokunan kisim (LEDC, GPIO) testin disinda kaldi;
 // o yuzden pati_beden_matematik.hpp ayri bir dosya.
@@ -33,6 +39,10 @@
 #include <cstdlib>
 
 #include "../main/pati_beden_matematik.hpp"
+
+// Modelin isteyebilecegi hareket adlari icin. Uretilen baslik saf
+// C++ — IDF'e dokunmuyor, konakta derleniyor.
+#include "../main/pati_kisilik_uretilmis.h"
 
 using namespace pati;
 
@@ -357,6 +367,174 @@ void egri()
     kontrol(hiz_egrisi(50) <= 30, "yarim itiste hala hizli");
 }
 
+// ---------------------------------------------------------------------------
+// 6) 🔴 OZERK DONUS — PATI YERINDEN GIDEBILIR MI?
+// ---------------------------------------------------------------------------
+//
+// Bu testteki en onemli kontrol. Pati'de ucurum sensoru yok; ozerk bir
+// hareket yer degistirdigi anda masa kenari zaman meselesi.
+//
+// Guvence bir kural degil, bir YAPI: jest_donus tek bir sayi aliyor ve
+// iki tekerlege TERS isaretle dagitiyor. Burada o yapinin gercekten
+// tutup tutmadigi sininiyor — hicbir girdi, hicbir tavan, hicbir tasma
+// iki tekerlegi ayni yone dondurememeli.
+void ozerk_donus()
+{
+    std::printf("\n  6) OZERK DONUS — yer degistirme\n");
+
+    // ---- HICBIR GIRDI ILERI GITMIYOR ------------------------------------
+    //
+    // Ileri gitmek = iki tekerlek AYNI yonde. Tum makul ve makul olmayan
+    // girdileri tarayip bunun hic olmadigini gosteriyoruz.
+    int en_buyuk = 0;
+    for (int teker = -400; teker <= 400; ++teker) {
+        for (int tavan = -50; tavan <= 200; tavan += 5) {
+            const Surus d = jest_donus(teker, tavan);
+
+            // ASIL KONTROL: toplam sifir, yani iki tekerlek her zaman
+            // ters yonde ve esit buyuklukte. Toplam sifirdan farkli
+            // olsaydi robotun net bir ilerlemesi olurdu.
+            kontrol(d.sol + d.sag == 0, "ozerk donus YER DEGISTIRIYOR");
+
+            kontrol(std::abs(d.sol) <= JEST_DONUS_EN_COK,
+                    "ozerk donus hizi ust sinirini asiyor");
+            kontrol(std::abs(d.sol) <= HIZ_TAVAN_EN_COK,
+                    "ozerk donus tam gucu asiyor");
+            if (std::abs(d.sol) > en_buyuk) en_buyuk = std::abs(d.sol);
+        }
+    }
+    std::printf("    taranan tum girdilerde sol + sag == 0\n");
+    std::printf("    en yuksek ozerk donus hizi: %%%d (sinir %%%d)\n",
+                en_buyuk, JEST_DONUS_EN_COK);
+
+    // ---- TAVAN OZERK HAREKETE DE UYGULANIYOR ----------------------------
+    //
+    // Ebeveyn kaydiriciyi kisiyorsa Pati'nin KENDI hareketleri de
+    // kisilmali. Ayri kalsalardi panel yalan soylerdi: "hizi dusurdum"
+    // ama Pati eskisi gibi donuyor.
+    const int kisik = std::abs(jest_donus(JEST_DONUS_EN_COK,
+                                          HIZ_TAVAN_EN_AZ).sol);
+    const int acik  = std::abs(jest_donus(JEST_DONUS_EN_COK,
+                                          HIZ_TAVAN_EN_COK).sol);
+    kontrol(kisik < acik, "hiz tavani ozerk hareketi kismiyor");
+    std::printf("    tavan %%%d -> donus %%%d   ·   tavan %%%d -> donus %%%d\n",
+                HIZ_TAVAN_EN_AZ, kisik, HIZ_TAVAN_EN_COK, acik);
+
+    // Sifir istegi sifir kalmali: jest bitince tekerlek durmali.
+    for (int tavan : {HIZ_TAVAN_EN_AZ, 70, HIZ_TAVAN_EN_COK}) {
+        const Surus d = jest_donus(0, tavan);
+        kontrol(d.sol == 0 && d.sag == 0, "sifir istegi tekerlegi durdurmuyor");
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 7) JEST TABLOSU — uc kural
+// ---------------------------------------------------------------------------
+//
+// Tablo saf veri ama icindeki her hata donanima odeniyor. Ucu de
+// yazarken "kucuk bir ayrinti" gorunuyor:
+//
+//   1. Tekerlek donen kare kol oynatmamali. Ikisi ayni AA hattinda ve
+//      motor kalkisi gerilimde cokuntu yapiyor; o anda hareket eden
+//      servo titriyor ya da sifirlaniyor (06.09.2026'da yasandi).
+//
+//   2. Yon degistirmeden once sifir karesi olmali. motor_rampa yon
+//      degisimini bilerek YAVAS geciyor (5/tik = 400 ms); araya sifir
+//      konmazsa 150 ms'lik bir kare boyunca motor yalnizca yavaslar,
+//      hic donmez. Belirtisi "jest calismiyor" olur ve sebebi rampada
+//      aranmaz.
+//
+//   3. Net donus sifir olmali. Aksi halde Pati her jestten sonra biraz
+//      daha baska bir yone bakar ve cocugun "ileri" sandigi yon
+//      kayar — kumandayi ogrenilemez yapar.
+void jest_tablosu()
+{
+    std::printf("\n  7) JEST TABLOSU — %d jest\n", JEST_ADET);
+
+    for (int j = 0; j < JEST_ADET; ++j) {
+        const Jest& g = JESTLER[j];
+        kontrol(g.ad != nullptr && g.ad[0] != '\0', "jestin adi yok");
+        kontrol(g.adet > 0, "jestte hic kare yok");
+
+        bool teker_gorundu = false;
+        int  net_donus = 0;      // teker x sure
+        int  teker_ms = 0;
+        int  onceki_isaret = 0;  // en son sifir OLMAYAN yon
+
+        for (int k = 0; k < g.adet; ++k) {
+            const Kare& kare = g.kare[k];
+
+            kontrol(kare.sol == -1 || (kare.sol >= 0 && kare.sol <= 100),
+                    "kol yuzdesi araligin disinda");
+            kontrol(kare.sag == -1 || (kare.sag >= 0 && kare.sag <= 100),
+                    "kol yuzdesi araligin disinda");
+            kontrol(std::abs(kare.teker) <= JEST_DONUS_EN_COK,
+                    "kare donus sinirini asiyor");
+
+            if (kare.teker == 0) {
+                onceki_isaret = 0;   // sifir karesi: yon serbest
+                continue;
+            }
+
+            // KURAL 1
+            kontrol(kare.sol == -1 && kare.sag == -1,
+                    "tekerlek donen kare kol da oynatiyor");
+
+            // KURAL 2
+            const int isaret = (kare.teker > 0) ? 1 : -1;
+            kontrol(onceki_isaret == 0 || onceki_isaret == isaret,
+                    "yon degisiminde sifir karesi yok");
+            onceki_isaret = isaret;
+
+            teker_gorundu = true;
+            teker_ms  += kare.bekle_ms;
+            net_donus += kare.teker * static_cast<int>(kare.bekle_ms);
+        }
+
+        // KURAL 3
+        kontrol(net_donus == 0, "jestin net donusu sifir degil");
+
+        kontrol(teker_ms <= JEST_TEKER_EN_COK_MS,
+                "jestin tekerlek suresi sinirin ustunde");
+
+        // `teker_var` tabloyla tutarli mi? Yeni bir jest eklerken bu
+        // alani unutmak, jesti sessizce "kolsuz" ya da anahtardan
+        // muaf yapardi.
+        kontrol(g.teker_var == teker_gorundu,
+                "teker_var alani karelerle uyusmuyor");
+
+        std::printf("    %-14s %2d kare · teker %3d ms · net donus %d%s\n",
+                    g.ad, g.adet, teker_ms, net_donus,
+                    g.teker_var ? "  [tekerlekli]" : "");
+    }
+
+    // jest_no derleme zamaninda calismali: pati_beden.cpp jestleri
+    // numarayla istiyor ve elle yazilan bir numara, tabloya satir
+    // eklenince sessizce baska bir jesti gosterirdi.
+    static_assert(jest_no("selam") >= 0, "selam jesti yok");
+    static_assert(jest_no("sevin") >= 0, "sevin jesti yok");
+    static_assert(jest_no("dinlen") == 0, "dinlen ilk sirada degil");
+    static_assert(jest_no("boyle_bir_jest_yok") == -1,
+                  "jest_no olmayan adi buluyor");
+    kontrol(jest_no("selam") >= 0, "jest_no selami bulamiyor");
+
+    // ---- MODELIN ISTEYEBILECEGI HER AD TABLODA OLMALI -------------------
+    //
+    // Ad listesi prototype/yuz.py'den uretiliyor (HAREKET_ADLARI), jest
+    // tablosu ise burada. Ikisi ayrisirsa belirtisi "Pati bazen dans
+    // etmiyor" olur: model gecerli bir cagri yapar, cihaz adi tanimaz ve
+    // sessizce hicbir sey olmaz. Kimse bunu bir ad uyusmazligi diye
+    // okumaz.
+    const int ad_adet = static_cast<int>(sizeof(HAREKET_ADLARI)
+                                         / sizeof(HAREKET_ADLARI[0]));
+    for (int i = 0; i < ad_adet; ++i) {
+        const int no = jest_no(HAREKET_ADLARI[i]);
+        kontrol(no >= 0, "modelin isteyebilecegi hareket tabloda yok");
+        if (no < 0) std::printf("      EKSIK: %s\n", HAREKET_ADLARI[i]);
+    }
+    std::printf("    modelin %d hareket adinin hepsi tabloda var\n", ad_adet);
+}
+
 }  // namespace
 
 int main()
@@ -371,6 +549,8 @@ int main()
     yumusak_kalkis();
     kalkis_darbesi();
     egri();
+    ozerk_donus();
+    jest_tablosu();
 
     std::printf("\n  ------------------------------------------------------\n");
     if (g_hata == 0) {

@@ -587,16 +587,34 @@ function kumandaKur() {
     });
   }
 
-  const sev = $('#sevinc');
-  if (sev) {
-    sev.addEventListener('change', () => {
+  const har = $('#hareket');
+  if (har) {
+    har.addEventListener('change', () => {
+      // Dugmeleri HEMEN guncelle, cihazin cevabini bekleme: yoklama
+      // saniyede bir donuyor ve o gecikmede anahtar ile dugmeler
+      // birbiriyle celisir gorunurdu.
+      tekerJestleriniYaz(har.checked);
       fetch('/api/ayar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ alan: 'sevinc', deger: sev.checked ? 1 : 0 }),
+        body: JSON.stringify({ alan: 'hareket', deger: har.checked ? 1 : 0 }),
       }).catch(() => {});
     });
   }
+}
+
+// Tekerlek kullanan jest dugmeleri anahtar kapaliyken sonuyor.
+//
+// Sebep: anahtar kapaliyken cihaz o jestlerin tekerlek kismini zaten
+// yapmiyor (tek bogaz, pati_beden.cpp). Dugme calisir gorunup hicbir
+// sey yapmasa cocuk dugmenin bozuk oldugunu dusunurdu — panelde ayni
+// karar mavi tus icin de verilmisti: "tus ekranda ne yaziyorsa onu
+// yapar".
+function tekerJestleriniYaz(acik) {
+  document.querySelectorAll('[data-teker]').forEach((d) => {
+    d.disabled = !acik;
+    d.title = acik ? '' : 'Aşağıdaki "Konuşurken kıpırdasın" kapalı';
+  });
 }
 
 // /api/durum'dan gelen beden bilgisini karta uygular.
@@ -625,8 +643,11 @@ function bedenYaz(beden, kumanda) {
       h.value = g;
       hizYaz(g);
     }
-    const s = $('#sevinc');
-    if (s) s.checked = !!kumanda.sevinc;
+    const h2 = $('#hareket');
+    if (h2 && document.activeElement !== h2) {
+      h2.checked = !!kumanda.hareket;
+      tekerJestleriniYaz(h2.checked);
+    }
   }
 }
 

@@ -5,19 +5,40 @@
 // ve "AA'nin artisi bu karta gelmiyor" kurali pati_pinler.h'de.
 //
 // ===========================================================================
-// KOLLAR OZERK, TEKERLEKLER DEGIL
+// 🔴 PATI KENDI KARARIYLA DONER, KENDI KARARIYLA ILERLEMEZ
 // ===========================================================================
 //
-// Kollar Pati konusurken kendiliginden hareket ediyor. Tekerlekler
-// YALNIZCA panelden, cocugun parmagi altinda doniyor.
+// Kollar Pati konusurken kendiliginden hareket ediyor. Tekerlekler de
+// ediyor — ama YALNIZCA YERINDE DONEREK (06.09.2026, kullanicinin
+// karari; oncesinde tekerlek tamamen panele bagliydi).
 //
-// Ayrimin sebebi teknik: Pati'de ucurum sensoru YOK. Masanin kenarini
-// gorebilecegi hicbir yol yok, dolayisiyla kendi kararıyla ilerleyen bir
-// Pati eninde sonunda duser. "Az hareket etsin" bunu geciktirir,
-// engellemez. Kollar bu riski hic tasimiyor.
+// Karar degisti, GEREKCESI DEGISMEDI. Eski kural "tekerlekler ozerk
+// degil" diyordu ve sebebi sensor eksikligi degil, YER DEGISTIRMEYDI:
+// ucurum sensoru olmayan bir robot ilerledigi surece eninde sonunda
+// masadan duser, ve "az hareket etsin" bunu geciktirir, engellemez.
 //
-// Bir gun uzaklik ya da ucurum sensoru eklenirse bu karar yeniden
-// acilabilir; o zamana kadar acilmamali.
+// O yuzden ozerkligin tamami TEK BIR SAYIYLA anlatiliyor:
+//
+//     sol = +teker        sag = -teker
+//
+// Iki tekerlek her zaman ters yonde, yani Pati yerinde doner ve yer
+// DEGISTIRMEZ. Bu bir yorumdaki uyari degil, TIPIN KENDISI: jest
+// tablosunda ileri giden bir kare yazilamiyor
+// (pati_beden_matematik.hpp · Kare, jest_donus). Kurali bilmeyen biri
+// de bozamiyor, ve konak testi her girdide sol + sag == 0 oldugunu
+// tariyor.
+//
+// ILERLEMEK HALA YALNIZCA PANELDEN, cocugun parmagi altinda ve olu adam
+// zamanlayicisiyla. Sesli komut ilerletmiyor; Pati "yuruyemem"
+// diyor ve paneli gosteriyor (prototype/yuz.py · BEDEN_PROMPT_EKI).
+//
+// ⚠ SESLI KOMUTUN ASIL RISKI YANLIS ANLAMA DEGIL, DOGRU ANLAMA.
+// "Ileri git" DOGRU anlasilirsa da Pati masadan duser; ustelik
+// joystick'in aksine sesli komutun ustunde parmak yok, yani olu adam
+// zamanlayicisi onu koruyamaz — onay surekli degil, tek seferlik.
+//
+// Bir gun uzaklik ya da ucurum sensoru eklenirse ilerleme de acilabilir;
+// o zamana kadar acilmamali.
 //
 // ===========================================================================
 // 🔴 BU KATMAN HICBIR SEY SORMUYOR — DURUM ONA ITILIYOR
@@ -68,8 +89,12 @@ esp_err_t beden_baslat();
 bool beden_takili();
 
 // ---------------------------------------------------------------------------
-// Surus — YALNIZCA panelden
+// Surus — ILERLEMEK YALNIZCA BURADAN
 // ---------------------------------------------------------------------------
+//
+// Pati'yi gercekten YERINDEN OYNATAN tek yol bu fonksiyon, ve tek
+// cagirani panel. Ozerk hareket ve sesli komut buraya hic ugramiyor;
+// onlar yerinde donusle sinirli (bkz. beden_jest).
 //
 // `x` ve `y` JOYSTICK KONUMU, -100..+100. y ileri, x saga.
 //
@@ -105,7 +130,19 @@ void beden_kol(int sol_yuzde, int sag_yuzde);
 
 // Hazir jest oynatir. Bilinmeyen ad false donuyor (panel yaziyor).
 //
-// Adlar: "dinlen", "selam", "iki_kol", "alkis", "dusun"
+// Cagiranlar: panelin jest dugmeleri VE modelin arac cagrisi
+// (pati_sohbet.cpp — cocuk "dans et" dedi).
+//
+// Adlar ve tablo pati_beden_matematik.hpp'de:
+//   yalnizca kol : dinlen, selam, iki_kol, alkis, dusun
+//   tekerlekli   : sevin, titre, hayir, bak_etrafina, dans
+//
+// 🔴 TEKERLEKLI JESTLERIN HEPSI YERINDE DONUYOR. Yer degistirebilen
+// bir jest tabloya yazilamiyor.
+//
+// Ebeveynin "konusurken kipirdasin" anahtari BURADA bakilmiyor, beden
+// gorevindeki tek bogazda bakiliyor: yeni bir cagiran eklenince
+// unutulacak ikinci bir kontrol olmasin diye.
 bool beden_jest(const char* ad);
 
 // ---------------------------------------------------------------------------
@@ -115,9 +152,14 @@ bool beden_jest(const char* ad);
 // pati_sohbet.cpp'de gozler_konusuyor() diyen yerin yaninda cagriliyor.
 // Beden konusma durumunu SORMUYOR.
 //
-// Pati konusurken kollar rastgele jest yapiyor, arada rastgele 3-7
-// saniye bekliyor. Aralik sabit olsaydi iki cumlede fark edilir ve
-// mekanik gorunurdu.
+// Pati konusurken rastgele jest yapiyor, arada rastgele 3-7 saniye
+// bekliyor. Aralik sabit olsaydi iki cumlede fark edilir ve mekanik
+// gorunurdu.
+//
+// Jestlerin ucte biri tekerlekli (yerinde donus) ve iki tekerlekli
+// jest arasinda en az 12 saniye var. Seyreklik bir sus degil:
+// yerinde donus yer degistirmiyor ama tekerlek kaymasi her donuste
+// birkac milimetrelik ikinci dereceden bir surunme birakiyor.
 void beden_konusma_bildir(bool konusuyor);
 
 // ---------------------------------------------------------------------------

@@ -298,17 +298,44 @@ pinlerinin arasında BAT, 5V_IN, 3V3_L2 ve EXT_5V duruyor. Bu bir uyarı
 değil, **pin seçiminin sebebi** — kural böyle kurulunca yanlış pine
 kayan bir kablonun en kötü sonucu "motor sürekli dönüyor" oluyor.
 
-**Kollar özerk, tekerlekler değil.** Kollar Pati konuşurken
-kendiliğinden hareket ediyor; tekerlekler yalnızca panelden, çocuğun
-parmağı altında dönüyor. Ayrımın sebebi teknik: **Pati'de uçurum
-sensörü yok**, masanın kenarını görebileceği hiçbir yol yok. Kendi
-kararıyla ilerleyen bir Pati eninde sonunda düşer; "az hareket etsin"
-bunu geciktirir, engellemez. Bir gün mesafe ya da uçurum sensörü
-eklenirse bu karar yeniden açılabilir, o zamana kadar açılmamalı.
+🔴 **Pati kendi kararıyla DÖNER, kendi kararıyla İLERLEMEZ.**
+Konuşurken arada kendiliğinden kıpırdıyor ve çocuk "dans et" deyince
+yapıyor — ama bunların hepsi **yerinde dönüş**. Gerçekten yol almak
+hâlâ yalnızca panelden, çocuğun parmağı altında ve ölü adam
+zamanlayıcısıyla.
 
-Tek istisna **sevinç dönüşü** (varsayılan kapalı): iki motor ters yönde
-döndüğü için robot yerinde döner, yer değiştirmez — yapı gereği masadan
-düşemez.
+Ayrım keyfî değil: **Pati'de uçurum sensörü yok**, masanın kenarını
+görebileceği hiçbir yol yok. Kendi kararıyla ilerleyen bir Pati eninde
+sonunda düşer; "az hareket etsin" bunu geciktirir, engellemez.
+
+Bu yüzden özerkliğin tamamı **tek bir sayıyla** anlatılıyor:
+`sol = +teker, sag = -teker`. İki tekerlek her zaman ters yönde, yani
+yer değiştirme sıfır. **Bu bir yorum değil, tipin kendisi** — jest
+tablosunda ileri giden bir kare *yazılamıyor*
+(`pati_beden_matematik.hpp`), konak testi her girdide `sol + sag == 0`
+olduğunu tarıyor. Kuralı bilmeyen biri de bozamıyor.
+
+⚠️ **Sesli komutun asıl riski yanlış anlama değil, DOĞRU anlama.**
+"İleri git" doğru anlaşılırsa da Pati düşer. Üstelik joystick'in
+aksine sesli komutun üstünde parmak yok: ölü adam zamanlayıcısı onu
+koruyamaz, çünkü onay sürekli değil tek seferlik. Çözüm "model daha
+iyi anlasın" değil, **sözlükte ilerlemenin hiç olmaması**. Pati
+"yürüyemem" diyor ve paneli gösteriyor (`prototype/yuz.py` ·
+`BEDEN_PROMPT_EKI`).
+
+Panelde tek anahtar: **"Konuşurken kıpırdasın", varsayılan AÇIK.**
+Kapalıyken tekerlek yalnızca joystick'ten döner; kollar iki durumda da
+çalışır. Anahtar tek bir boğazda okunuyor (`pati_beden.cpp`), yeni bir
+yol açanın unutabileceği ikinci bir kontrol yok.
+
+**Hareket için İKİNCİ BİR ARAÇ YOK, var olana alan eklendi.**
+Ölçülmüş: her araç çağrısı cevabın önüne bir gidiş-dönüş koyuyor
+(~682 ms) ve cihazda araçlar **sıralı** çalışıyor. İkinci bir araç,
+modele durup beklemek için ikinci bir sebep olurdu. Bunun yerine zaten
+açık olan `yuz_ifadesi` aracına isteğe bağlı `hareket` alanı eklendi.
+Alan ve bedeni anlatan prompt eki **yalnızca beden takılıyken**
+gönderiliyor; beden takılıp çıkarılınca beden katmanı oturum
+tazelemesi istiyor (`ayar_yenileme_iste`).
 
 🔴 **Motorlar anlık tam güce ASLA geçmiyor.** Kullanıcının açık isteği
 (06.09.2026): *"bir daha motorları anlık %100'de yapma, ne olursa olsun

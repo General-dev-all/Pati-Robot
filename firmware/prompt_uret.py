@@ -67,6 +67,21 @@ _YUZ_TANIM = yuz.arac_tanimi()["functionDeclarations"][0]
 YUZ_SEMA = json.dumps(_sema_kucult(_YUZ_TANIM["parameters"]),
                       ensure_ascii=False, separators=(",", ":"))
 
+# IKI SEMA URETILIYOR: beden takili degilken `hareket` alani SEMADA HIC
+# YOK. Modele yapamayacagi bir sey teklif etmemek icin — ve sohbet
+# tarafi zaten beden takilip cikarildiginda oturumu tazeliyor
+# (pati_beden.cpp · ayar_yenileme_iste).
+YUZ_SEMA_BEDEN = json.dumps(
+    _sema_kucult(yuz.arac_tanimi(beden=True)["functionDeclarations"][0]
+                 ["parameters"]),
+    ensure_ascii=False, separators=(",", ":"))
+
+# Modelin isteyebilecegi hareket adlari. Firmware'deki jest tablosuyla
+# ayni olmali; konak testi (test/beden_karsilastir.cpp) her adin tabloda
+# karsiligi oldugunu dogruluyor. Ad uyusmazsa belirtisi "Pati bazen
+# dans etmiyor" olur ve sebebi aranmaz.
+HAREKET_LISTESI = ",\n    ".join(f'"{a}"' for a in yuz.HAREKETLER)
+
 # 🔴 hafiza_ac=False — BU BIR HATADAN CIKTI.
 #
 # Once `kisilik.SISTEM_PROMPTU` kullaniliyordu. O sabit
@@ -118,6 +133,8 @@ sinirici_denetle("prompt", PROMPT)
 sinirici_denetle("yuz araci aciklamasi", _YUZ_TANIM["description"])
 sinirici_denetle("yuz araci semasi", YUZ_SEMA)
 sinirici_denetle("yuz prompt eki", yuz.PROMPT_EKI)
+sinirici_denetle("yuz araci beden semasi", YUZ_SEMA_BEDEN)
+sinirici_denetle("beden prompt eki", yuz.BEDEN_PROMPT_EKI)
 
 # ASCII disi karakterler SORUN DEGIL — ayni karakterler kisilik.py'den
 # geliyor, yani PC de aynisini gonderiyor ve iki taraf birebir ayni metni
@@ -186,6 +203,34 @@ inline constexpr const char* YUZ_ARAC_ACIKLAMA =
     R"{SINIR}({_YUZ_TANIM["description"]}){SINIR}";
 inline constexpr const char* YUZ_ARAC_SEMA =
     R"{SINIR}({YUZ_SEMA}){SINIR}";
+
+// BEDEN TAKILIYKEN kullanilan sema — `hareket` alani bunda var.
+//
+// 🔴 IKINCI BIR ARAC DEGIL, AYNI ARACA BIR ALAN. Gerekce olculmus:
+// her arac cagrisi cevabin onune bir gidis-donus koyuyor (~682 ms) ve
+// cihazda araclar SIRALI calisiyor. Ikinci bir arac, modele durup
+// beklemek icin ikinci bir sebep olurdu; oysa model bu araci duygusu
+// degistiginde nasilsa cagiriyor.
+inline constexpr const char* YUZ_ARAC_SEMA_BEDEN =
+    R"{SINIR}({YUZ_SEMA_BEDEN}){SINIR}";
+
+// Beden TAKILIYKEN promptun sonuna ayrica ekleniyor. Beden yokken hic
+// gonderilmiyor: olmayan bir bedeni anlatmak Pati'ye yapamayacagi bir
+// sey vaat ettirirdi.
+inline constexpr const char* BEDEN_PROMPT_EKI =
+    R"{SINIR}({yuz.BEDEN_PROMPT_EKI}){SINIR}";
+
+// Modelin isteyebilecegi hareket adlari.
+//
+// 🔴 HICBIRI PATI'YI YERINDEN GOTURMUYOR — hepsi ya kol oynatiyor ya
+// YERINDE donuyor. Bu bir liste kurali degil, jest tablosunun YAPISI:
+// karenin tek bir `teker` alani var ve anlami "yerinde donus hizi"
+// (pati_beden_matematik.hpp). Ileri giden bir jest yazilamiyor.
+//
+// Konak testi her adin jest tablosunda karsiligi oldugunu dogruluyor.
+inline constexpr const char* HAREKET_ADLARI[] = {{
+    {HAREKET_LISTESI},
+}};
 
 // Arac acikken sistem promptunun SONUNA ekleniyor (PC: canli.py §80).
 // Sadece tanim yetmiyor; modele araci hatirlatmak gerekiyor.
@@ -280,6 +325,8 @@ BEKLENEN = [
     ("sistem promptu", PROMPT),
     ("yuz araci aciklamasi", _YUZ_TANIM["description"]),
     ("yuz araci semasi", YUZ_SEMA),
+    ("yuz araci beden semasi", YUZ_SEMA_BEDEN),
+    ("beden prompt eki", yuz.BEDEN_PROMPT_EKI),
     ("yuz prompt eki", yuz.PROMPT_EKI),
 ]
 

@@ -53,7 +53,20 @@ bool g_soz_kesme = false;
 int g_vad_ms = 0;
 bool g_yuz = true;
 int g_beden_hiz = 70;   // panelde %50
-bool g_sevinc = false;
+
+// 🔴 VARSAYILAN ACIK — kullanicinin acik istegi (06.09.2026):
+// "default olarak acik gelsin bu ozelligi".
+//
+// Acik olmasi guvenli, cunku ozerk hareket YAPISAL olarak yer
+// degistiremiyor (pati_beden_matematik.hpp · jest_donus). Eski
+// `sevinc` anahtari varsayilan KAPALIYDI ve o dogruydu: o zaman
+// tekerlegin Pati'ye acilmasi denenmemis bir seydi.
+//
+// ⚠ NVS ANAHTARI YENI ("hareket", eskisi "sevinc"). Ayni anahtar
+// kullanilsaydi, anahtari bir kez kapatmis olan bir cihaz yeni
+// ozelligi KAPALI gorurdu — yani "varsayilan acik" o cihazda hic
+// gerceklesmezdi.
+bool g_beden_hareket = true;
 
 std::atomic<bool> g_yenileme{false};
 
@@ -137,13 +150,14 @@ esp_err_t ayar_baslat()
         g_beden_hiz = std::clamp(static_cast<int>(v), BEDEN_HIZ_EN_AZ,
                                  BEDEN_HIZ_EN_FAZLA);
     }
-    if (nvs_get_i32(h, "sevinc", &v) == ESP_OK) g_sevinc = (v != 0);
+    if (nvs_get_i32(h, "hareket", &v) == ESP_OK) g_beden_hareket = (v != 0);
     nvs_close(h);
 
     ESP_LOGI(ETIKET, "ses=%s hiz=%.2f uyku=%d dk soz_kesme=%d vad=%d yuz=%d "
-                     "beden_hiz=%d sevinc=%d",
+                     "beden_hiz=%d hareket=%d",
              g_ses_adi.c_str(), g_hiz, g_uyku_dk, g_soz_kesme ? 1 : 0,
-             g_vad_ms, g_yuz ? 1 : 0, g_beden_hiz, g_sevinc ? 1 : 0);
+             g_vad_ms, g_yuz ? 1 : 0, g_beden_hiz,
+             g_beden_hareket ? 1 : 0);
     return ESP_OK;
 }
 
@@ -158,7 +172,7 @@ bool ayar_yuz_araci() { return g_yuz; }
 // (saniyede ~7 kez) cagiriyor; NVS'e gitseydi surus yolunda flash
 // erisimi olurdu — CLAUDE.md'deki sicak dongu tuzaginin ta kendisi.
 int ayar_beden_hiz() { return g_beden_hiz; }
-bool ayar_sevinc() { return g_sevinc; }
+bool ayar_beden_hareket() { return g_beden_hareket; }
 
 void ayar_ses_adi_yaz(const std::string& ad)
 {
@@ -228,11 +242,11 @@ void ayar_beden_hiz_yaz(int yuzde)
     // Oturum yenilemesi gerekmiyor, bu ayar Gemini'ye gitmiyor.
 }
 
-void ayar_sevinc_yaz(bool acik)
+void ayar_beden_hareket_yaz(bool acik)
 {
-    if (acik == g_sevinc) return;
-    g_sevinc = acik;
-    i32_yaz("sevinc", acik ? 1 : 0);
+    if (acik == g_beden_hareket) return;
+    g_beden_hareket = acik;
+    i32_yaz("hareket", acik ? 1 : 0);
 }
 
 void ayar_sifirla()
@@ -240,7 +254,8 @@ void ayar_sifirla()
     const nvs_handle_t h = ac(NVS_READWRITE);
     if (h != 0) {
         for (const char* a : {"ses_adi", "hiz_yuz", "uyku_dk", "soz_kesme",
-                              "vad_ms", "yuz", "beden_hiz", "sevinc"}) {
+                              "vad_ms", "yuz", "beden_hiz", "hareket",
+                              "sevinc"}) {
             nvs_erase_key(h, a);
         }
         nvs_commit(h);
@@ -250,6 +265,13 @@ void ayar_sifirla()
 }
 
 bool ayar_yenileme_gerekli() { return g_yenileme.load(); }
+void ayar_yenileme_iste()
+{
+    // Govde TEK BIR ATOMIK STORE. Gerekcesi baslikta: beden algilama
+    // sicak dongusunden cagriliyor.
+    g_yenileme.store(true);
+}
+
 void ayar_yenileme_temizle() { g_yenileme.store(false); }
 
 std::string ayar_json()
@@ -260,12 +282,12 @@ std::string ayar_json()
                   "\"hiz\":%.2f,\"ses_adi\":\"%s\"},"
                   "\"uyku\":%d,"
                   "\"konusma\":{\"soz_kesme\":%s,\"vad\":%d,\"yuz\":%s},"
-                  "\"kumanda\":{\"hiz\":%d,\"sevinc\":%s}",
+                  "\"kumanda\":{\"hiz\":%d,\"hareket\":%s}",
                   ses_seviyesi(), SES_SEVIYESI_EN_AZ, SES_SEVIYESI_EN_FAZLA,
                   g_hiz, g_ses_adi.c_str(), g_uyku_dk,
                   g_soz_kesme ? "true" : "false", g_vad_ms,
                   g_yuz ? "true" : "false",
-                  g_beden_hiz, g_sevinc ? "true" : "false");
+                  g_beden_hiz, g_beden_hareket ? "true" : "false");
     return b;
 }
 

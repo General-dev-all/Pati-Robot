@@ -105,16 +105,23 @@ constexpr int MOTOR_HZ = 5000;
 // guvenmiyoruz: unutan bir panel, kacan bir robot demek.
 constexpr std::int64_t OLU_ADAM_US = 600000;   // 600 ms
 
-// ---- sevinc donusu --------------------------------------------------------
+// ---- ozerk hareketin sinirlari --------------------------------------------
 //
-// Iki motor TERS yonde donuyor: robot yerinde doner, YER DEGISTIRMEZ.
-// Yapi geregi masadan dusemez — tekerlekleri Pati'ye acmanin tek
-// guvenli bicimi bu.
+// Pati konusurken kendiliginden kipirdiyor. Yer degistirmemesi
+// pati_beden_matematik.hpp'de YAPISAL olarak garanti (jest karesinin
+// tek `teker` alani var, iki tekerlek her zaman ters yonde). Buradaki
+// iki sayi ise SIKLIGI baglıyor.
 //
-// Varsayilan KAPALI (ayar_sevinc). Suresi kodda sabit ve kisa; ne olursa
-// olsun 2 x 150 ms sonra kendiliginden bitiyor.
-constexpr int SEVINC_HIZ = 55;
-constexpr std::int64_t SEVINC_FAZ_US = 150000;
+// 🔴 SEYREKLIK BIR SUS DEGIL, GUVENLIK SINIRIDIR. Yerinde donus yer
+// degistirmiyor ama tekerlek kaymasi ikinci dereceden bir surunme
+// birakiyor: her donuste birkac milimetre. Iki donus arasina 12 saniye
+// koymak, o milimetrelerin birikmesine izin vermiyor. Ayrica surekli
+// kipirdayan bir robot sevimli degil, huzursuz gorunuyor.
+constexpr std::int64_t TEKER_ARA_EN_AZ_US = 12000000;   // 12 sn
+
+// Sirasi gelen jestin tekerlekli olma ihtimali: uctebir. Kalan iki
+// seferde yalnizca kollar oynuyor.
+constexpr std::uint32_t TEKER_KURA = 3;
 
 // ---- zamanlama ------------------------------------------------------------
 constexpr int DONGU_MESGUL_MS = 20;    // bir sey hareket ederken
@@ -132,42 +139,10 @@ constexpr std::int64_t ALGILA_KARARLI_US = 1000000;   // 1 sn
 constexpr std::int64_t JEST_ARA_EN_AZ_US  = 3000000;
 constexpr std::int64_t JEST_ARA_EN_COK_US = 7000000;
 
-// ---------------------------------------------------------------------------
-// Jest tablosu
-// ---------------------------------------------------------------------------
-//
-// Kare = "iki kolu su yuzdeye getir, varinca su kadar bekle".
-// -1 = "bu kolu degistirme". Yuzde 0 = asagi, 100 = yukari.
-
-struct Kare {
-    std::int8_t   sol;
-    std::int8_t   sag;
-    std::uint16_t bekle_ms;
-};
-
-constexpr Kare JEST_DINLEN[]  = {{0, 0, 0}};
-constexpr Kare JEST_SELAM[]   = {{-1, 85, 90}, {-1, 55, 90},
-                                 {-1, 85, 90}, {-1, 55, 90}, {0, 0, 0}};
-constexpr Kare JEST_IKI_KOL[] = {{95, 95, 320}, {0, 0, 0}};
-constexpr Kare JEST_ALKIS[]   = {{55, 55, 60}, {30, 30, 60}, {55, 55, 60},
-                                 {30, 30, 60}, {55, 55, 60}, {0, 0, 0}};
-constexpr Kare JEST_DUSUN[]   = {{50, 0, 420}, {0, 0, 0}};
-
-struct Jest {
-    const char*   ad;
-    const Kare*   kare;
-    std::uint8_t  adet;
-    bool          kendiliginden;   // konusurken secilebilir mi
-};
-
-constexpr Jest JESTLER[] = {
-    {"dinlen",  JEST_DINLEN,  1, false},
-    {"selam",   JEST_SELAM,   5, true},
-    {"iki_kol", JEST_IKI_KOL, 2, true},
-    {"alkis",   JEST_ALKIS,   6, true},
-    {"dusun",   JEST_DUSUN,   2, true},
-};
-constexpr int JEST_ADET = sizeof(JESTLER) / sizeof(JESTLER[0]);
+// Jest tablosu pati_beden_matematik.hpp'de: saf veri, IDF'e dokunmuyor
+// ve icindeki bir hatanin bedeli donanima odeniyor. Konak testi orada
+// uc kurali zorluyor — tekerlek donen kare kol oynatmaz, yon
+// degistirmeden once sifir karesi vardir, net donus sifirdir.
 
 // ---------------------------------------------------------------------------
 // Paylasilan durum — HEPSI ATOMIK, hicbiri kilit istemiyor
@@ -185,7 +160,6 @@ std::atomic<int> g_kol_hedef[2] = {{0}, {0}};      // yuzde 0..100
 std::atomic<std::uint32_t> g_kol_elle{0};          // elle mudahale sayaci
 std::atomic<int> g_jest_istek{-1};
 std::atomic<bool> g_konusuyor{false};
-std::atomic<bool> g_sevinc_istek{false};
 
 TaskHandle_t g_gorev = nullptr;
 
@@ -275,9 +249,12 @@ void beden_gorevi(void*)
     // Konusma jesti zamanlamasi.
     std::int64_t sonraki_jest_us = 0;
 
-    // Sevinc donusu.
-    int sevinc_faz = -1;
-    std::int64_t sevinc_faz_bitis = 0;
+    // Akan jestin tekerlek istegi. Bir onceki tikte, jest ilerletme
+    // blogunda yaziliyor — 20 ms'lik gecikme goze gorunmuyor, ama
+    // hakemlik (cocugun parmagi kazanir) BU tikte yapiliyor.
+    int jest_teker = 0;
+    int son_jest = -1;
+    std::int64_t son_teker_us = 0;
 
     // Uygulanan motor degerleri — degismedikce yazmaca dokunmuyoruz.
     int uygulanan_sol = 0, uygulanan_sag = 0;
@@ -306,11 +283,18 @@ void beden_gorevi(void*)
                 ESP_LOGW(ETIKET, "BEDEN TAKILDI (%u. kez)",
                          static_cast<unsigned>(g_takma.load()));
                 // Pati bedeninin geldigini fark etsin: kollari dinlenme
-                // konumuna al ve bir kez el salla.
+                // konumuna al ve sevin.
                 g_kol_hedef[0].store(0);
                 g_kol_hedef[1].store(0);
-                g_jest_istek.store(1);   // "selam"
+                g_jest_istek.store(ayar_beden_hareket() ? jest_no("sevin")
+                                                        : jest_no("selam"));
                 sonraki_jest_us = simdi + rastgele_ara();
+                // Modele bedeni oldugunu SOYLEMEK gerekiyor: `hareket`
+                // alani ve prompt eki yalnizca beden takiliyken
+                // gonderiliyor. Bayrak atomik bir store, yani sicak
+                // dongude NVS ya da kilit yok; oturumu sohbet gorevi
+                // ilk dogal boslukta tazeliyor.
+                ayar_yenileme_iste();
             } else {
                 ESP_LOGW(ETIKET, "beden cikarildi — her sey duruyor");
                 // Cikarildi: HER SEY sifir. Pinler LEDC'de duty 0'da
@@ -318,9 +302,10 @@ void beden_gorevi(void*)
                 g_sol.store(0);
                 g_sag.store(0);
                 akan = nullptr;
-                sevinc_faz = -1;
+                jest_teker = 0;
                 g_jest_istek.store(-1);
-                g_sevinc_istek.store(false);
+                // Beden gitti: model artik hareket teklif etmesin.
+                ayar_yenileme_iste();
             }
         }
 
@@ -352,27 +337,61 @@ void beden_gorevi(void*)
             istek_sol = istek_sag = 0;
         }
 
-        // ---- SEVINC DONUSU ----------------------------------------------
+        // ---- OZERK HAREKET — TEK BOGAZ -----------------------------------
         //
-        // Yalnizca cocuk surmuyorken basliyor; surus istegi geldigi anda
-        // iptal oluyor. Suresi yapisi geregi 2 x 150 ms.
-        if (g_sevinc_istek.exchange(false)) {
-            if (sevinc_faz < 0 && istek_sol == 0 && istek_sag == 0) {
-                sevinc_faz = 0;
-                sevinc_faz_bitis = simdi + SEVINC_FAZ_US;
+        // 🔴 PATI'NIN KENDI KARARIYLA DONEN TEKERLEK BURADAN GECIYOR.
+        // Ozerk jest, sesli komut, panelin jest dugmesi — hepsi.
+        // Ebeveynin anahtari tek yerde bakiliyor; yeni bir yol acan
+        // birinin unutabilecegi ikinci bir kontrol yok.
+        //
+        // UC KURAL, sirasiyla:
+        //
+        //   1. COCUGUN PARMAGI HER SEYI YENER. Joystick'ten komut
+        //      geldiyse akan jest iptal ve tekerlek onundur. Cocuk
+        //      surerken Pati'nin kendi kafasina gore donmesi, cocuga
+        //      kumandanin bozuk oldugunu dusundururdu.
+        //
+        //   2. ANAHTAR KAPALIYSA TEKERLEK YOK. Kollar calismaya devam
+        //      ediyor — anahtarin ebeveyne verdigi soz tam olarak bu:
+        //      "tekerlek yalnizca senin cocugun parmagiyla doner".
+        //
+        //   3. HIZ TAVANI OZERK HAREKETE DE UYGULANIYOR (jest_donus).
+        //      Kaydiriciyi kisan ebeveyn Pati'nin kendi hareketlerini de
+        //      kismis oluyor; iki ayri sayi olsaydi panel yalan soylerdi.
+        const bool cocuk_suruyor = (istek_sol != 0 || istek_sag != 0);
+        if (cocuk_suruyor) {
+            if (jest_teker != 0) {
+                jest_teker = 0;
+                akan = nullptr;
+            }
+        } else if (jest_teker != 0) {
+            if (ayar_beden_hareket()) {
+                const Surus d = jest_donus(jest_teker, ayar_beden_hiz());
+                istek_sol = d.sol;
+                istek_sag = d.sag;
+            } else {
+                jest_teker = 0;
             }
         }
-        if (sevinc_faz >= 0 && (istek_sol != 0 || istek_sag != 0)) {
-            sevinc_faz = -1;   // cocuk sürmeye basladi: sevinc iptal
-        }
-        if (sevinc_faz >= 0) {
-            if (simdi >= sevinc_faz_bitis) {
-                ++sevinc_faz;
-                sevinc_faz_bitis = simdi + SEVINC_FAZ_US;
+
+        // 🔴 TEKERLEK DONERKEN SERVO DARBESI KESILIYOR.
+        //
+        // Ikisi de ayni AA hattindan besleniyor ve motor kalkisi
+        // gerilimde cokuntu yapiyor; o cokusu goren bir servo titriyor
+        // ya da sifirlanip kendi acisina sicriyor (06.09.2026'da yasandi,
+        // TESHIS.md). Jest tablosu zaten ayni karede kol oynatmiyor, ama
+        // hedefe YENI varmis bir servo 250 ms daha tutma torku
+        // uyguluyor — asil akim orada.
+        //
+        // Kol dusmuyor: hafif plastik ve dinlenme acisi yercekimine
+        // yaslaniyor. Kod bu ozelligi zaten kullaniyor (KOL_SUS_GECIKME).
+        if (jest_teker != 0) {
+            for (int i = 0; i < 2; ++i) {
+                if (darbe_acik[i]) {
+                    kanal_duty(KOL_KANAL[i], 0);
+                    darbe_acik[i] = false;
+                }
             }
-            if (sevinc_faz == 0)      { istek_sol =  SEVINC_HIZ; istek_sag = -SEVINC_HIZ; }
-            else if (sevinc_faz == 1) { istek_sol = -SEVINC_HIZ; istek_sag =  SEVINC_HIZ; }
-            else                      { sevinc_faz = -1; }
         }
 
         // ---- KALKIS DARBESI + YUMUSAK RAMPA -----------------------------
@@ -442,23 +461,44 @@ void beden_gorevi(void*)
         const int istek = g_jest_istek.exchange(-1, std::memory_order_relaxed);
         if (istek >= 0 && istek < JEST_ADET) {
             akan = &JESTLER[istek];
+            son_jest = istek;
+            // Elle ya da sesle istenen jest de seyreklik sayacini
+            // besliyor: cocuk "dans et" dedikten hemen sonra Pati'nin
+            // ayrica kendi kafasina gore donmesi, iki hareketi ust uste
+            // bindirirdi.
+            if (JESTLER[istek].teker_var) son_teker_us = simdi;
             kare_no = 0;
             kare_bekle_bitis = 0;
         } else if (akan == nullptr && g_konusuyor.load(std::memory_order_relaxed)
                    && !suruyor && simdi >= sonraki_jest_us) {
-            // 🔴 TEKERLEKLER DONERKEN YENI JEST BASLAMIYOR.
+            // 🔴 TEKERLEKLER DONERKEN YENI JEST BASLAMIYOR (yukaridaki
+            // `!suruyor` kosulu). Ikisi de ayni AA hattindan besleniyor;
+            // motor kalkisi gerilimde cokuntu yapiyor ve o anda hareket
+            // eden servo titriyor. Kondansator gerektirmeyen bedava bir
+            // onlem.
             //
-            // Ikisi de ayni AA hattindan besleniyor. Motor kalkisi
-            // gerilimde cokuntu yapiyor; o anda servo hareket ederse
-            // titriyor ya da sifirlaniyor. Kondansator gerektirmeyen
-            // bedava bir onlem.
+            // ONCE TUR SECILIYOR, SONRA JEST. Dogrudan rastgele
+            // secilseydi tekerlekli jestlerin payi tabloya kac satir
+            // ekledigimize bagli olurdu — yani sikligi kimse
+            // secmemis olurdu.
+            const bool teker_uygun =
+                ayar_beden_hareket()
+                && simdi - son_teker_us >= TEKER_ARA_EN_AZ_US;
+            const bool teker_turu =
+                teker_uygun && (esp_random() % TEKER_KURA) == 0;
+
             int aday = -1;
-            for (int deneme = 0; deneme < 8 && aday < 0; ++deneme) {
+            for (int deneme = 0; deneme < 12 && aday < 0; ++deneme) {
                 const int s = static_cast<int>(esp_random() % JEST_ADET);
-                if (JESTLER[s].kendiliginden && &JESTLER[s] != akan) aday = s;
+                if (!JESTLER[s].kendiliginden) continue;
+                if (JESTLER[s].teker_var != teker_turu) continue;
+                if (s == son_jest) continue;   // ust uste ayni jest olmasin
+                aday = s;
             }
             if (aday >= 0) {
                 akan = &JESTLER[aday];
+                son_jest = aday;
+                if (JESTLER[aday].teker_var) son_teker_us = simdi;
                 kare_no = 0;
                 kare_bekle_bitis = 0;
             }
@@ -471,9 +511,21 @@ void beden_gorevi(void*)
             if (k.sol >= 0) g_kol_hedef[0].store(k.sol, std::memory_order_relaxed);
             if (k.sag >= 0) g_kol_hedef[1].store(k.sag, std::memory_order_relaxed);
 
+            // 🔴 TEKERLEK KARESI KOLUN VARMASINI BEKLEMIYOR.
+            //
+            // Beklemek, tekerlegi KOLA bagli hale getirirdi: kol yolda
+            // takilirsa (panelden yeni bir hedef geldi, ya da onceki
+            // jest yarim kaldi) kare hic ilerlemez ve tekerlek SINIRSIZ
+            // doner. Bir motorun durma kosulu asla baska bir seyin
+            // varmasi olmamali — yer degistirme sifir olsa bile.
+            //
+            // Kolun kendisi zaten donus boyunca duruyor (asagida) ve
+            // servo darbesi kesiliyor, yani "ayni anda ikisi birden
+            // hareket etmesin" kurali korunuyor.
             const bool vardi =
-                (su_an10[0] == kol_derece10(g_kol_hedef[0].load(), false))
-                && (su_an10[1] == kol_derece10(g_kol_hedef[1].load(), true));
+                (k.teker != 0)
+                || ((su_an10[0] == kol_derece10(g_kol_hedef[0].load(), false))
+                    && (su_an10[1] == kol_derece10(g_kol_hedef[1].load(), true)));
 
             if (vardi) {
                 if (kare_bekle_bitis == 0) {
@@ -486,13 +538,29 @@ void beden_gorevi(void*)
             }
         }
 
+        // Karenin tekerlek istegi. Bir SONRAKI tikte hakemlikten
+        // geciyor; jest bitince kendiliginden sifirlaniyor, yani
+        // "jest yarida kaldi ama tekerlek donmeye devam etti" hali
+        // yapisi geregi olusamiyor.
+        jest_teker = (akan != nullptr) ? akan->kare[kare_no].teker : 0;
+
         // ---- KOL HAREKETI -----------------------------------------------
         constexpr int ADIM10 = KOL_HIZ_DERECE_SN * DONGU_MESGUL_MS / 100;
         bool kol_oynuyor = false;
+        // Tekerlek donerken kollar DURUYOR — hedefi unutmadan.
+        //
+        // Darbeyi yukarida kesmek tek basina yetmezdi: bu dongu
+        // su_an10'u ilerletip darbeyi hemen geri acardi. Hedef
+        // korunuyor, yani donus bitince kol kaldigi yerden devam
+        // ediyor — hareket kesilmis degil, duraklatilmis oluyor.
+        const bool kol_dursun = (jest_teker != 0);
         for (int i = 0; i < 2; ++i) {
             const int hedef10 =
                 kol_derece10(g_kol_hedef[i].load(std::memory_order_relaxed),
                                i == 1);
+            if (kol_dursun) {
+                continue;
+            }
             if (su_an10[i] != hedef10) {
                 const int fark = hedef10 - su_an10[i];
                 su_an10[i] += std::clamp(fark, -ADIM10, ADIM10);
@@ -695,9 +763,12 @@ void beden_konusma_bildir(bool konusuyor)
     if (!g_takili.load(std::memory_order_relaxed)) return;
 
     if (konusuyor && !onceki) {
-        // Konusma basladi: hemen bir jest ve (aciksa) sevinc donusu.
-        g_jest_istek.store(1, std::memory_order_relaxed);   // "selam"
-        if (ayar_sevinc()) g_sevinc_istek.store(true, std::memory_order_relaxed);
+        // Konusma basladi: hemen el salla.
+        //
+        // BURADA TEKERLEK YOK ve bu bilincli: her cumlenin basinda
+        // donmek hem sikici hem gereksiz motor kalkisi olurdu. Tekerlek
+        // konusmanin ICINDE, seyrek ve kurayla geliyor (TEKER_ARA_EN_AZ).
+        g_jest_istek.store(jest_no("selam"), std::memory_order_relaxed);
     } else if (!konusuyor && onceki) {
         g_kol_hedef[0].store(0, std::memory_order_relaxed);
         g_kol_hedef[1].store(0, std::memory_order_relaxed);

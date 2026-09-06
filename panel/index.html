@@ -132,6 +132,22 @@
         <button class="ikincil ince" data-jest="dinlen">Dinlen</button>
       </div>
 
+      <!-- TEKERLEK KULLANAN JESTLER AYRI SATIRDA ve `data-teker`
+           isaretli. Alttaki anahtar kapatilinca bunlar sonuyor —
+           basip hicbir sey olmamasi, cocuga dugmenin bozuk oldugunu
+           dusundururdu.
+
+           Hepsi YERINDE donuyor: iki tekerlek ters yonde, Pati yer
+           degistirmiyor. Bu bir tercih degil, jest tablosunun
+           yapisi (pati_beden_matematik.hpp). -->
+      <div class="jestler" id="tekerJestleri">
+        <button class="ikincil ince" data-jest="sevin" data-teker>Sevin</button>
+        <button class="ikincil ince" data-jest="dans" data-teker>Dans et</button>
+        <button class="ikincil ince" data-jest="titre" data-teker>Kıkırda</button>
+        <button class="ikincil ince" data-jest="hayir" data-teker>Hayır de</button>
+        <button class="ikincil ince" data-jest="bak_etrafina" data-teker>Etrafa bak</button>
+      </div>
+
       <label class="kd">
         <span class="kd-ust"><span>Hız sınırı</span><b id="vBedenHiz">—</b></span>
         <input id="kBedenHiz" type="range" min="0" max="100" step="5">
@@ -148,12 +164,22 @@
       </p>
 
       <label class="anahtar">
-        <span>Sevinince yerinde dönsün</span>
-        <input id="sevinc" type="checkbox">
+        <span>Konuşurken kıpırdasın</span>
+        <input id="hareket" type="checkbox">
       </label>
       <p class="ip">
-        İki tekerlek ters yönde döner: Pati <b>yerinde döner, yer
-        değiştirmez</b>. Yapısı gereği masadan düşemez.
+        Açıkken Pati konuşurken arada kendiliğinden kıpırdıyor, ve
+        çocuk <b>&ldquo;dans et&rdquo;, &ldquo;sevin&rdquo;</b> gibi
+        şeyler söyleyince yapıyor.
+        <b>Kapalıyken tekerlekler yalnızca yukarıdaki çubukla döner</b>
+        — kollar iki durumda da çalışır.
+      </p>
+      <p class="ip">
+        <b>Pati yürüyemez ve yürümeyi denemez.</b> Kendiliğinden
+        yaptığı her hareket <b>yerinde dönmek</b>: iki tekerlek ters
+        yönde gider, yani Pati yer değiştirmez ve masadan düşemez.
+        Çocuk &ldquo;ileri git&rdquo; derse Pati gitmiyor,
+        yürüyemediğini söylüyor ve bu çubuğu gösteriyor.
       </p>
     </section>
 

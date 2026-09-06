@@ -162,9 +162,59 @@ komut kesilirse 600 ms içinde duruyor.
    havada — `BEDEN.md` adım A. Çare iki adet 10 kΩ direnç.
 2. Sürerken bırakınca mı sürüyor? Ölü adam çalışmıyor demektir; seri
    portta `olu adam: komut kesildi` satırı çıkmalı.
-3. Ara ara kısa dönüyorsa: **sevinç dönüşü** açık olabilir (panel →
-   Kumanda → "Sevinince yerinde dönsün"). O yerinde döner, ilerlemez;
-   ilerliyorsa tekerleklerden biri ters bağlı.
+3. Ara ara kısa dönüyorsa: **özerk hareket** açık (panel → Kumanda →
+   "Konuşurken kıpırdasın", varsayılan açık). Bu **yerinde döner,
+   ilerlemez**.
+
+🔴 **Özerk hareket İLERLİYORSA bir tekerlek ters bağlıdır.** Yazılımda
+aranacak bir şey yok: `jest_donus` iki tekerleğe her zaman ters işaret
+veriyor ve konak testi bunu her girdide tarıyor (`sol + sag == 0`).
+Sol ve sağ aynı yöne dönüyorsa L9110'un o kanalının iki kablosu yer
+değiştirmiş demektir. Ayırt etme: paneldeki joystick'i **tam sağa**
+it — Pati yerinde dönmeli. Dönmeyip ilerliyorsa kablo.
+
+### Pati konuşurken hiç kıpırdamıyor
+
+Sırayla:
+
+1. Panel → Kumanda → **"Konuşurken kıpırdasın"** açık mı?
+2. Kollar oynuyor ama tekerlek dönmüyorsa: bu **normal olabilir.**
+   Sırası gelen jestin tekerlekli olma ihtimali üçte bir ve iki
+   tekerlekli jest arasında en az **12 saniye** var. Kısa cevaplarda
+   hiç görünmeyebilir — "dans et" diyerek zorla.
+3. Hiçbir şey oynamıyorsa beden algılamasına bak: `/api/durum` →
+   `beden.takili`.
+4. AA pil anahtarı açık mı? Pati bunu **göremiyor** — bedeni görüyor
+   ama pilin açık olup olmadığını göremiyor.
+
+### "Dans et" dedim, Pati "tamam!" dedi ama hiçbir şey olmadı
+
+Model hareketi istedi, cihaz adı tanımadı. Seri portta:
+
+```
+I (…) sohbet: hareket: dans
+W (…) beden: bilinmeyen jest: dans
+```
+
+Sebep tek: `prototype/yuz.py` → `HAREKETLER` listesi ile
+`pati_beden_matematik.hpp` → `JESTLER` tablosu ayrışmış.
+**Konak testi bunu yakalıyor** (`beden_karsilastir.cpp` §7, "modelin N
+hareket adının hepsi tabloda var"), yani bu belirti görülüyorsa test
+çalıştırılmadan yayınlanmış demektir.
+
+Ters yönü de var: model `hareket` alanını hiç kullanmıyorsa beden
+takılı değildi. Alan **yalnızca beden takılıyken** semaya giriyor;
+beden takılınca oturum tazeleniyor (`ayar_yenileme_iste`) ama tazeleme
+ilk doğal boşlukta oluyor — konuşmanın ortasında takarsan bir tur
+gecikebilir.
+
+### Dönerken kol titriyor ya da kol bir yere sıçrıyor
+
+İkisi aynı AA hattında ve motor kalkışı gerilimde çöküntü yapıyor.
+Yazılımda üç önlem zaten var (jest tablosu aynı karede ikisini komut
+edemiyor, dönerken servo darbesi kesiliyor, dönerken kol duruyor —
+`BEDEN.md`). Üçü de varken hâlâ oluyorsa **yazılıma bakma, besleme ve
+gürültüye bak**: 100 nF'lar takılı mı, piller taze mi.
 
 ---
 

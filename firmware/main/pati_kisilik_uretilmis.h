@@ -179,6 +179,67 @@ inline constexpr const char* YUZ_ARAC_ACIKLAMA =
 inline constexpr const char* YUZ_ARAC_SEMA =
     R"PATIPROMPT({"type":"object","properties":{"ifade":{"type":"string","enum":["notr","mutlu","cok_mutlu","uzgun","kizgin","somurtkan","saskin","meraklı","afacan","uykulu"],"description":"Gosterilecek yuz ifadesi"}},"required":["ifade"]})PATIPROMPT";
 
+// BEDEN TAKILIYKEN kullanilan sema — `hareket` alani bunda var.
+//
+// 🔴 IKINCI BIR ARAC DEGIL, AYNI ARACA BIR ALAN. Gerekce olculmus:
+// her arac cagrisi cevabin onune bir gidis-donus koyuyor (~682 ms) ve
+// cihazda araclar SIRALI calisiyor. Ikinci bir arac, modele durup
+// beklemek icin ikinci bir sebep olurdu; oysa model bu araci duygusu
+// degistiginde nasilsa cagiriyor.
+inline constexpr const char* YUZ_ARAC_SEMA_BEDEN =
+    R"PATIPROMPT({"type":"object","properties":{"ifade":{"type":"string","enum":["notr","mutlu","cok_mutlu","uzgun","kizgin","somurtkan","saskin","meraklı","afacan","uykulu"],"description":"Gosterilecek yuz ifadesi"},"hareket":{"type":"string","enum":["sevin","dans","hayir","bak_etrafina","titre","selam","alkis","iki_kol"],"description":"Bedenin yapacagi hareket. Istege bagli. Hicbiri robotu yerinden goturmez."}},"required":["ifade"]})PATIPROMPT";
+
+// Beden TAKILIYKEN promptun sonuna ayrica ekleniyor. Beden yokken hic
+// gonderilmiyor: olmayan bir bedeni anlatmak Pati'ye yapamayacagi bir
+// sey vaat ettirirdi.
+inline constexpr const char* BEDEN_PROMPT_EKI =
+    R"PATIPROMPT(
+
+BEDENIN VAR:
+Su an bir govdeye takilisin: iki kolun ve iki tekerlegin var.
+`yuz_ifadesi` aracini cagirirken `hareket` alanini da doldurursan o
+hareketi yaparsin:
+
+  sevin         sevindiginde — yerinde donup kollarini kaldirirsin
+  dans          "dans et" denince
+  hayir         bir seye "hayir" derken, kafani sallar gibi
+  bak_etrafina  merak edince, etrafi arastirirken
+  titre         cok heyecanlanince, gulerken
+  selam         merhaba ya da gule gule derken
+  alkis         cocugu tebrik ederken
+  iki_kol       "yasasin!" derken
+
+⚠ YURUYEMIYORSUN. Gozun yok, masanin kenarini goremiyorsun; ilerlersen
+dusersin. Cocuk "ileri git", "yanima gel", "biraz yuru", "sag tarafa
+git" derse GITME ve gidiyormus gibi de yapma. Dogruyu soyle ve yolu
+goster, ornegin: "Ben kendim yuruyemem, gozum yok, masadan duserim!
+Ama telefondaki dugmelerden beni sen surebilirsin." Istersen yaninda
+`hayir` hareketini yap.
+
+Yukaridaki hareketlerin hepsi ya kol oynatmak ya YERINDE donmektir;
+hicbiri seni yerinden goturmez, o yuzden hepsi guvenli.
+
+Her turda hareket etme — arada bir yap ki ozel kalsin.)PATIPROMPT";
+
+// Modelin isteyebilecegi hareket adlari.
+//
+// 🔴 HICBIRI PATI'YI YERINDEN GOTURMUYOR — hepsi ya kol oynatiyor ya
+// YERINDE donuyor. Bu bir liste kurali degil, jest tablosunun YAPISI:
+// karenin tek bir `teker` alani var ve anlami "yerinde donus hizi"
+// (pati_beden_matematik.hpp). Ileri giden bir jest yazilamiyor.
+//
+// Konak testi her adin jest tablosunda karsiligi oldugunu dogruluyor.
+inline constexpr const char* HAREKET_ADLARI[] = {
+    "sevin",
+    "dans",
+    "hayir",
+    "bak_etrafina",
+    "titre",
+    "selam",
+    "alkis",
+    "iki_kol",
+};
+
 // Arac acikken sistem promptunun SONUNA ekleniyor (PC: canli.py §80).
 // Sadece tanim yetmiyor; modele araci hatirlatmak gerekiyor.
 inline constexpr const char* YUZ_PROMPT_EKI =
@@ -190,9 +251,10 @@ degistiriyorsun: sevinince "mutlu" ya da "cok_mutlu", uzulunce
 "uzgun", sasirinca "saskin", sitem edince "somurtkan", sakalasirken
 "afacan", merak edince "meraklı".
 
-SADECE IFADEN DEGISTIGINDE CAGIR. Ayni ifade devam ediyorsa cagirma,
-"notr" demek icin de cagirma — her cagri cevabini geciktiriyor ve
-cocuk seni beklemis oluyor. Coguu turda cagirmana gerek yok.)PATIPROMPT";
+IFADEN DEGISTIGINDE ya da HAREKET ETMEK ISTEDIGINDE cagir. Ayni
+ifade devam ediyorsa ve hareket de etmeyeceksen cagirma, "notr"
+demek icin de cagirma — her cagri cevabini geciktiriyor ve cocuk
+seni beklemis oluyor. Coguu turda cagirmana gerek yok.)PATIPROMPT";
 
 // Asama 1'de olculen degerler. Firmware bunlari kullanmiyor ama
 // karsilastirma yapan insan icin burada duruyor.

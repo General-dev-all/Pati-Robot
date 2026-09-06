@@ -17,8 +17,14 @@
 //     Bu ancak robot masadayken fark ediliyor ve ilk fark edildigi an
 //     zaten kotu bir an.
 //
-// Ikisi de tek bir tam sayi hatasi. Ikisi de konak testinde bedava
+//   - Ozerk bir jest YER DEGISTIRIRSE Pati masadan duser. Ucurum
+//     sensoru yok; kenari gorebilecegi hicbir yol yok.
+//
+// Ucu de tek bir tam sayi hatasi. Ucu de konak testinde bedava
 // yakalaniyor (firmware/test/beden_karsilastir.cpp).
+//
+// JEST TABLOSU DA BURADA, ayni gerekceyle: icindeki bir hata donanima
+// odeniyor ve tablo saf veri, IDF'e hic dokunmuyor.
 //
 // Ayni desen pati_ornekleyici.hpp'de zaten var: donanimdan ayrilabilen
 // matematik ayriliyor ve siniyor.
@@ -26,6 +32,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdint>
 
 namespace pati {
 
@@ -251,6 +258,188 @@ inline Surus surus_karistir(int x, int y, int tavan)
     const int sol = hiz_egrisi(std::clamp(gy + gx, -100, 100)) * t / 100;
     const int sag = hiz_egrisi(std::clamp(gy - gx, -100, 100)) * t / 100;
     return {sol, sag};
+}
+
+// ---------------------------------------------------------------------------
+// 🔴 OZERK HAREKET — YALNIZCA YERINDE DONUS
+// ---------------------------------------------------------------------------
+//
+// Pati konusurken kendiliginden kipirdiyor ve cocugun sesli komutuyla da
+// hareket edebiliyor (06.09.2026, kullanicinin karari). Ikisi de
+// panelden kapatilabiliyor; VARSAYILAN ACIK.
+//
+// Karar, "tekerlekler asla ozerk degil" kuralini deliyor gibi gorunuyor
+// ama DELMIYOR — kuralin gerekcesi korunuyor. Gerekce sensor eksikligi
+// degildi, YER DEGISTIRMEYDI: ucurum sensoru olmayan bir robot
+// ilerledigi surece eninde sonunda duser.
+//
+// Bu yuzden ozerk hareketin tamami TEK BIR SAYIYLA anlatiliyor:
+//
+//     sol = +teker        sag = -teker
+//
+// Iki tekerlek her zaman TERS yonde, yani Pati yerinde doner ve yer
+// DEGISTIRMEZ. Bu bir yorumdaki uyari degil, TIPIN KENDISI: jest
+// tablosunda ileri giden bir kare YAZILAMIYOR. Sonradan gelen biri
+// kurali bilmese de bozamiyor.
+//
+// ⚠ SESLI KOMUTUN ASIL RISKI YANLIS ANLAMA DEGIL, DOGRU ANLAMA.
+// Cocuk "ileri git" derse ve Pati DOGRU anlarsa da masadan duser.
+// Ustelik joystick'in aksine sesli komutun ustunde parmak yok: olu adam
+// zamanlayicisi onu koruyamaz, cunku onay surekli degil tek seferlik.
+// Cozum "model daha iyi anlasin" degil, sozlukte ilerlemenin HIC
+// OLMAMASI. Yanlis anlamanin en kotu sonucu: Pati garip bir anda
+// sevimli bir donus yapar.
+
+// Ozerk donusun ust siniri. Cocugun joystick'i bunu asabiliyor (orada
+// parmak var ve cocuk bakiyor); Pati'nin kendi karari asamiyor.
+inline constexpr int JEST_DONUS_EN_COK = 60;
+
+// Bir jestin toplam tekerlek suresi bunu asamaz. Ozerkligin siniri
+// ADIM DEGIL SURE: yer degistirme zaten yapisal olarak sifir, ama uzun
+// sure donmek kayma yuzunden ikinci dereceden bir surunme birakiyor.
+inline constexpr int JEST_TEKER_EN_COK_MS = 900;
+
+// Yerinde donus hizini iki tekerlege dagitir.
+//
+// `tavan` ebeveynin panelden verdigi hiz siniri: kaydiriciyi kisan bir
+// ebeveyn Pati'nin KENDI hareketlerini de kismis oluyor. Iki ayri sayi
+// olsaydi panel yalan soylerdi.
+inline Surus jest_donus(int teker, int tavan)
+{
+    const int t = std::clamp(tavan, HIZ_TAVAN_EN_AZ, HIZ_TAVAN_EN_COK);
+    const int h = std::clamp(teker, -JEST_DONUS_EN_COK, JEST_DONUS_EN_COK)
+                  * t / 100;
+    return {h, -h};
+}
+
+// ---------------------------------------------------------------------------
+// Jest tablosu
+// ---------------------------------------------------------------------------
+//
+// Kare = "kollari su yuzdeye getir, tekerlegi su hizda dondur, sonra su
+// kadar bekle". Kolda -1 = "bu kolu degistirme", yuzde 0 = asagi.
+//
+// 🔴 UC KURAL — ucu de konak testinde zorlaniyor:
+//
+//   1. TEKERLEK DONEN BIR KARE KOL OYNATMIYOR. Sebep olculmus
+//      (06.09.2026): ikisi de ayni AA hattindan besleniyor ve motor
+//      kalkisi gerilimde cokuntu yapiyor; o anda hareket eden servo
+//      titriyor ya da sifirlaniyor. Gorev ayrica tekerlek donerken
+//      servo darbesini tamamen kesiyor (pati_beden.cpp).
+//
+//   2. YON DEGISTIRMEDEN ONCE SIFIR KARESI VAR. Iki sebep: motoru
+//      dogrudan ters cevirmek en kotu akim tepesi, ve motor_rampa yon
+//      degisimini bilerek YAVAS geciyor (5/tik) — araya sifir
+//      konmazsa kisa bir kare boyunca motor sadece yavaslar, hic
+//      donmez. Sifirdan sonra kalkis darbesi yeniden devreye giriyor.
+//
+//   3. NET DONUS SIFIR. Her jestin (teker x sure) toplami sifir, yani
+//      Pati jestin sonunda BASLADIGI YONE bakiyor. Aksi halde cocuk
+//      joystick'e bastiginda "ileri" sandigi yon baska bir yer olurdu.
+
+struct Kare {
+    std::int8_t   sol;        // kol yuzdesi, -1 = degistirme
+    std::int8_t   sag;
+    std::int8_t   teker;      // YERINDE donus: + saga, - sola, 0 = dur
+    std::uint16_t bekle_ms;
+};
+
+inline constexpr Kare JEST_DINLEN[]  = {{0, 0, 0, 0}};
+inline constexpr Kare JEST_SELAM[]   = {{-1, 85, 0, 90}, {-1, 55, 0, 90},
+                                        {-1, 85, 0, 90}, {-1, 55, 0, 90},
+                                        {0, 0, 0, 0}};
+inline constexpr Kare JEST_IKI_KOL[] = {{95, 95, 0, 320}, {0, 0, 0, 0}};
+inline constexpr Kare JEST_ALKIS[]   = {{55, 55, 0, 60}, {30, 30, 0, 60},
+                                        {55, 55, 0, 60}, {30, 30, 0, 60},
+                                        {55, 55, 0, 60}, {0, 0, 0, 0}};
+inline constexpr Kare JEST_DUSUN[]   = {{50, 0, 0, 420}, {0, 0, 0, 0}};
+
+// Sevinc: sag don, dur, sol don, dur, iki kol yukari.
+// Eski `sevinc` donusunun yerine geciyor — ayni fikir, artik jest.
+inline constexpr Kare JEST_SEVIN[] = {
+    {-1, -1,  55, 200}, {-1, -1, 0, 60},
+    {-1, -1, -55, 200}, {-1, -1, 0, 60},
+    {95, 95,   0, 240}, { 0,  0, 0,  0},
+};
+
+// Kikirdama: cok kisa, hizli titresim.
+inline constexpr Kare JEST_TITRE[] = {
+    {-1, -1,  50, 120}, {-1, -1, 0, 50},
+    {-1, -1, -50, 120}, {-1, -1, 0, 50},
+    {-1, -1,  50, 120}, {-1, -1, 0, 50},
+    {-1, -1, -50, 120}, {-1, -1, 0,  0},
+};
+
+// "Hayir" — kafa sallamanin tekerlekli karsiligi. Bedenin ANLAM
+// tasidigi tek jest: Pati bir seye hayir derken bunu yapiyor.
+inline constexpr Kare JEST_HAYIR[] = {
+    {-1, -1, -45, 170}, {-1, -1, 0, 60},
+    {-1, -1,  45, 170}, {-1, -1, 0, 60},
+    {-1, -1, -45, 170}, {-1, -1, 0, 60},
+    {-1, -1,  45, 170}, {-1, -1, 0,  0},
+};
+
+// Merak: yavasca don, DUR VE BAK, sonra geri don.
+// Ortadaki uzun duraklama jestin tamami — donusun kendisi degil.
+inline constexpr Kare JEST_BAK[] = {
+    {-1, -1,  45, 220}, {-1, -1, 0, 340},
+    {-1, -1, -45, 220}, {-1, -1, 0,   0},
+};
+
+// Dans: kol ve tekerlek SIRAYLA, hic ayni anda degil (kural 1).
+inline constexpr Kare JEST_DANS[] = {
+    {55, 55,   0, 140},
+    {-1, -1,  55, 200}, {-1, -1, 0, 60},
+    {20, 20,   0, 140},
+    {-1, -1, -55, 200}, {-1, -1, 0, 60},
+    {85, 85,   0, 180},
+    {-1, -1,  55, 160}, {-1, -1, 0, 60},
+    {-1, -1, -55, 160},
+    { 0,  0,   0,   0},
+};
+
+struct Jest {
+    const char*  ad;
+    const Kare*  kare;
+    std::uint8_t adet;
+    bool         kendiliginden;   // konusurken secilebilir mi
+    bool         teker_var;       // tekerlek kullaniyor mu
+};
+
+// `teker_var` elle YAZILMIYOR gibi gorunsun diye degil, gorunur olsun
+// diye elle yaziliyor — ama konak testi tabloyla karsilastiriyor, yani
+// yanlis yazilamiyor. Yeni bir jest eklerken bu alani unutmak, testi
+// dusuren bir hata.
+inline constexpr Jest JESTLER[] = {
+    {"dinlen",       JEST_DINLEN,  1, false, false},
+    {"selam",        JEST_SELAM,   5, true,  false},
+    {"iki_kol",      JEST_IKI_KOL, 2, true,  false},
+    {"alkis",        JEST_ALKIS,   6, true,  false},
+    {"dusun",        JEST_DUSUN,   2, true,  false},
+    {"sevin",        JEST_SEVIN,   6, true,  true},
+    {"titre",        JEST_TITRE,   8, true,  true},
+    {"hayir",        JEST_HAYIR,   8, false, true},
+    {"bak_etrafina", JEST_BAK,     4, true,  true},
+    {"dans",         JEST_DANS,   11, false, true},
+};
+inline constexpr int JEST_ADET = sizeof(JESTLER) / sizeof(JESTLER[0]);
+
+// std::strcmp derleme zamaninda kullanilamiyor; jest numaralari ise
+// sabit olmali (pati_beden.cpp "selam"i numarayla istiyor). Elle
+// yazilan bir numara, tabloya bir satir eklenince sessizce baska bir
+// jesti gosterirdi.
+constexpr bool jest_adi_esit(const char* a, const char* b)
+{
+    while (*a != '\0' && *a == *b) { ++a; ++b; }
+    return *a == *b;
+}
+
+constexpr int jest_no(const char* ad)
+{
+    for (int i = 0; i < JEST_ADET; ++i) {
+        if (jest_adi_esit(JESTLER[i].ad, ad)) return i;
+    }
+    return -1;
 }
 
 }  // namespace pati

@@ -1,2 +1,2 @@
-3.1.4
-Hiz siniri kaydiricisi yeniden ayarlandi. Once en dusuk kademelerde tekerlekler hic donmuyordu; artik cubugun her yeri ise yariyor ve baslangic degeri %50. Cubugu az acinca Pati gercekten yavas gidiyor, sonuna kadar acinca hizli.
+3.2.0
+Pati artık konuşurken arada kendiliğinden kıpırdıyor, ve çocuk "dans et", "sevin", "etrafa bak" gibi şeyler söyleyince yapıyor. Yerinden gitmiyor: bütün hareketleri olduğu yerde dönmek, iki tekerlek ters yöne gidiyor. Yani masadan düşemez. Çocuk "ileri git" derse Pati gitmiyor, yürüyemediğini söyleyip paneldeki çubuğu gösteriyor. İstemezseniz panelden "Konuşurken kıpırdasın" anahtarını kapatabilirsiniz.
