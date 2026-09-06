@@ -1,2 +1,2 @@
-3.1.0
-Pati'nin bedeni geldi. Tekerlekli gövdeye takınca Pati bunu kendi anlıyor: panelde yeni bir Kumanda bölümü açılıyor ve çocuk oradan Pati'yi sürebiliyor, kollarını oynatabiliyor. Kollar Pati konuşurken kendiliğinden hareket ediyor. Tekerlekler yalnızca parmak ekranda dururken dönüyo
+3.1.1
+Bedenin tekerlekleri artık dönüyor. Motorlar bağlıydı ve komut da doğru gidiyordu ama sürücü kartı seçtiğimiz hızda anahtarlayamıyordu; ölçüp düzelttik. Panelde hız sınırını düşük tutmanı öneririz, Pati masada beklediğinden hızlı gidebiliyor.

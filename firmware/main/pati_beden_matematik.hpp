@@ -83,9 +83,19 @@ inline constexpr int MOTOR_ADIM = 1 << MOTOR_BIT;   // 1024
 // L9110'un olu bolgesi: cok kucuk duty'de motor donmeyip yalnizca
 // vizildiyor. Sifirin ustundeki her istek en az buraya yukseltiliyor.
 //
-// ⚠️ BU SAYI OLCULMEDI. Ilk devreye almada en dusuk donen duty
-// olculecek ve buraya yazilacak (BEDEN.md). Suanki deger bir baslangic
-// tahmini ve oyle isaretli duruyor.
+// ⚠️ BU SAYI HALA OLCULMEDI, %35 bir baslangic tahmini.
+//
+// 06.09.2026'da olculen sey PWM FREKANSIYDI, olu bolge degil: 20 kHz'de
+// motorlar %60 duty'de hic donmedi ve sebep surucunun anahtarlama
+// kenarlariydi (pati_beden.cpp · MOTOR_HZ). Frekans 5 kHz'e indi, olu
+// bolge bu yuzden yeniden olculmeli — eski sayi baska bir frekansta
+// alinmisti bile denemez, hic alinmamisti.
+//
+// NASIL OLCULUR — ek koda gerek yok, panelin HIZ SINIRI kaydiricisi
+// zaten tam bunu yapiyor: joystick sonuna kadar itildiginde uygulanan
+// duty dogrudan o tavan. Tekerlekler TAKILI ve Pati YERDEYKEN (yuk
+// gercekci olsun) tavani %20'den baslayip besli adimlarla artir; ilk
+// donen deger olu bolgedir. Buraya o sayi yazilacak.
 inline constexpr int MOTOR_EN_AZ_DUTY = MOTOR_ADIM * 35 / 100;
 
 // Hizi (-100..100) LEDC duty'sine cevirir. Isaret BURADA KAYBOLUYOR —

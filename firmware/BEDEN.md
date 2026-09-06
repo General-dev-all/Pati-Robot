@@ -3,9 +3,10 @@
 İki tekerlek, iki kol, kendi pili. StickS3 bedene takılınca Pati bunu
 kendi anlıyor; takılı değilken bedenle ilgili hiçbir şey görünmüyor.
 
-**Durum: yazıldı, gerçek kartta HENÜZ ÖLÇÜLMEDİ.** Aşağıdaki "ölçülecek"
-başlıkları boş duruyor ve öyle işaretli. Bir sayı iddia ediliyorsa
-nereden geldiği yazılı.
+**Durum: gerçek kartta çalışıyor.** Servolar, algılama, panel kumandası
+ve motorlar sınandı. Bir ölçüm yapıldı ve bir kusur buldu (PWM frekansı,
+aşağıda D adımında); **ölü bölge hâlâ ölçülmedi** ve öyle işaretli.
+Bir sayı iddia ediliyorsa nereden geldiği yazılı.
 
 ---
 
@@ -137,10 +138,13 @@ yakın duran yer.
 |---|---|---|---|
 | Arka ışık *(var olan)* | TIMER_1 | CH1 | — |
 | Kollar | TIMER_2 | CH2, CH3 | 50 Hz, 14 bit |
-| Motorlar | TIMER_3 | CH4–CH7 | 20 kHz, 10 bit |
+| Motorlar | TIMER_3 | CH4–CH7 | **5 kHz**, 10 bit |
 
 TIMER_0 ve CH0 boş. ESP32-S3'te 4 zamanlayıcı, 8 kanal var (yalnızca
 düşük hız kipi).
+
+⚠️ Motor frekansı **ölçülerek** 20 kHz'den 5 kHz'e indi — 20 kHz'de
+motorlar hiç dönmüyordu. Gerekçe D adımında.
 
 ### Servo susturma
 
@@ -250,17 +254,51 @@ Jest düğmeleri, konuşurken kendiliğinden hareket, darbe kesme.
 
 ### D. Tekerlekler ve kumanda
 
-- **En düşük dönen duty kaç?** (`MOTOR_EN_AZ_DUTY` şu an %35 ve bu bir
-  tahmin, ölçüm değil.)
-- **L9110 elle dokunulacak kadar soğuk mu?** 20 kHz seçildi çünkü
-  mikrofon sürekli açık ve düşük frekanslı PWM cıvıltısı doğrudan
-  Gemini'ye gider. Isınıyorsa ya da tekerlek %80'in altında dönmüyorsa
-  10 kHz'e inilip yeniden ölçülecek.
+#### ✅ 06.09.2026 — PWM frekansı: 20 kHz çalışmıyor, 5 kHz'e indi
+
+İlk denemede **servolar oynadı, motorlar hiç oynamadı.** Belirti tam bir
+kablo hatası gibi görünüyordu; ölçüm başka yeri gösterdi.
+
+Ölçüm zinciri (beden takılı, tekerlekler sökülü, pil %41):
+
+| Katman | Nasıl bakıldı | Sonuç |
+|---|---|---|
+| Panel → `/api/beden` | doğrudan POST | ✅ `{"tamam":true}` |
+| Karıştırma + hız tavanı | sürerken `/api/durum` → `beden` | ✅ `sol=60 sag=-60` |
+| Firmware → LEDC | yukarıdaki sayı zaten oradan geliyor | ✅ |
+| %60 duty @ 20 kHz | gözle | ❌ **dönmedi** |
+| %100 duty @ 20 kHz | hız sınırı %100 yapılıp | ✅ **döndü** |
+
+🔴 **Ayırt eden şey %100.** Orada duty 1023/1024, yani **anahtarlama
+neredeyse hiç yok** — çıkış sürekli DC. Kırpılmış her duty'de L9110'un
+kenarları yetişmiyor. Sürücü bipolar, üzerinde ~1 V düşüyor ve rahat
+çalıştığı aralık 1–10 kHz.
+
+20 kHz "mikrofon duymasın" diye seçilmişti. Gerekçe doğruydu ama
+**öncelik yanlıştı**: motor dönerken TT redüktörünün mekanik sesi PWM
+cıvıltısından zaten yüksek, ve motorlar yalnızca çocuk sürerken dönüyor.
+
+⚠️ **Bir daha aynı belirti görülürse sıra şu:** "servolar oynuyor,
+motorlar oynamıyor" kabloya baktırıyor. Kabloya bakmadan önce panelden
+`beden.sol/sag` oku — orada doğru sayı varsa sorun kabloda **değil**,
+sinyalin sürücü çıkışına dönüşmesinde.
+
+#### Ölçülmeyi bekleyenler
+
+- **En düşük dönen duty kaç?** `MOTOR_EN_AZ_DUTY` hâlâ %35 ve **hâlâ bir
+  tahmin** — yukarıdaki ölçüm frekansı ölçtü, ölü bölgeyi değil.
+  Ölçmek için ek koda gerek yok: **panelin hız sınırı kaydırıcısı**
+  joystick sonuna kadar itildiğinde uygulanan duty'nin ta kendisi.
+  Tekerlekler **takılı** ve Pati **yerdeyken** (yük gerçekçi olsun)
+  %20'den başla, beşer artır; ilk dönen değer ölü bölgedir.
+- **L9110 elle dokunulacak kadar soğuk mu?** (5 kHz'de olmalı.)
 - **Sürüş sırasında `sohbet_mik_tepe` yükseliyor mu?**
 - **Ölü adam çalışıyor mu?** Parmağı joystick'te tutarken telefonun wifi
   bağlantısını kes — Pati 600 ms içinde durmalı.
-
-**Ölçüm sonucu: _______________**
+- ⚠️ **Motor dönerken çökme oluyor mu?** Yukarıdaki testte `guc.cokme`
+  26 → 27 oldu. **Tek artış kanıt değil** — Pati pilde zaten kendi
+  başına çöküyor (`PIL.md`, pil %41'di). Ama motor akımı ortak topraktan
+  dönüyorsa bu gerçek bir etken olabilir. Uzun sürüşte sayacı izle.
 
 ---
 

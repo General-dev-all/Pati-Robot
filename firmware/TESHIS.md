@@ -106,15 +106,52 @@ kalkıyor" + bitmeyen vızıltı. Konak testi darbenin 500-2500 µs dışına
 çıkmasını yakalıyor (`derle.bat`, 4. test) ama mekanik dayanmayı
 yakalayamaz — o gözle görülüyor.
 
+### 🔴 06.09.2026 — "servolar oynuyor, motorlar oynamıyor"
+
+**Belirti tam bir kablo hatası gibi görünüyor ve değil.**
+
+Sebep PWM frekansıydı: motorlar 20 kHz'de sürülüyordu ve L9110'un
+anahtarlama kenarları yetişmiyordu. %60 duty'de tekerlek hiç dönmedi,
+%100'de döndü — çünkü %100'de duty 1023/1024, yani **anahtarlama
+neredeyse hiç yok**, çıkış sürekli DC. Frekans 5 kHz'e indirildi
+(`pati_beden.cpp` · `MOTOR_HZ`).
+
+**Ayırt etme sırası — kabloya EN SON bakılır:**
+
+1. Panelden oku: `api/durum` → `beden.sol` / `beden.sag`.
+   **Joystick itilirken** okunmalı; bırakınca ölü adam sıfırlıyor.
+
+   ```powershell
+   $h=@{'Content-Type'='application/json'}
+   1..16 | % {
+     try { Invoke-WebRequest http://pati.local/api/beden -Method POST -Headers $h `
+             -Body '{"x":100,"y":0}' -UseBasicParsing -TimeoutSec 5 | Out-Null } catch {}
+     if ($_ -eq 6) { ((Invoke-WebRequest http://pati.local/api/durum -UseBasicParsing).Content `
+                      | ConvertFrom-Json).beden }
+     Start-Sleep -Milliseconds 150
+   }
+   ```
+
+   `x=100, y=0` **yerinde dönüş** — masada dururken ileri komut vermek
+   robotu kenara götürür.
+
+2. Sayı doğruysa (tavan neyse o, ters işaretli) **sorun kabloda DEĞİL.**
+   Komut panelden LEDC'ye kadar sağlam gelmiş demektir.
+
+3. Sonra hız sınırını **%100** yap ve tekrar dene. Dönüyorsa sebep
+   anahtarlama: frekansı indir. Dönmüyorsa sıra kabloda ve sürücüde.
+
+**Sayı sıfır geliyorsa** sorun paneldedir: kumanda kartı görünüyor mu,
+`beden.takili` true mu, joystick `pointerdown` alıyor mu.
+
 ### Tekerlek dönmüyor, sadece vızıldıyor
 
 Ölü bölgenin altında kalıyor. `MOTOR_EN_AZ_DUTY` şu an **%35 ve bu bir
 tahmin, ölçüm değil** (`pati_beden_matematik.hpp`). Ölçüp yaz.
 
-İkinci ihtimal PWM frekansı: 20 kHz seçildi çünkü mikrofon sürekli açık
-ve düşük frekanslı cıvıltı doğrudan Gemini'ye gidiyor. Ama L9110'un
-kenarları yavaş; yüksek frekansta düşük hızlarda dönmeyebiliyor ve
-sürücü ısınabiliyor. Sürücü elle sıcaksa 10 kHz'e in ve yeniden ölç.
+İkinci ihtimal PWM frekansı — ama o bir kez ölçüldü ve düzeltildi
+(yukarıdaki bölüm). 5 kHz'de hâlâ dönmüyorsa ölü bölge gerçekten
+düşüktür.
 
 ### Pati kendiliğinden ilerliyor
 

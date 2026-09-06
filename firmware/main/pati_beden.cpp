@@ -63,20 +63,37 @@ constexpr std::int64_t KOL_SUS_GECIKME_US = 250000;   // 250 ms
 
 // ---- motorlar -------------------------------------------------------------
 //
-// 🔴 20 kHz DUYULMUYOR — VE BU BILINCLI BIR SECIM.
+// 🔴 5 kHz — 20 kHz DENENDI VE MOTORLAR HIC DONMEDI (06.09.2026).
 //
-// Mikrofon 10 cm otede ve surekli acik. 1-5 kHz'lik bir PWM civiltisi
-// dogrudan Gemini'ye gider ve cocugun duydugu sese karisir.
+// Once 20 kHz yazilmisti, gerekcesi de yaziliydi: mikrofon 10 cm otede
+// ve surekli acik, dusuk frekansli PWM civiltisi dogrudan Gemini'ye
+// gidiyor. Gerekce dogruydu ama ONCELIK YANLISTI.
 //
-// ⚠️ BEDELI OLABILIR VE OLCULMELI: L9110'un anahtarlama kenarlari yavas.
-// Yuksek frekansta (a) surucu isinabiliyor, (b) dusuk duty'de tekerlek
-// hic donmeyebiliyor — ki en cok istedigimiz hiz tam da dusuk olan.
+// Gercek kartta olculdu — beden takili, tekerlekler sokulu, AA pil dolu:
 //
-// Olcum: en dusuk donen duty kac, ve surucu elle dokunulacak kadar
-// soguk mu. Tekerlek %80'in altinda donmuyorsa ya da surucu isiniyorsa
-// 10 kHz'e inilip yeniden olculecek. Tahminle degil olcumle.
+//     hiz tavani %60  -> panel `beden.sol=60`  ·  motor DONMEDI
+//     hiz tavani %100 -> panel `beden.sol=100` ·  motor DONDU
+//
+// Yani komut sonuna kadar dogru gidiyordu (panel, karistirma, tavan,
+// LEDC — hepsi olculdu ve saglamdi); is sinyalin L9110'un cikisina
+// donusmesinde bitiyordu. %100'de duty 1023/1024, yani ANAHTARLAMA
+// NEREDEYSE HIC YOK — cikis surekli DC. Kirpilmis her duty'de surucunun
+// kenarlari yetismiyor.
+//
+// L9110 bipolar bir surucu; kenarlari yavas ve uzerinde ~1 V dusuyor.
+// 1-10 kHz rahat calistigi aralik.
+//
+// ⚠️ BELIRTISI YANILTICIYDI: "servolar oynuyor, motorlar oynamiyor"
+// tam bir KABLO hatasi gibi gorunuyor. Kabloya bakmadan once panelden
+// `beden.sol/sag` okunmali — orada dogru sayi varsa sorun kabloda
+// DEGIL, bu satirdadir.
+//
+// Duyulacak: evet, hafif bir civilti olacak. Ama motor donerken TT
+// redukturunun mekanik sesi zaten ondan yuksek, ve motorlar yalnizca
+// cocuk surerken doniyor.
+//
 // Cozunurluk, olu bolge ve duty hesabi pati_beden_matematik.hpp'de.
-constexpr int MOTOR_HZ = 20000;
+constexpr int MOTOR_HZ = 5000;
 
 // 🔴 OLU ADAM ZAMANLAYICISI — PAZARLIKSIZ.
 //
