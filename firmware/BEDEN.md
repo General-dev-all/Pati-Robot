@@ -265,6 +265,32 @@ ancak robot masadayken fark edilirdi.
 Hız sınırı ve sevinç anahtarı `/api/ayar` üzerinden NVS'e yazılıyor
 (`beden_hiz`, `sevinc`).
 
+### 🔴 Hız sınırı: panel 0–100 gösterir, cihaz 40–100 saklar
+
+%40'ın altında tekerlek dönmüyor, yalnızca ötüyor (06.09.2026'da gerçek
+kartta ölçüldü). O aralığı kaydırıcıda göstermek, çocuğa **hiçbir şey
+yapmayan bir yer** bırakmak olurdu.
+
+Çubuk yine de alışıldık 0–100 görünümünde kalıyor; dönüşüm panelde
+(`pati.js` · `gosterilendenGercege`):
+
+| Panelde görünen | Cihazda | |
+|---|---|---|
+| %0 | %40 | en yavaş çalışan değer |
+| **%50** | **%70** | **varsayılan** |
+| %100 | %100 | tam güç |
+
+⚠️ **Bedeli: panelde yazan sayı ile motora giden sayı aynı değil.**
+Bir arıza ararken karıştırmamak için iki önlem var:
+
+- Panel gerçek değeri de küçük puntoyla yazıyor (*"Motora giden: %70"*)
+- `/api/durum` → `kumanda.hiz` **her zaman gerçek değeri** döndürüyor,
+  gösterileni değil
+
+Sınırlar tek kaynakta: `pati_beden_matematik.hpp` → `HIZ_TAVAN_EN_AZ` /
+`HIZ_TAVAN_EN_COK`. Karıştırma da, ayar katmanı da aynı sabitleri
+kullanıyor; konak testi alt sınırın altına düşülemediğini koruyor.
+
 ---
 
 ## Devreye alma — sıra önemli

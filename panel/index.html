@@ -134,12 +134,17 @@
 
       <label class="kd">
         <span class="kd-ust"><span>Hız sınırı</span><b id="vBedenHiz">—</b></span>
-        <input id="kBedenHiz" type="range" min="10" max="100" step="5">
+        <input id="kBedenHiz" type="range" min="0" max="100" step="5">
       </label>
       <p class="ip">
         Masada oynanacak bir robot için tam güç fazla. Sınır
         <b>cihazda</b> uygulanıyor — panel daha fazlasını gönderse bile
         Pati kabul etmiyor.
+        <!-- Çubuk 0-100 görünüyor ama cihaz 40-100 saklıyor: %40'ın
+             altında tekerlek dönmüyor, sadece ötüyor. İki sayı farklı
+             olduğu için gerçek değeri de yazıyoruz — bir arıza ararken
+             ikisi de görünsün. -->
+        <span id="vBedenGercek" class="soluk"></span>
       </p>
 
       <label class="anahtar">

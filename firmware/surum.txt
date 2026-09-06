@@ -1,2 +1,2 @@
-3.1.3
-Pati artik yavas da surulebiliyor. Once tekerlekler ya hic donmuyor ya da tam hizla firliyordu; arada yer yoktu. Simdi kalkis icin kisa bir guc veriliyor, sonra Pati istenen yavas hizda gidiyor. Ayrica joystick'i az ittiginde gercekten az hiz veriyor — kumandanin alt yarisi hassas, ust yarisi hizl
+3.1.4
+Hiz siniri kaydiricisi yeniden ayarlandi. Once en dusuk kademelerde tekerlekler hic donmuyordu; artik cubugun her yeri ise yariyor ve baslangic degeri %50. Cubugu az acinca Pati gercekten yavas gidiyor, sonuna kadar acinca hizli.

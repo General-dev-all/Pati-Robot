@@ -186,7 +186,7 @@ void karistirma()
 
     // 🔴 HIZ TAVANI HER YERDE, CAPRAZDA DA. Kirpma carpimdan once
     // yapilmazsa capraz itiste (x=100, y=100) tavan hicbir sey yapmiyor.
-    for (int tavan : {10, 30, 60, 100}) {
+    for (int tavan : {HIZ_TAVAN_EN_AZ, 55, 75, HIZ_TAVAN_EN_COK}) {
         for (int x = -100; x <= 100; x += 10) {
             for (int y = -100; y <= 100; y += 10) {
                 const Surus m = surus_karistir(x, y, tavan);
@@ -195,17 +195,21 @@ void karistirma()
             }
         }
     }
-    const Surus capraz = surus_karistir(100, 100, 30);
-    std::printf("    capraz itis, tavan %%30 -> sol %d  sag %d\n",
+    const Surus capraz = surus_karistir(100, 100, 55);
+    std::printf("    capraz itis, tavan %%55 -> sol %d  sag %d\n",
                 capraz.sol, capraz.sag);
-    kontrol(capraz.sol == 30, "caprazda tavan uygulanmiyor");
+    kontrol(capraz.sol == 55, "caprazda tavan uygulanmiyor");
 
-    // Tavan da kirpilmali: panel bozuk bir deger gonderemesin.
-    for (int t : {-100, 0, 5, 500}) {
+    // Tavan kirpilmali: panel bozuk bir deger gonderemesin, ve ALT
+    // sinirin altina duserse tekerlek hic donmezdi.
+    for (int t : {-100, 0, 5, 39, 500}) {
         const Surus m = surus_karistir(100, 100, t);
-        kontrol(std::abs(m.sol) <= 100 && std::abs(m.sag) <= 100,
-                "tavan kirpilmiyor");
+        kontrol(std::abs(m.sol) <= HIZ_TAVAN_EN_COK, "tavan ust sinirdan tasiyor");
+        kontrol(std::abs(m.sol) >= HIZ_TAVAN_EN_AZ,
+                "tavan alt sinirin altina dusuyor — tekerlek donmez");
     }
+    std::printf("    tavan araligi: %%%d - %%%d\n",
+                HIZ_TAVAN_EN_AZ, HIZ_TAVAN_EN_COK);
 }
 
 // ---------------------------------------------------------------------------

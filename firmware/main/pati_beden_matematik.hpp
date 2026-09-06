@@ -190,6 +190,25 @@ struct Surus {
     int sag;
 };
 
+// ---------------------------------------------------------------------------
+// Hiz tavaninin sinirlari
+// ---------------------------------------------------------------------------
+//
+// 🔴 PANEL 0-100 GOSTERIYOR, CIHAZ 40-100 SAKLIYOR (06.09.2026,
+// kullanicinin karari).
+//
+// Sebep: %40'in altinda tekerlek donmuyor, yalnizca otuyor. O araligi
+// kaydiricida gostermek, cocuga hicbir sey yapmayan bir yer birakmak
+// olurdu. Ama cubuk yine de alisildik 0-100 gorunumunde kaliyor —
+// donusum panelde yapiliyor (pati.js · gosterilenden_gercege).
+//
+// ⚠️ BEDELI: panelde yazan sayi ile motora giden sayi AYNI DEGIL
+// (gosterilen %50 -> gercekte %70). Bir ariza ararken karistirmamak
+// icin panel gercek degeri de kucuk puntoyla yaziyor ve /api/durum
+// her zaman GERCEK degeri donduruyor.
+inline constexpr int HIZ_TAVAN_EN_AZ  = 40;
+inline constexpr int HIZ_TAVAN_EN_COK = 100;
+
 // Joystick'in x/y'sini (-100..100) iki tekerlek hizina cevirir.
 //
 //   sol = y + x        sag = y - x
@@ -219,7 +238,7 @@ inline Surus surus_karistir(int x, int y, int tavan)
 {
     const int gx = std::clamp(x, -100, 100);
     const int gy = std::clamp(y, -100, 100);
-    const int t  = std::clamp(tavan, 10, 100);
+    const int t  = std::clamp(tavan, HIZ_TAVAN_EN_AZ, HIZ_TAVAN_EN_COK);
 
     // Kirpma carpimdan ONCE: once -100..100'e kirpip sonra tavanla
     // carpiyoruz. Ters sirada capraz itiste (x=100, y=100) sol tekerlek

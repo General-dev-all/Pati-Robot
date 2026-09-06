@@ -1,5 +1,7 @@
 #include "pati_ayar.hpp"
 
+#include "pati_beden_matematik.hpp"
+
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
@@ -26,16 +28,23 @@ constexpr int UYKU_EN_FAZLA = 15;
 constexpr int VAD_EN_AZ = 200;
 constexpr int VAD_EN_FAZLA = 2000;
 
-// Bedenin surus hizi tavani, yuzde.
+// Bedenin surus hizi tavani, yuzde. Sinirlar
+// pati_beden_matematik.hpp'de — tek kaynak, cunku karistirma da ayni
+// araligi kirpiyor.
 //
-// EN AZ 10: altinda L9110'un olu bolgesine giriliyor ve tekerlek
-// donmuyor — kaydirici calisiyor gibi gorunup hicbir sey yapmazdi.
+// EN AZ 40: altinda tekerlek donmuyor, yalnizca otuyor (06.09.2026'da
+// gercek kartta olculdu). Kaydiriciya o araligi koymak, hicbir sey
+// yapmayan bir yer birakmak olurdu.
 //
-// Varsayilan 60, ve bilincli olarak tam guc DEGIL: masada oynanacak bir
-// robot icin tam guc fazla, ustelik ilk denemeyi de tehlikeli yapardi.
-// Ebeveyn isterse yukseltiyor.
-constexpr int BEDEN_HIZ_EN_AZ = 10;
-constexpr int BEDEN_HIZ_EN_FAZLA = 100;
+// ⚠️ PANEL BU SAYIYI GOSTERMIYOR. Panel 0-100 gosteriyor ve donusumu
+// kendisi yapiyor (pati.js · gosterilenden_gercege): gosterilen 0 ->
+// 40, gosterilen 100 -> 100. Yani varsayilan 70, panelde %50 diye
+// gorunuyor.
+//
+// Varsayilan bilincli olarak tam guc DEGIL: masada oynanacak bir robot
+// icin tam guc fazla. Ebeveyn isterse yukseltiyor.
+constexpr int BEDEN_HIZ_EN_AZ = HIZ_TAVAN_EN_AZ;
+constexpr int BEDEN_HIZ_EN_FAZLA = HIZ_TAVAN_EN_COK;
 
 std::string g_ses_adi;
 float g_hiz = 1.30f;
@@ -43,7 +52,7 @@ int g_uyku_dk = 4;
 bool g_soz_kesme = false;
 int g_vad_ms = 0;
 bool g_yuz = true;
-int g_beden_hiz = 60;
+int g_beden_hiz = 70;   // panelde %50
 bool g_sevinc = false;
 
 std::atomic<bool> g_yenileme{false};

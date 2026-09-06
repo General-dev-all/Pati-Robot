@@ -373,7 +373,7 @@ esp_err_t ayar_isle(httpd_req_t* r)
     } else if (alan == "beden_hiz") {
         // Sinir ayar katmaninda (10-100); panel gonderse bile disina
         // cikmiyor. Uygulandigi yer beden_surus(), yani cihaz.
-        ayar_beden_hiz_yaz(static_cast<int>(json_sayi(k, "deger", 60)));
+        ayar_beden_hiz_yaz(static_cast<int>(json_sayi(k, "deger", 70)));
     } else if (alan == "sevinc") {
         ayar_sevinc_yaz(json_sayi(k, "deger", 0) != 0);
     } else if (alan == "ad" || alan == "yas") {

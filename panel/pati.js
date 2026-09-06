@@ -422,6 +422,38 @@ async function bedeneYolla(govde) {
 //      JS'te olsaydi "sola bas saga gitsin" hatasi ancak robot
 //      masadayken fark edilirdi.
 
+// ---------------------------------------------------------------------------
+// HIZ SINIRI — panel 0-100 gosteriyor, cihaz 40-100 sakliyor
+// ---------------------------------------------------------------------------
+//
+// 🔴 %40'IN ALTINDA TEKERLEK DONMUYOR, yalnizca otuyor (06.09.2026'da
+// gercek kartta olculdu). O araligi kaydiricida gostermek, cocuga
+// hicbir sey yapmayan bir yer birakmak olurdu.
+//
+// Cubuk yine de alisildik 0-100 gorunumunde kaliyor; donusum burada.
+// Cihaz her zaman GERCEK degeri sakliyor ve /api/durum onu donduruyor —
+// yani bir ariza ararken panelden okunan sayi ile motora giden sayi
+// birbirine karismiyor. Panel gercek degeri ayrica kucuk puntoyla
+// yaziyor.
+const HIZ_TABAN = 40;
+
+function gosterilendenGercege(g) {
+  const y = Math.max(0, Math.min(100, Math.round(g)));
+  return Math.round(HIZ_TABAN + (100 - HIZ_TABAN) * y / 100);
+}
+
+function gercektenGosterilene(r) {
+  const y = Math.max(HIZ_TABAN, Math.min(100, Math.round(r)));
+  return Math.round((y - HIZ_TABAN) * 100 / (100 - HIZ_TABAN));
+}
+
+function hizYaz(gosterilen) {
+  const g = document.getElementById('vBedenHiz');
+  const r = document.getElementById('vBedenGercek');
+  if (g) g.textContent = `%${gosterilen}`;
+  if (r) r.textContent = `Motora giden: %${gosterilendenGercege(gosterilen)}`;
+}
+
 function kolYaz() {
   const a = $('#vKolSol');
   const b = $('#vKolSag');
@@ -539,7 +571,7 @@ function kumandaKur() {
   const hiz = $('#kBedenHiz');
   if (hiz) {
     hiz.addEventListener('input', () => {
-      $('#vBedenHiz').textContent = `%${hiz.value}`;
+      hizYaz(parseInt(hiz.value, 10));
     });
     // Kaydirici BIRAKILINCA yaziliyor, her pikselde degil: /api/ayar
     // NVS'e (flash) yaziyor ve surukleme boyunca yuzlerce yazma demekti.
@@ -547,8 +579,10 @@ function kumandaKur() {
       fetch('/api/ayar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ alan: 'beden_hiz',
-                               deger: parseInt(hiz.value, 10) }),
+        body: JSON.stringify({
+          alan: 'beden_hiz',
+          deger: gosterilendenGercege(parseInt(hiz.value, 10)),
+        }),
       }).catch(() => {});
     });
   }
@@ -585,9 +619,11 @@ function bedenYaz(beden, kumanda) {
 
   if (kumanda) {
     const h = $('#kBedenHiz');
+    // Cihaz GERCEK degeri donduruyor (40-100); cubuk 0-100 gosteriyor.
     if (h && document.activeElement !== h) {
-      h.value = kumanda.hiz;
-      $('#vBedenHiz').textContent = `%${kumanda.hiz}`;
+      const g = gercektenGosterilene(kumanda.hiz);
+      h.value = g;
+      hizYaz(g);
     }
     const s = $('#sevinc');
     if (s) s.checked = !!kumanda.sevinc;

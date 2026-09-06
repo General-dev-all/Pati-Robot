@@ -621,3 +621,8 @@ button.tehlike { color: var(--kalir); border-color: rgba(248, 81, 73, .5); }
   .joy-topuz { width: 50px; height: 50px; margin: -25px 0 0 -25px; }
   .kol-dugme { width: 46px; }
 }
+
+/* Hiz sinirinin GERCEK degeri. Panel 0-100 gosteriyor, cihaz 40-100
+   sakliyor; iki sayi farkli oldugu icin gercegi de yaziyoruz. Kucuk ve
+   soluk: ebeveynin okudugu sayi ustteki, bu yalnizca teshis icin. */
+#vBedenGercek { display: block; margin-top: 4px; opacity: .75; }
