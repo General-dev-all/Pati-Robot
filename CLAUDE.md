@@ -313,9 +313,18 @@ düşemez.
 (06.09.2026): *"bir daha motorları anlık %100'de yapma, ne olursa olsun
 dikkatli gidelim."* Bir DC motorun en yüksek akımı kalkış anında oluyor
 ve o tepe AA hattında gerilim çöküşü yapıyor — aynı hatta duran servolar
-o çöküşü görüyor. Yazılımda yumuşak kalkış var (`motor_rampa`, 0→%100
-400 ms) ve konak testi koruyor. **Durmak rampadan geçmiyor:** ölü adam
-ya da parmağın kalkması beklemez.
+o çöküşü görüyor. Her değişim rampalı (`motor_rampa`) ve konak testi
+koruyor. **Durmak rampadan geçmiyor:** ölü adam ya da parmağın kalkması
+beklemez.
+
+🔴 **Kalkmak ile gitmeye devam etmek AYRI iki sayı.** Motor dururken
+yüksek güç istiyor, döndüğünde çok azı yetiyor. İkisi tek sayıya
+bağlanınca robot ya ötüyor ya fırlıyor — arada kullanılabilir yer
+kalmıyor (gerçek kartta ölçüldü, kullanıcının şikâyeti buydu). Çözüm:
+kısa bir **kalkış darbesi** (%85, 180 ms, kendisi de rampalı — 100 ms'de
+tepeye) sürtünmeyi kırıyor, sonra **gitme tabanı** (%17) devreye
+giriyor. Joystick tepkisi ayrıca **karesel**: yarım itişte hızın dörtte
+biri. Darbe, yukarıdaki kurala bilinçli ve **onayı alınmış** istisna.
 
 🔴 **Ölü adam zamanlayıcısı pazarlıksız.** Komut gelmeden 600 ms geçerse
 motorlar duruyor. Panel dokunma sürerken 150 ms'de bir gönderiyor.

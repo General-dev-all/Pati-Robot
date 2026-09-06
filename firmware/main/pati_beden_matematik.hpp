@@ -80,23 +80,43 @@ inline int kol_darbe_us(int derece10)
 inline constexpr int MOTOR_BIT  = 10;
 inline constexpr int MOTOR_ADIM = 1 << MOTOR_BIT;   // 1024
 
-// L9110'un olu bolgesi: cok kucuk duty'de motor donmeyip yalnizca
-// vizildiyor. Sifirin ustundeki her istek en az buraya yukseltiliyor.
+// 🔴 KALKMAK ILE GITMEYE DEVAM ETMEK AYRI IKI SEY.
 //
-// ⚠️ BU SAYI HALA OLCULMEDI, %35 bir baslangic tahmini.
+// Bu ayrim bu dosyadaki en onemli fikir ve 06.09.2026'da gercek kartta
+// olculerek ogrenildi. Motor DURURKEN yuksek guc istiyor (durgun rotor
+// + reduktor surtunmesi), ama bir kez donduginde cok daha azi yetiyor.
 //
-// 06.09.2026'da olculen sey PWM FREKANSIYDI, olu bolge degil: 20 kHz'de
-// motorlar %60 duty'de hic donmedi ve sebep surucunun anahtarlama
-// kenarlariydi (pati_beden.cpp · MOTOR_HZ). Frekans 5 kHz'e indi, olu
-// bolge bu yuzden yeniden olculmeli — eski sayi baska bir frekansta
-// alinmisti bile denemez, hic alinmamisti.
+// Ikisi tek bir sayiya baglandiginda robot ya OTUYOR ya FIRLIYOR;
+// arada kullanilabilir yer kalmiyor. Kullanicinin sikayeti buydu:
+// "cok hizli donuyorlar, bu kadar hiz olmaz cocuk icin."
 //
-// NASIL OLCULUR — ek koda gerek yok, panelin HIZ SINIRI kaydiricisi
-// zaten tam bunu yapiyor: joystick sonuna kadar itildiginde uygulanan
-// duty dogrudan o tavan. Tekerlekler TAKILI ve Pati YERDEYKEN (yuk
-// gercekci olsun) tavani %20'den baslayip besli adimlarla artir; ilk
-// donen deger olu bolgedir. Buraya o sayi yazilacak.
-inline constexpr int MOTOR_EN_AZ_DUTY = MOTOR_ADIM * 35 / 100;
+// Cozum ikisini ayirmak:
+//
+//   MOTOR_KALKIS_DUTY   kisa bir darbe, yalnizca dururken harekete
+//                       gecerken. Surtunmeyi kiriyor.
+//   MOTOR_EN_AZ_DUTY    ondan sonraki GITME tabani. Cok daha dusuk
+//                       olabiliyor, cunku artik kaldirmasi gerekmiyor.
+//
+// Bu, kullanicinin "anlik tam guc yapma" kuralina bilincli bir
+// istisna ve ONAYI ALINDI (06.09.2026). Farki buyuklukte: kurali
+// doguran olay bitmis pille 5 saniye kesintisiz tam guctu; bu ise dolu
+// pille 180 ms ve yalnizca kalkista. Ustelik darbenin kendisi de
+// rampali (MOTOR_KALKIS_ADIM) — anlik siçrama yok.
+
+// Kalkis darbesinin tepesi ve suresi.
+inline constexpr int MOTOR_KALKIS_DUTY = 85;
+inline constexpr int MOTOR_KALKIS_MS   = 180;
+
+// Gitme tabani. Sifirin ustundeki her istek en az buraya yukseltiliyor;
+// altinda motor donmeyip yalnizca vizildiyor.
+//
+// ⚠️ %18 OLCULMEDI, ama artik bir KALKIS esigi degil bir GITME tabani
+// ve o cok daha bagislayici. Kalkisi darbe hallediyor.
+//
+// NASIL OLCULUR — ek koda gerek yok: tekerlekler TAKILI, Pati YERDE,
+// panelden hiz sinirini dusur. Motorun donmeye devam edemedigi (kalkip
+// hemen durdugu) deger tabandir.
+inline constexpr int MOTOR_EN_AZ_DUTY = MOTOR_ADIM * 18 / 100;
 
 // Hizi (-100..100) LEDC duty'sine cevirir. Isaret BURADA KAYBOLUYOR —
 // yonu hangi pine yazildigi belirliyor (pati_beden.cpp).
@@ -132,17 +152,32 @@ inline int motor_duty(int hiz)
 // once 0'dan geciyor, yani sert ters cevirme (en kotu akim tepesi)
 // kendiliginden ortadan kalkiyor.
 
-// Tik basina en fazla degisim. 20 ms'lik dongude 5 birim = 0'dan
-// %100'e ~400 ms. Cocugun kumandasinda hissedilmeyecek kadar kisa,
-// akim tepesini dusurmeye yetecek kadar uzun.
-inline constexpr int MOTOR_RAMPA_ADIM = 5;
+// Tik basina en fazla degisim — UC AYRI DEGER, cunku uc durumun riski
+// ayni degil (dongu 20 ms):
+//
+//   HIZLANMA   5   -> 0'dan %100'e ~400 ms. Akim tepesini dusuren yer
+//                    burasi, en yavas olan bu olmali.
+//   YAVASLAMA  15  -> akim ZATEN dusuyor, yavas inmenin bir faydasi
+//                    yok. Hizli inmek, kalkis darbesinden sonra istenen
+//                    yavas hiza cabuk oturmayi sagliyor.
+//   KALKIS     20  -> darbe ~85 ms'de tepeye ciksin. Yine de RAMPALI:
+//                    anlik siçrama yok.
+inline constexpr int MOTOR_RAMPA_ADIM  = 5;
+inline constexpr int MOTOR_INIS_ADIM   = 15;
+inline constexpr int MOTOR_KALKIS_ADIM = 20;
 
-inline int motor_rampa(int hedef, int su_an)
+inline int motor_rampa(int hedef, int su_an, bool kalkis = false)
 {
     if (hedef == 0) return 0;                       // durmak beklemez
+    // Sifira DOGRU mu gidiyoruz (ayni yonde ve kuculuyor)?
+    const bool yavasliyor = (hedef >= 0) == (su_an >= 0)
+                            && (hedef < 0 ? hedef > su_an : hedef < su_an);
+    const int adim = kalkis     ? MOTOR_KALKIS_ADIM
+                     : yavasliyor ? MOTOR_INIS_ADIM
+                                  : MOTOR_RAMPA_ADIM;
     const int fark = hedef - su_an;
-    if (fark > MOTOR_RAMPA_ADIM) return su_an + MOTOR_RAMPA_ADIM;
-    if (fark < -MOTOR_RAMPA_ADIM) return su_an - MOTOR_RAMPA_ADIM;
+    if (fark > adim) return su_an + adim;
+    if (fark < -adim) return su_an - adim;
     return hedef;
 }
 
@@ -166,6 +201,20 @@ struct Surus {
 //
 // `tavan` ebeveynin hiz siniri (10-100). BURADA uygulaniyor, panelde
 // degil: sinir cihazda dursun, panel gonderse bile asilamasin.
+// 🔴 EGRISEL TEPKI — parmagin az ittiginde GERCEKTEN az hiz.
+//
+// Dogrusalken joystick'in ilk milimetresi bile tabanin ustune
+// atliyordu: cocuk icin "duruyor" ile "firliyor" arasinda ara yoktu.
+//
+// Karesel egri, isaret korunarak: |100| -> 100, |50| -> 25, |25| -> 6.
+// Yani kumandanin alt yarisi hassas, ust yarisi hizli. Ucak/araba
+// kumandalarinda kullanilan aliskin egri.
+inline int hiz_egrisi(int h)
+{
+    const int g = std::clamp(h, -100, 100);
+    return (g * (g < 0 ? -g : g)) / 100;
+}
+
 inline Surus surus_karistir(int x, int y, int tavan)
 {
     const int gx = std::clamp(x, -100, 100);
@@ -176,8 +225,12 @@ inline Surus surus_karistir(int x, int y, int tavan)
     // carpiyoruz. Ters sirada capraz itiste (x=100, y=100) sol tekerlek
     // once 200 olur, tavanla carpilir ve yine kirpilirdi — yani tavan
     // capraz iticte hicbir sey yapmazdi.
-    const int sol = std::clamp(gy + gx, -100, 100) * t / 100;
-    const int sag = std::clamp(gy - gx, -100, 100) * t / 100;
+    //
+    // Egri kirpmadan SONRA, tavandan ONCE: egri kumandanin hissini
+    // belirliyor, tavan ise ust siniri. Sirasi degisirse tavan egriyi
+    // ezip hissi bozar.
+    const int sol = hiz_egrisi(std::clamp(gy + gx, -100, 100)) * t / 100;
+    const int sag = hiz_egrisi(std::clamp(gy - gx, -100, 100)) * t / 100;
     return {sol, sag};
 }
 

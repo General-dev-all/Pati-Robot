@@ -1,2 +1,2 @@
-3.1.2
-Pati'nin tekerlekleri artık yumuşak kalkıyor: birden tam hıza fırlamak yerine yarım saniyede hızlanıyor. Durması ise anında — parmağını kaldırdığın anda duruyor. Bu hem daha kontrollü sürüş veriyor hem de pile binen ani yükü azaltıyor.
+3.1.3
+Pati artik yavas da surulebiliyor. Once tekerlekler ya hic donmuyor ya da tam hizla firliyordu; arada yer yoktu. Simdi kalkis icin kisa bir guc veriliyor, sonra Pati istenen yavas hizda gidiyor. Ayrica joystick'i az ittiginde gercekten az hiz veriyor — kumandanin alt yarisi hassas, ust yarisi hizli. Panelden hiz sinirini dusuk tutmani yine oneririz.

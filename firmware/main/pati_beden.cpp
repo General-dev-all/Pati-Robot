@@ -282,6 +282,9 @@ void beden_gorevi(void*)
     // Uygulanan motor degerleri — degismedikce yazmaca dokunmuyoruz.
     int uygulanan_sol = 0, uygulanan_sag = 0;
 
+    // Kalkis darbesi ne zaman bitiyor (0 = darbe yok).
+    std::int64_t kalkis_bitis[2] = {0, 0};
+
     // Algilama.
     bool ham_son = (gpio_get_level(PATI_BEDEN_ALGILA) == 0);
     std::int64_t ham_us = 0;
@@ -372,16 +375,45 @@ void beden_gorevi(void*)
             else                      { sevinc_faz = -1; }
         }
 
-        // ---- YUMUSAK KALKIS ---------------------------------------------
+        // ---- KALKIS DARBESI + YUMUSAK RAMPA -----------------------------
         //
-        // Motorlar anlik tam guce GECMIYOR — gerekce ve olcum
-        // pati_beden_matematik.hpp'de (motor_rampa). Ozeti: en yuksek akim
-        // kalkis aninda oluyor, o tepe AA hattini cokertiyor ve ayni
-        // hattaki servolar cokusu goruyor.
+        // Motor DURURKEN kalkmak icin yuksek guc istiyor, ama donduginde
+        // cok daha azi yetiyor. Ikisi tek sayiya baglandiginda robot ya
+        // otuyor ya firliyor. Gerekce ve sayilar
+        // pati_beden_matematik.hpp'de.
         //
-        // Sifira inis rampadan GECMIYOR: durmak beklemez.
-        const int yeni_sol = motor_rampa(istek_sol, uygulanan_sol);
-        const int yeni_sag = motor_rampa(istek_sag, uygulanan_sag);
+        // Darbe YALNIZCA duruyorken harekete gecerken veriliyor ve
+        // MOTOR_KALKIS_MS sonra kendiliginden bitiyor. Kendisi de
+        // rampali — anlik siçrama yok.
+        //
+        // ⚠️ Sifira inis darbeden de rampadan da GECMIYOR: durmak
+        // beklemez (olu adam, cocugun parmagini kaldirmasi).
+        int hedef[2] = {istek_sol, istek_sag};
+        const int mevcut[2] = {uygulanan_sol, uygulanan_sag};
+        bool darbede[2] = {false, false};
+        for (int i = 0; i < 2; ++i) {
+            if (hedef[i] == 0) {
+                kalkis_bitis[i] = 0;
+                continue;
+            }
+            if (mevcut[i] == 0 && kalkis_bitis[i] == 0) {
+                kalkis_bitis[i] = simdi + MOTOR_KALKIS_MS * 1000LL;
+            }
+            if (kalkis_bitis[i] != 0) {
+                if (simdi < kalkis_bitis[i]) {
+                    darbede[i] = true;
+                    // Istek zaten darbeden buyukse istegi kullaniyoruz;
+                    // darbe bir TABAN, tavan degil.
+                    const int d = (hedef[i] > 0) ? MOTOR_KALKIS_DUTY
+                                                 : -MOTOR_KALKIS_DUTY;
+                    if (std::abs(hedef[i]) < MOTOR_KALKIS_DUTY) hedef[i] = d;
+                } else {
+                    kalkis_bitis[i] = 0;
+                }
+            }
+        }
+        const int yeni_sol = motor_rampa(hedef[0], uygulanan_sol, darbede[0]);
+        const int yeni_sag = motor_rampa(hedef[1], uygulanan_sag, darbede[1]);
         if (yeni_sol != uygulanan_sol) {
             tekerlek_sur(0, 1, yeni_sol);
             uygulanan_sol = yeni_sol;

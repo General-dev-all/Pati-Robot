@@ -174,6 +174,42 @@ Yön değiştirme rampadan geçtiği için değer önce 0'ı ziyaret ediyor:
 sert ters çevirme (en kötü akım tepesi) kendiliğinden ortadan kalkıyor.
 Konak testi üçünü de koruyor (`beden_karsilastir.cpp` · 5. bölüm).
 
+### 🔴 Kalkmak ile gitmeye devam etmek ayrı iki sayı
+
+Bu, motor tarafındaki en önemli fikir ve 06.09.2026'da gerçek kartta
+ölçülerek öğrenildi.
+
+Motor **dururken** yüksek güç istiyor (durgun rotor + redüktör
+sürtünmesi), ama bir kez döndüğünde çok daha azı yetiyor. İkisi tek bir
+sayıya bağlandığında robot ya **ötüyor** ya **fırlıyor**; arada
+kullanılabilir yer kalmıyor. Kullanıcının şikâyeti buydu:
+*"çok hızlı dönüyorlar, bu kadar hız olmaz çocuk için."*
+
+| Sayı | Değer | Ne yapıyor |
+|---|---|---|
+| `MOTOR_KALKIS_DUTY` | %85 | Yalnızca dururken harekete geçerken |
+| `MOTOR_KALKIS_MS` | 180 ms | Darbe penceresi; 100 ms'de tepeye çıkıyor |
+| `MOTOR_EN_AZ_DUTY` | %17 | Ondan sonraki **gitme** tabanı |
+| `hiz_egrisi` | karesel | Yarım itişte hızın dörtte biri |
+
+Darbenin kendisi de **rampalı** (`MOTOR_KALKIS_ADIM`, 100 ms'de tepeye)
+— anlık sıçrama yok. Bu, kullanıcının "anlık tam güç yapma" kuralına
+bilinçli bir istisna ve **onayı alındı**. Farkı büyüklükte: kuralı
+doğuran olay bitmiş pille 5 saniye kesintisiz tam güçtü.
+
+Rampa adımı üç ayrı değer, çünkü üç durumun riski aynı değil:
+
+| Durum | Adım/tik | Neden |
+|---|---|---|
+| Hızlanma | 5 | Akım tepesini düşüren yer burası, en yavaş bu olmalı |
+| Yavaşlama | 15 | Akım zaten düşüyor; hızlı inmek istenen yavaş hıza çabuk oturtuyor |
+| Kalkış darbesi | 20 | Sürtünmeyi kıracak kadar hızlı, yine de rampalı |
+
+⚠️ %17 hâlâ **ölçülmedi** — ama artık bir kalkış eşiği değil bir gitme
+tabanı ve o çok daha bağışlayıcı. Ölçmek için ek koda gerek yok:
+tekerlekler takılı, Pati yerde, panelden hız sınırını düşür; motorun
+dönmeye devam edemediği (kalkıp hemen durduğu) değer tabandır.
+
 ### Ölü adam zamanlayıcısı
 
 Komut gelmeden **600 ms** geçerse motorlar duruyor. Panel dokunma

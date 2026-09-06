@@ -256,6 +256,101 @@ void yumusak_kalkis()
     for (int f = -MOTOR_RAMPA_ADIM; f <= MOTOR_RAMPA_ADIM; ++f) {
         kontrol(motor_rampa(50, 50 - f) == 50, "hedefin yaninda salinim var");
     }
+
+    // YAVASLAMA hizlanmadan HIZLI olmali: akim zaten dusuyor, yavas
+    // inmenin faydasi yok ve kalkis darbesinden sonra istenen yavas hiza
+    // cabuk oturmak gerekiyor.
+    const int hizlanma = motor_rampa(100, 50) - 50;      // 50 -> yukari
+    const int yavaslama = 50 - motor_rampa(10, 50);      // 50 -> asagi
+    kontrol(yavaslama > hizlanma, "yavaslama hizlanmadan hizli degil");
+    std::printf("    hizlanma %d/tik · yavaslama %d/tik · kalkis %d/tik\n",
+                hizlanma, yavaslama, MOTOR_KALKIS_ADIM);
+}
+
+// ---------------------------------------------------------------------------
+// 6) Kalkis darbesi
+// ---------------------------------------------------------------------------
+//
+// Motor DURURKEN kalkmak icin yuksek guc istiyor, donduginde cok azi
+// yetiyor. Darbe bu ikisini ayiriyor. Iki sey birden dogru olmali:
+// darbe surtunmeyi kiracak kadar HIZLI cikmali, ama yine de RAMPALI
+// olmali — kullanicinin kurali "anlik tam guc yok".
+void kalkis_darbesi()
+{
+    std::printf("\n 6) kalkis darbesi\n");
+
+    // Darbe anlik DEGIL: tek tikta tepeye ciplak siçramamali.
+    kontrol(motor_rampa(MOTOR_KALKIS_DUTY, 0, true) < MOTOR_KALKIS_DUTY,
+            "darbe tek tikta tepeye siçriyor — rampasiz");
+
+    // Ama hizli olmali: darbe suresi icinde tepeye varmali.
+    int su_an = 0, tik = 0;
+    while (su_an != MOTOR_KALKIS_DUTY && tik < 1000) {
+        su_an = motor_rampa(MOTOR_KALKIS_DUTY, su_an, true);
+        ++tik;
+    }
+    const int cikis_ms = tik * 20;
+    kontrol(su_an == MOTOR_KALKIS_DUTY, "darbe tepeye varmiyor");
+    kontrol(cikis_ms < MOTOR_KALKIS_MS,
+            "darbe kendi suresi icinde tepeye varamiyor");
+    std::printf("    tepeye cikis %d ms / darbe suresi %d ms\n",
+                cikis_ms, MOTOR_KALKIS_MS);
+
+    // Darbe kalkistan HIZLI, hizlanmadan da hizli olmali.
+    kontrol(MOTOR_KALKIS_ADIM > MOTOR_RAMPA_ADIM,
+            "darbe normal hizlanmadan hizli degil");
+
+    // 🔴 DURMAK DARBEDEN DE ETKILENMEMELI. Olu adam beklemez.
+    for (int v = -100; v <= 100; v += 11) {
+        kontrol(motor_rampa(0, v, true) == 0, "darbe kipinde durmak gecikiyor");
+    }
+
+    // Darbe TABAN, tavan degil: istek darbeden buyukse istek kazanmali.
+    // (Bu kural gorevde uygulaniyor; burada sadece degerin mumkun
+    // oldugunu dogruluyoruz.)
+    kontrol(MOTOR_KALKIS_DUTY < 100, "darbe tam guc — kural deliniyor");
+}
+
+// ---------------------------------------------------------------------------
+// 7) Egrisel joystick tepkisi
+// ---------------------------------------------------------------------------
+//
+// Dogrusalken joystick'in ilk milimetresi bile gitme tabaninin ustune
+// atliyordu: cocuk icin "duruyor" ile "firliyor" arasinda ara yoktu.
+void egri()
+{
+    std::printf("\n 7) egrisel tepki\n");
+
+    kontrol(hiz_egrisi(0) == 0, "orta nokta sifir degil");
+    kontrol(hiz_egrisi(100) == 100, "tam itiste tam hiz yok");
+    kontrol(hiz_egrisi(-100) == -100, "tam geride tam hiz yok");
+
+    // Tek fonksiyon: isaret korunmali.
+    for (int h = -100; h <= 100; ++h) {
+        kontrol(hiz_egrisi(-h) == -hiz_egrisi(h), "egri tek fonksiyon degil");
+    }
+
+    // Egri HER ZAMAN dogrusalin altinda kalmali (yumusatiyor, sertlestirmiyor).
+    for (int h = 0; h <= 100; ++h) {
+        kontrol(hiz_egrisi(h) <= h, "egri dogrusaldan sert");
+    }
+
+    // Monoton: itdikce artmali, yoksa kumanda tutarsiz hissettirir.
+    for (int h = 1; h <= 100; ++h) {
+        kontrol(hiz_egrisi(h) >= hiz_egrisi(h - 1), "egri monoton degil");
+    }
+
+    // Kirpma.
+    kontrol(hiz_egrisi(5000) == 100, "ust kirpma yok");
+    kontrol(hiz_egrisi(-5000) == -100, "alt kirpma yok");
+
+    std::printf("    %%25 -> %d   %%50 -> %d   %%75 -> %d   %%100 -> %d\n",
+                hiz_egrisi(25), hiz_egrisi(50), hiz_egrisi(75),
+                hiz_egrisi(100));
+
+    // Kumandanin alt yarisi GERCEKTEN yavas olmali: yarim itiste hizin
+    // dortte biri. Bu, "cok hizli" sikayetinin dogrudan karsiligi.
+    kontrol(hiz_egrisi(50) <= 30, "yarim itiste hala hizli");
 }
 
 }  // namespace
@@ -270,6 +365,8 @@ int main()
     motor_dutysi();
     karistirma();
     yumusak_kalkis();
+    kalkis_darbesi();
+    egri();
 
     std::printf("\n  ------------------------------------------------------\n");
     if (g_hata == 0) {
