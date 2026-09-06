@@ -353,6 +353,40 @@ kola bağlardı: kol yolda takılırsa kare hiç ilerlemez ve tekerlek
 **sınırsız** dönerdi. Bir motorun durma koşulu asla başka bir şeyin
 varması olmamalı — yer değiştirme sıfır olsa bile.
 
+### 🔴 Dönüş yönü ters çıktı — sebebi ayırt edilmedi
+
+06.09.2026, gerçek kartta: çocuk çubuğu **sağa** itince Pati **sola**
+dönüyordu. İleri ve geri doğruydu — kullanıcı Pati'yi hem yüzü hem
+sırtı dönükken denedi, ikisinde de Pati kendi ileri yönüne gitti. Yani
+iki motorun ileri yönü doğru; ters olan yalnızca dönüş.
+
+⚠️ **İki sebep de bu belirtiyi birebir veriyor ve hangisi olduğu
+ölçülmedi:**
+
+| | Ne olurdu | Neden ileri/geri etkilenmez |
+|---|---|---|
+| **(a) Kablo** | Sol ve sağ motor L9110'un A/B kanallarına ters bağlanmış | İkisi de aynı yöne gider, hangisinin "sol" sayıldığı fark etmez |
+| **(b) Ayna** | Pati'nin yüzü çocuğa dönükse robotun kendi "sağı" çocuğun "solu"dur | Yön değişmiyor, sadece bakış açısı |
+
+**Nasıl ayırt edilir:** Pati'nin **sırtı** çocuğa dönükken sür.
+(a) ise o yönde de ters görünür; (b) ise doğru görünür.
+
+Düzeltme iki hâlde de aynı olduğu için **karıştırmada** duruyor
+(`SURUS_X_YONU = -1`): kumandanın hissini belirleyen yer orası ve
+konak testinin koruyabildiği tek yer orası. Pin haritasına koymak,
+ayırt edilmemiş bir iddiayı donanım belgesine yazmak olurdu —
+`pati_pinler.h`'de yalnızca ölçülmüş şeyler var.
+
+🔴 **(a) olduğu bir gün kanıtlanırsa düzeltme pin haritasına
+taşınmalı.** O zaman `/api/durum`'daki `beden.sol` fiziksel **sağ**
+tekerleği anlatıyor demektir ve `TESHIS.md` insanları o alana bakmaya
+gönderiyor — bir arıza ararken saatler yer.
+
+`jest_donus` de aynı işareti kullanıyor, yani jest tablosundaki
+"sağa dön" ile kumandanın "sağa dön"ü aynı yön. Jestlerin net dönüşü
+sıfır olduğu için ayrışsalar kimse fark etmezdi; kod okuyanı yanlış
+bilgilendirirdi.
+
 ### 🔴 Pati bedeninin farkında — dört ayrı hâl
 
 Bu bir süs değil, **ölçülmüş bir hatadan çıktı.** Gerçek kullanımda
@@ -478,7 +512,7 @@ dokunmayı engellemezdi ve çocuk sönük bir çubuğu sürüklemeye
                               · bak_etrafina · dans
 ```
 
-Karıştırma (`sol = y+x`, `sağ = y−x`) ve hız tavanı **cihazda**. Panel
+Karıştırma (`sol = y−x`, `sağ = y+x`) ve hız tavanı **cihazda**. Panel
 yalnızca parmağın nerede olduğunu söylüyor. İki sebep: tavan cihazda
 dursun (panel gönderse bile aşılamasın), ve karıştırmanın işareti konak
 testinde yakalanabilsin — JS'te olsaydı "sola bas, sağa gitsin" hatası

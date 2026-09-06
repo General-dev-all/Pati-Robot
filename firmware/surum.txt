@@ -1,2 +1,2 @@
-3.3.0
-Artık tekerlekleri ve kolları ayrı ayrı ayarlayabilirsiniz. Her biri için üç seçenek var: Açık (Pati konuşurken kendi de oynatır ve çocuğun sözünü dinler), Sadece kumandadan (yalnızca panelden, Pati kendi kararıyla oynatmaz) ve Kapalı (hiç oynamaz, motorlar ve servolar tamamen s
+3.3.1
+Kumandanin sagi ve solu tersti: cubugu saga itince Pati sola donuyordu. Duzeltildi. Ileri ve geri zaten dogruydu, onlara dokunulmadi.

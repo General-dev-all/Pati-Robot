@@ -96,7 +96,9 @@ bool beden_takili();
 // cagirani panel. Ozerk hareket ve sesli komut buraya hic ugramiyor;
 // onlar yerinde donusle sinirli (bkz. beden_jest).
 //
-// `x` ve `y` JOYSTICK KONUMU, -100..+100. y ileri, x saga.
+// `x` ve `y` JOYSTICK KONUMU, -100..+100. y ileri, x saga —
+// COCUGUN GORDUGU yone gore. Isaretin tekerleklere nasil dagildigi
+// olculerek bulundu (pati_beden_matematik.hpp · SURUS_X_YONU).
 //
 // Karistirma (hangi tekerlek ne yapacak) ve ebeveynin hiz siniri
 // CIHAZDA uygulaniyor, panelde degil — panel gonderse bile sinirin

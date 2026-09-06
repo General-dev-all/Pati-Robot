@@ -216,14 +216,51 @@ struct Surus {
 inline constexpr int HIZ_TAVAN_EN_AZ  = 40;
 inline constexpr int HIZ_TAVAN_EN_COK = 100;
 
+// ---------------------------------------------------------------------------
+// 🔴 DONUS YONU — GERCEK KARTTA OLCULDU, TERSTI
+// ---------------------------------------------------------------------------
+//
+// 06.09.2026: cocuk cubugu SAGA itince Pati SOLA donuyordu. Ileri ve
+// geri dogruydu — kullanici Pati'yi hem yuzu hem sirti donukken denedi
+// ve ikisinde de Pati kendi ileri yonune gitti. Yani iki motorun ileri
+// yonu dogru; ters olan yalnizca donus.
+//
+// ⚠ SEBEBI AYIRT EDILMEDI ve iki ihtimal de bu belirtiyi birebir
+// veriyor:
+//
+//   (a) KABLO. Sol ve sag motor L9110'un A/B kanallarina ters
+//       baglanmis. Ileri/geri etkilenmez cunku ikisi de ayni yone
+//       gider; yalnizca donus ters olur.
+//
+//   (b) AYNA. Pati'nin yuzu cocuga donukse robotun kendi "sagi"
+//       cocugun "solu"dur. Kablo dogru olsa bile donus ters GORUNUR.
+//       Her uzaktan kumandali oyuncakta olan sey.
+//
+// NASIL AYIRT EDILIR: Pati'nin SIRTI cocuga donukken sur. (a) ise o
+// yonde de ters gorunur; (b) ise dogru gorunur.
+//
+// Duzeltme iki halde de AYNI, o yuzden burada duruyor: karistirma
+// kumandanin hissini belirleyen yer ve konak testinin koruyabildigi
+// tek yer. Pin haritasina koymak, ayirt edilmemis bir iddiayi donanim
+// belgesine yazmak olurdu (bkz. pati_pinler.h — orada yalnizca
+// olculmus seyler var).
+//
+// ⚠ (a) oldugu bir gun kanitlanirsa duzeltme pin haritasina TASINMALI,
+// cunku o zaman /api/durum'daki `beden.sol` fiziksel SAG tekerlegi
+// anlatiyor demektir ve bir ariza ararken saatler yer.
+inline constexpr int SURUS_X_YONU = -1;
+
 // Joystick'in x/y'sini (-100..100) iki tekerlek hizina cevirir.
 //
-//   sol = y + x        sag = y - x
+//   sol = y - x        sag = y + x        (SURUS_X_YONU = -1)
 //
-// Ileri iterken ikisi de ayni yone gidiyor. Saga iterken sol tekerlek
-// hizlanip sag yavasliyor; tam saga itilince sol ileri / sag geri, yani
-// Pati YERINDE doniyor. Doniste yer degistirmemesi tesadufi degil,
-// masa kenarinda istenen davranis bu.
+// Ileri iterken ikisi de ayni yone gidiyor. Saga iterken bir tekerlek
+// ileri obri geri gidiyor, yani Pati YERINDE doniyor. Doniste yer
+// degistirmemesi tesadufi degil, masa kenarinda istenen davranis bu.
+//
+// ⚠ X'in isareti SURUS_X_YONU'nden geliyor ve gercek kartta olculdu —
+// gerekcesi yukarida. Once "+x" idi ve cubugu saga itince Pati sola
+// donuyordu.
 //
 // `tavan` ebeveynin hiz siniri (10-100). BURADA uygulaniyor, panelde
 // degil: sinir cihazda dursun, panel gonderse bile asilamasin.
@@ -243,7 +280,7 @@ inline int hiz_egrisi(int h)
 
 inline Surus surus_karistir(int x, int y, int tavan)
 {
-    const int gx = std::clamp(x, -100, 100);
+    const int gx = std::clamp(x, -100, 100) * SURUS_X_YONU;
     const int gy = std::clamp(y, -100, 100);
     const int t  = std::clamp(tavan, HIZ_TAVAN_EN_AZ, HIZ_TAVAN_EN_COK);
 
@@ -331,8 +368,13 @@ inline constexpr int JEST_TEKER_EN_COK_MS = 900;
 inline Surus jest_donus(int teker, int tavan)
 {
     const int t = std::clamp(tavan, HIZ_TAVAN_EN_AZ, HIZ_TAVAN_EN_COK);
+    // SURUS_X_YONU burada da uygulanıyor: `teker` de joystick'in x'i
+    // gibi COCUGUN GORDUGU yonu anlatiyor. Ayri kalsalardi jest
+    // tablosundaki "saga don" ile kumandanin "saga don"u zit yonler
+    // olurdu — kimse fark etmezdi cunku jestlerin net donusu sifir,
+    // ama kod okuyani yanlis bilgilendirirdi.
     const int h = std::clamp(teker, -JEST_DONUS_EN_COK, JEST_DONUS_EN_COK)
-                  * t / 100;
+                  * t / 100 * SURUS_X_YONU;
     return {h, -h};
 }
 

@@ -205,6 +205,21 @@ Düpedüz "kolum yok" diyorsa promptun bedensiz eki gitmemiş demektir.
    Beden ekleri o araçla birlikte gidiyor; kapalıyken Pati bedenini de
    bilmiyor.
 
+### Joystick'te sağa basınca sola dönüyor
+
+**3.3.1'de düzeltildi.** Daha eski bir sürümdeyse güncelle.
+
+Güncelledikten sonra **hâlâ** tersse, muhtemelen bakış açısı: Pati'nin
+yüzü sana dönükken robotun kendi "sağı" senin "solun". Sırtı sana
+dönükken sür — orada doğru görünüyorsa bu ayna etkisi, arıza değil.
+
+İkisinde de tersse `pati_beden_matematik.hpp` → `SURUS_X_YONU`
+işaretini çevir. O satırın başındaki açıklama sebebini ve nasıl ayırt
+edileceğini yazıyor.
+
+⚠️ İleri/geri de tersse bu **başka bir arıza**: iki motorun da
+kutupları ters bağlı demektir, dönüşle ilgisi yok.
+
 ### Panelde joystick ya da düğmeler sönük
 
 Bozuk değil: o uzvun kipi **Kapalı**. Panel → Kumanda → Tekerlekler /

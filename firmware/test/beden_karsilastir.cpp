@@ -178,10 +178,14 @@ void karistirma()
     // 🔴 TAM SAGA = YERINDE DONUS. Sol ileri, sag geri, buyuklukler esit.
     // Ters cikarsa "sola bas saga gitsin" hatasi budur.
     const Surus sagaDon = surus_karistir(100, 0, 100);
-    kontrol(sagaDon.sol == 100 && sagaDon.sag == -100,
+    // 🔴 ISARET GERCEK KARTTA OLCULDU (06.09.2026): once tersti ve
+    // cubugu saga itince Pati SOLA donuyordu. Buradaki iki satir o
+    // olcumun kaydi — degistirmeden once
+    // pati_beden_matematik.hpp'deki SURUS_X_YONU aciklamasini oku.
+    kontrol(sagaDon.sol == -100 && sagaDon.sag == 100,
             "saga donus yanlis yone gidiyor");
     const Surus solaDon = surus_karistir(-100, 0, 100);
-    kontrol(solaDon.sol == -100 && solaDon.sag == 100,
+    kontrol(solaDon.sol == 100 && solaDon.sag == -100,
             "sola donus yanlis yone gidiyor");
 
     // Simetri: x'in isareti degisince iki tekerlek yer degistirmeli.
@@ -205,15 +209,18 @@ void karistirma()
             }
         }
     }
-    const Surus capraz = surus_karistir(100, 100, 55);
+    const Surus capraz = surus_karistir(-100, 100, 55);
     std::printf("    capraz itis, tavan %%55 -> sol %d  sag %d\n",
                 capraz.sol, capraz.sag);
     kontrol(capraz.sol == 55, "caprazda tavan uygulanmiyor");
 
     // Tavan kirpilmali: panel bozuk bir deger gonderemesin, ve ALT
     // sinirin altina duserse tekerlek hic donmezdi.
+    // x NEGATIF: SURUS_X_YONU = -1 oldugu icin sol tekerlegin tam
+    // komut aldigi kose burasi. (100, 100) verilseydi sol tam sifir
+    // cikardi ve test tavani degil, kendi kosesini olcerdi.
     for (int t : {-100, 0, 5, 39, 500}) {
-        const Surus m = surus_karistir(100, 100, t);
+        const Surus m = surus_karistir(-100, 100, t);
         kontrol(std::abs(m.sol) <= HIZ_TAVAN_EN_COK, "tavan ust sinirdan tasiyor");
         kontrol(std::abs(m.sol) >= HIZ_TAVAN_EN_AZ,
                 "tavan alt sinirin altina dusuyor — tekerlek donmez");
