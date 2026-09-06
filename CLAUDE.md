@@ -288,7 +288,8 @@ L9110S sürücü), iki kol (SG90 sınıfı mini servo) ve gövdenin kendi
 **4'lü AA pil** yuvası. StickS3 takılınca Pati bunu kendi anlıyor;
 takılı değilken bedenle ilgili hiçbir şey görünmüyor.
 
-Ayrıntı, kablo şeması ve devreye alma ölçümleri: **`firmware/BEDEN.md`**.
+Ayrıntı ve devreye alma ölçümleri: **`firmware/BEDEN.md`**. Kabloyu
+takacak kişi için tek sayfalık şema: **`firmware/Pati_Tek_Bakis_Kablolama_Diyagrami.png`**.
 
 🔴 **AA pilin (+) ucu StickS3'e HİÇBİR ŞEKİLDE gitmiyor.** Gövdeden
 Stick'e giden sekiz kablonun hepsi ya toprak ya Stick'in kendi çıkışı;

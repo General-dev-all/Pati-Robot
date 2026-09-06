@@ -8,6 +8,17 @@ kendi anlıyor; takılı değilken bedenle ilgili hiçbir şey görünmüyor.
 (aşağıda ayrı bölüm). Ölü bölge hâlâ ölçülmedi ve öyle işaretli.
 Bir sayı iddia ediliyorsa nereden geldiği yazılı.
 
+📐 **Kabloyu takacak kişi için tek sayfa:
+[`Pati_Tek_Bakis_Kablolama_Diyagrami.png`](Pati_Tek_Bakis_Kablolama_Diyagrami.png)** — pin haritası,
+L9110 bağlantıları, ortak ekler ve ilk çalıştırma sırası tek bakışta.
+Kablo renkleri gerçek montaja göre. Aşağıdaki metin onun gerekçesi.
+
+⚠️ Diyagram başlığı **ÜST/ALT** diye konumluyor (cihazı elde tutarken
+görünen hal); bu belge ve `pati_pinler.h` M5Stack'in tablosundaki gibi
+**SOL/SAĞ** diyor. Aynı şey: M5Stack'in "sol" sütunu (tek numaralar)
+diyagramda ALT sırada. Pin numaraları ikisinde de aynı — şüphede
+kalırsan **pin numarasına** güven.
+
 ---
 
 ## 🔴 Tek pazarlıksız kural
@@ -297,8 +308,19 @@ kullanıyor; konak testi alt sınırın altına düşülemediğini koruyor.
 
 ### A. Açılış seğirmesi testi — **masada değil, elde**
 
-Beden bağlı, **Pati havada, tekerlekler serbest**, AA anahtarı açık.
-Stick'i çalıştır.
+Beden bağlı, **Pati havada, tekerlekler serbest**.
+
+🔴 **SIRA ÖNEMLİ — önce Stick, sonra AA:**
+
+1. AA anahtarı **kapalı**
+2. StickS3'ü aç
+3. **2-3 saniye bekle**
+4. AA anahtarını aç
+
+Bu sıra, aşağıdaki "açılış seğirmesi" penceresini **tamamen kapatıyor**:
+yazılım pinleri kurmadan sürücüye hiç güç gitmiyor. Kablolama
+diyagramından alındı; önceki hali (AA açıkken Stick'i çalıştır) o
+pencereyi açık bırakıyordu.
 
 > **Ne arıyoruz:** açılışın ilk yarım saniyesinde tekerlekler dönüyor mu?
 > Yazılım pinleri kurana kadar ESP32 çıkışları havada kalıyor ve

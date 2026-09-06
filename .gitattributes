@@ -31,3 +31,7 @@
 *.ham binary
 *.pcm binary
 *.wav binary
+
+# Kablolama diyagrami da ikili. Satir sonu cevrilirse dosya bozulur ve
+# bozuldugu ancak birisi acmaya calisinca anlasilir.
+*.png binary
