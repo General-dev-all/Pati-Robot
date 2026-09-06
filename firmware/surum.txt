@@ -1,2 +1,2 @@
 3.1.0
-Pati'nin bedeni geldi. Tekerlekli gövdeye takınca Pati bunu kendi anlıyor: panelde yeni bir Kumanda bölümü açılıyor ve çocuk oradan Pati'yi sürebiliyor, kollarını oynatabiliyor. Kollar Pati konuşurken kendiliğinden hareket ediyor. Tekerlekler yalnızca parmak ekranda dururken dönüyor; parmak kalkınca ya da bağlantı kesilince Pati hemen duruyor. Hız sınırı da panelden ayarlanıyor, başlangıç değeri düşük tutuldu.
+Pati'nin bedeni geldi. Tekerlekli gövdeye takınca Pati bunu kendi anlıyor: panelde yeni bir Kumanda bölümü açılıyor ve çocuk oradan Pati'yi sürebiliyor, kollarını oynatabiliyor. Kollar Pati konuşurken kendiliğinden hareket ediyor. Tekerlekler yalnızca parmak ekranda dururken dönüyo
