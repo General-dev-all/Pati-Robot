@@ -3,9 +3,9 @@
 İki tekerlek, iki kol, kendi pili. StickS3 bedene takılınca Pati bunu
 kendi anlıyor; takılı değilken bedenle ilgili hiçbir şey görünmüyor.
 
-**Durum: gerçek kartta çalışıyor.** Servolar, algılama, panel kumandası
-ve motorlar sınandı. Bir ölçüm yapıldı ve bir kusur buldu (PWM frekansı,
-aşağıda D adımında); **ölü bölge hâlâ ölçülmedi** ve öyle işaretli.
+**Durum (06.09.2026):** algılama, panel kumandası ve **motorlar
+çalışıyor** — motorlar 3.1.1 ile panelden sürülüyor. **Servolar açık iş**
+(aşağıda ayrı bölüm). Ölü bölge hâlâ ölçülmedi ve öyle işaretli.
 Bir sayı iddia ediliyorsa nereden geldiği yazılı.
 
 ---
@@ -339,3 +339,58 @@ Olacaklar, hepsi kendiliğinden:
 konnektörde gerçekten bir güç kablosu olur. Ayrı bir aşama, ayrı bir
 karar; o kablo diğer yedisinden fiziksel olarak ayrılmalı (farklı renk,
 farklı konnektör).
+
+---
+
+## ⚠️ AÇIK İŞ — servolar
+
+06.09.2026 akşamı: servolar önce çalışıyordu, **iki motoru %100'de
+5 saniye döndüren testten sonra** oynamaz oldu. Motorlar aynı anda
+çalışmaya devam ediyor.
+
+### Ölçülenler
+
+| Gözlem | Ne kanıtlıyor |
+|---|---|
+| Motorlar panelden dönüyor | AA hattı **amper verebiliyor** — pil/ek elendi |
+| Açılışta **sağ** servo oynadı | Servolara gerilim **ve** sinyal ulaşıyor; pin 9 sağlam; sağ servo canlı |
+| Cihaz komutu uyguluyor (`beden.kol_*` değişiyor) | Panel → firmware → LEDC yolu sağlam |
+| Servo ve motor kanalları aynı görevde, aynı kurulumda | Motorlar çalışıyorsa servo darbeleri de üretiliyor |
+
+🔴 **Yazılım elendi, tahminle değil zaman çizelgesiyle:** servolar 3.1.0
+üzerinde, firmware'de hiçbir şey değişmeden öldü (değişen tek şey
+`beden_hiz` ayarıydı ve o yalnızca motor duty'sine giriyor). Sonrasında
+cihaz defalarca yeniden başladı; `beden_baslat()` her açılışta LEDC'yi
+sıfırdan kuruyor ve **servo durumu NVS'e hiç yazılmıyor.** Yeniden
+başlatmayı atlatan bir yazılım kilitlenmesi mümkün değil.
+
+Zamanlayıcı çakışması da yok: arka ışık TIMER_1, kollar TIMER_2,
+motorlar TIMER_3.
+
+### En muhtemel sebep
+
+Bastırmasız hatta motor anahtarlama sıçramaları. Servolar motorlarla
+aynı AA hattında ve **hiçbir bastırma yok** — ne 100 nF, ne büyük
+kondansatör. Kondansatörler planda "belirti çıkarsa tak" diye isteğe
+bağlı bırakılmıştı; **motorların ilk gerçek denemesinden önce takılmalıydı.**
+
+### Devam edilecek yer
+
+1. Sinyal uçlarını **pin 7 ↔ pin 9** yer değiştir. Arıza takip ederse
+   kablo, etmezse o servo gitmiş.
+2. Servo güç uçlarını doğrudan **L9110'un `VCC`/`GND`** pinlerine al —
+   motorların dönmesi o pinlerde sağlam gerilim olduğunu kanıtlıyor,
+   bu hamle şüpheli demeti devre dışı bırakıyor.
+3. Orta nokta testi (%40 ↔ %60): uçlara hiç gitmeden. Ortada oynayıp
+   uçlarda oynamıyorsa kol **mekanik olarak sıkışıyor** ve
+   `KOL_DINLENME_DERECE` / `KOL_TAVAN_DERECE` (20°–150°) daraltılmalı.
+   O iki sayı ölçülmedi, seçildi.
+
+### Yeni servo takmadan önce
+
+**İki adet 100 nF, L9110'un yeşil klemensine** — her motorun iki
+vidasına birer tane. Lehim gerekmiyor, kondansatörün bacakları motor
+kablolarıyla aynı vidaya giriyor. Yoksa aynı şey tekrarlar.
+
+Hattaki gerilim çöküşü ayrı bir iş ve 100 nF onu çözmüyor: AA uçlarına
+paralel **470–1000 µF elektrolitik** gerekiyor (henüz alınmadı).
