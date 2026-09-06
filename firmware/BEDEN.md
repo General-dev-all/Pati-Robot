@@ -352,7 +352,7 @@ farklı konnektör).
 
 | Gözlem | Ne kanıtlıyor |
 |---|---|
-| Motorlar panelden dönüyor | AA hattı **amper verebiliyor** — pil/ek elendi |
+| Motorlar panelden dönüyor *(o an)* | AA hattı o anda amper verebiliyordu — **kalıcı sonuç DEĞİL, aşağıya bak** |
 | Açılışta **sağ** servo oynadı | Servolara gerilim **ve** sinyal ulaşıyor; pin 9 sağlam; sağ servo canlı |
 | Cihaz komutu uyguluyor (`beden.kol_*` değişiyor) | Panel → firmware → LEDC yolu sağlam |
 | Servo ve motor kanalları aynı görevde, aynı kurulumda | Motorlar çalışıyorsa servo darbeleri de üretiliyor |
@@ -367,9 +367,27 @@ başlatmayı atlatan bir yazılım kilitlenmesi mümkün değil.
 Zamanlayıcı çakışması da yok: arka ışık TIMER_1, kollar TIMER_2,
 motorlar TIMER_3.
 
-### En muhtemel sebep
+### 🔴 En muhtemel sebep: BESLEME ARALIKLI
 
-Bastırmasız hatta motor anahtarlama sıçramaları. Servolar motorlarla
+Aynı akşam biraz sonra **motorlar da durdu** — dönmek yerine PWM
+frekansında ötmeye başladılar. Sonra yine döndüler, sonra yine öttüler.
+
+Bu, tek tek bakıldığında yanıltıcı olan bütün gözlemleri tek bir şeyle
+açıklıyor: **AA hattı aralıklı.** Dinlenince toparlıyor, yük binince
+saniyeler içinde çöküyor.
+
+⚠️ **BURADA BİR YANLIŞ TEŞHİS YAPILDI ve tekrar edilebilir:** "motorlar
+dönüyor, demek hat sağlam, pil elendi" denildi. O an doğruydu ama
+**kalıcı sonuç çıkarmak yanlıştı.** Aralıklı bir arızada tek bir başarılı
+ölçüm hiçbir şeyi elemiyor — arıza zaten aralıklarla kayboluyor.
+Doğrusu: aynı testi dinlenmiş ve yorulmuş halde tekrarlamak, ya da
+multimetreyle **yük altında** ölçmek.
+
+Bitmiş alkalin pilin ders kitabı davranışı bu. Aynı davranışı ısınan
+yüksek dirençli bir ek de yapar — ikisi ancak ölçümle ayrılır.
+
+İkinci sebep (elenmedi): bastırmasız hatta motor anahtarlama
+sıçramaları. Servolar motorlarla
 aynı AA hattında ve **hiçbir bastırma yok** — ne 100 nF, ne büyük
 kondansatör. Kondansatörler planda "belirti çıkarsa tak" diye isteğe
 bağlı bırakılmıştı; **motorların ilk gerçek denemesinden önce takılmalıydı.**
