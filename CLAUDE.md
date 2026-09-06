@@ -309,6 +309,14 @@ Tek istisna **sevinç dönüşü** (varsayılan kapalı): iki motor ters yönde
 döndüğü için robot yerinde döner, yer değiştirmez — yapı gereği masadan
 düşemez.
 
+🔴 **Motorlar anlık tam güce ASLA geçmiyor.** Kullanıcının açık isteği
+(06.09.2026): *"bir daha motorları anlık %100'de yapma, ne olursa olsun
+dikkatli gidelim."* Bir DC motorun en yüksek akımı kalkış anında oluyor
+ve o tepe AA hattında gerilim çöküşü yapıyor — aynı hatta duran servolar
+o çöküşü görüyor. Yazılımda yumuşak kalkış var (`motor_rampa`, 0→%100
+400 ms) ve konak testi koruyor. **Durmak rampadan geçmiyor:** ölü adam
+ya da parmağın kalkması beklemez.
+
 🔴 **Ölü adam zamanlayıcısı pazarlıksız.** Komut gelmeden 600 ms geçerse
 motorlar duruyor. Panel dokunma sürerken 150 ms'de bir gönderiyor.
 Çocuk parmağını kaldırırsa, telefon kilitlenirse, wifi takılırsa Pati

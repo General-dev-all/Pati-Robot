@@ -1,2 +1,2 @@
-3.1.1
-Bedenin tekerlekleri artık dönüyor. Motorlar bağlıydı ve komut da doğru gidiyordu ama sürücü kartı seçtiğimiz hızda anahtarlayamıyordu; ölçüp düzelttik. Panelde hız sınırını düşük tutmanı öneririz, Pati masada beklediğinden hızlı gidebiliyor.
+3.1.2
+Pati'nin tekerlekleri artık yumuşak kalkıyor: birden tam hıza fırlamak yerine yarım saniyede hızlanıyor. Durması ise anında — parmağını kaldırdığın anda duruyor. Bu hem daha kontrollü sürüş veriyor hem de pile binen ani yükü azaltıyor.

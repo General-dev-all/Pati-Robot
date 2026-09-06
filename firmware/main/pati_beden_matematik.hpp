@@ -109,6 +109,44 @@ inline int motor_duty(int hiz)
 }
 
 // ---------------------------------------------------------------------------
+// 🔴 YUMUSAK KALKIS — motorlar anlik tam guce ASLA gecmiyor
+// ---------------------------------------------------------------------------
+//
+// KULLANICININ ACIK ISTEGI (06.09.2026): "bir daha motorlari anlik %100'de
+// yapma, ne olursa olsun dikkatli gidelim."
+//
+// Istek hakli ve teknik karsiligi net: bir DC motorun en yuksek akimi
+// KALKIS anindadir (rotor duruyorken sargi direnci disinda bir sey
+// akimi sinirlamiyor). O tepe, AA hattinda gerilim cokusu yapiyor ve
+// ayni hatta duran servolar o cokusu goruyor.
+//
+// 06.09.2026 aksami iki motor bir anda %100'e cikarildi ve hemen
+// ardindan servolar oynamaz oldu. Sebep kanitlanmadi ama bu adim
+// tepeyi dusuruyor ve bedeli yok.
+//
+// ⚠️ DURMAK BEKLEMEZ. Rampa yalnizca YUKARI cikarken var; sifira inis
+// ANINDA. Olu adam zamanlayicisi ya da cocugun parmagini kaldirmasi
+// kademeli olamaz — o gecikme masa kenarinda santimetre demek.
+//
+// Yon degistirme de rampadan geciyor: +60'tan -60'a giderken deger
+// once 0'dan geciyor, yani sert ters cevirme (en kotu akim tepesi)
+// kendiliginden ortadan kalkiyor.
+
+// Tik basina en fazla degisim. 20 ms'lik dongude 5 birim = 0'dan
+// %100'e ~400 ms. Cocugun kumandasinda hissedilmeyecek kadar kisa,
+// akim tepesini dusurmeye yetecek kadar uzun.
+inline constexpr int MOTOR_RAMPA_ADIM = 5;
+
+inline int motor_rampa(int hedef, int su_an)
+{
+    if (hedef == 0) return 0;                       // durmak beklemez
+    const int fark = hedef - su_an;
+    if (fark > MOTOR_RAMPA_ADIM) return su_an + MOTOR_RAMPA_ADIM;
+    if (fark < -MOTOR_RAMPA_ADIM) return su_an - MOTOR_RAMPA_ADIM;
+    return hedef;
+}
+
+// ---------------------------------------------------------------------------
 // Surus karistirma
 // ---------------------------------------------------------------------------
 

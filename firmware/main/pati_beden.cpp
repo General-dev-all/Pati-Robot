@@ -372,15 +372,28 @@ void beden_gorevi(void*)
             else                      { sevinc_faz = -1; }
         }
 
-        if (istek_sol != uygulanan_sol) {
-            tekerlek_sur(0, 1, istek_sol);
-            uygulanan_sol = istek_sol;
+        // ---- YUMUSAK KALKIS ---------------------------------------------
+        //
+        // Motorlar anlik tam guce GECMIYOR — gerekce ve olcum
+        // pati_beden_matematik.hpp'de (motor_rampa). Ozeti: en yuksek akim
+        // kalkis aninda oluyor, o tepe AA hattini cokertiyor ve ayni
+        // hattaki servolar cokusu goruyor.
+        //
+        // Sifira inis rampadan GECMIYOR: durmak beklemez.
+        const int yeni_sol = motor_rampa(istek_sol, uygulanan_sol);
+        const int yeni_sag = motor_rampa(istek_sag, uygulanan_sag);
+        if (yeni_sol != uygulanan_sol) {
+            tekerlek_sur(0, 1, yeni_sol);
+            uygulanan_sol = yeni_sol;
         }
-        if (istek_sag != uygulanan_sag) {
-            tekerlek_sur(2, 3, istek_sag);
-            uygulanan_sag = istek_sag;
+        if (yeni_sag != uygulanan_sag) {
+            tekerlek_sur(2, 3, yeni_sag);
+            uygulanan_sag = yeni_sag;
         }
-        const bool suruyor = (istek_sol != 0 || istek_sag != 0);
+        // Rampa suruyorken de dongu 20 ms'de donmeli, yoksa kalkis
+        // 200 ms'lik adimlara bolunur ve rampa anlamini yitirir.
+        const bool suruyor = (istek_sol != 0 || istek_sag != 0
+                              || uygulanan_sol != 0 || uygulanan_sag != 0);
 
         // ---- ELLE MUDAHALE JESTI IPTAL EDIYOR ---------------------------
         //

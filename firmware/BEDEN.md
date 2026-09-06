@@ -156,6 +156,24 @@ açık. Yan faydası: boştaki akım sıfır.
 Düşüyorsa dinlenme açısı yerçekimine yaslanacak şekilde seçilmeli
 (`KOL_DINLENME_DERECE`).
 
+### Yumuşak kalkış — motorlar anlık tam güce geçmiyor
+
+Kullanıcının açık isteği (06.09.2026). Teknik karşılığı: bir DC motorun
+en yüksek akımı **kalkış anında** oluyor (rotor dururken sargı direnci
+dışında akımı sınırlayan bir şey yok). O tepe AA hattında gerilim
+çöküşü yapıyor ve aynı hatta duran servolar çöküşü görüyor.
+
+0 → %100 **400 ms** (20 ms'lik tikte 5 birim). Çocuğun kumandasında
+hissedilmiyor, akım tepesini düşürmeye yetiyor.
+
+⚠️ **Durmak rampadan geçmiyor.** Sıfıra iniş anında; ölü adam
+zamanlayıcısı ya da parmağın kalkması kademeli olamaz — o gecikme masa
+kenarında santimetre demek.
+
+Yön değiştirme rampadan geçtiği için değer önce 0'ı ziyaret ediyor:
+sert ters çevirme (en kötü akım tepesi) kendiliğinden ortadan kalkıyor.
+Konak testi üçünü de koruyor (`beden_karsilastir.cpp` · 5. bölüm).
+
 ### Ölü adam zamanlayıcısı
 
 Komut gelmeden **600 ms** geçerse motorlar duruyor. Panel dokunma

@@ -208,6 +208,56 @@ void karistirma()
     }
 }
 
+// ---------------------------------------------------------------------------
+// 5) Yumusak kalkis
+// ---------------------------------------------------------------------------
+//
+// Kullanicinin acik istegi: motorlar anlik tam guce gecmesin. Iki sey
+// birden dogru olmali ve ikisi de tek satirlik bir hatayla bozulur:
+//
+//   - YUKARI cikis kademeli (akim tepesi dussun)
+//   - SIFIRA inis ANINDA (olu adam beklemez; gecikme masa kenarinda
+//     santimetre demek)
+void yumusak_kalkis()
+{
+    std::printf("\n 5) yumusak kalkis\n");
+
+    // Durmak asla beklemez — hangi hizdan olursa olsun.
+    for (int v = -100; v <= 100; v += 7) {
+        kontrol(motor_rampa(0, v) == 0, "durmak rampadan geciyor");
+    }
+
+    // Yukari cikis adim adim, ve adim asilmiyor.
+    int su_an = 0;
+    int tik = 0;
+    while (su_an != 100 && tik < 1000) {
+        const int yeni = motor_rampa(100, su_an);
+        kontrol(yeni - su_an <= MOTOR_RAMPA_ADIM, "rampa adimi asiliyor");
+        kontrol(yeni > su_an, "rampa ilerlemiyor");
+        su_an = yeni;
+        ++tik;
+    }
+    kontrol(su_an == 100, "rampa hedefe varmiyor");
+    std::printf("    0 -> %%100: %d tik (%d ms)\n", tik, tik * 20);
+    kontrol(tik >= 10, "rampa cok hizli — kalkis tepesi dusmez");
+
+    // Yon degistirme SIFIRDAN GECMELI: sert ters cevirme en kotu akim
+    // tepesi. +60'tan -60'a giderken 0 mutlaka ziyaret edilmeli.
+    su_an = 60;
+    bool sifir_gorundu = false;
+    for (int i = 0; i < 200 && su_an != -60; ++i) {
+        su_an = motor_rampa(-60, su_an);
+        if (su_an == 0) sifir_gorundu = true;
+    }
+    kontrol(su_an == -60, "ters yone varilmiyor");
+    kontrol(sifir_gorundu, "yon degisimi sifirdan gecmiyor");
+
+    // Hedefe cok yakinken tam oturmali, salinmamali.
+    for (int f = -MOTOR_RAMPA_ADIM; f <= MOTOR_RAMPA_ADIM; ++f) {
+        kontrol(motor_rampa(50, 50 - f) == 50, "hedefin yaninda salinim var");
+    }
+}
+
 }  // namespace
 
 int main()
@@ -219,6 +269,7 @@ int main()
     kol_aynasi();
     motor_dutysi();
     karistirma();
+    yumusak_kalkis();
 
     std::printf("\n  ------------------------------------------------------\n");
     if (g_hata == 0) {
