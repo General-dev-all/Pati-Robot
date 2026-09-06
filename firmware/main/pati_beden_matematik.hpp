@@ -294,6 +294,30 @@ inline Surus surus_karistir(int x, int y, int tavan)
 // parmak var ve cocuk bakiyor); Pati'nin kendi karari asamiyor.
 inline constexpr int JEST_DONUS_EN_COK = 60;
 
+// ⚠️ TABLODAKI SAYI KISA KARELERDE MOTORA GITMIYOR — KALKIS DARBESI
+// ONUN USTUNDE.
+//
+// Her tekerlek karesi DURURKEN basliyor, yani MOTOR_KALKIS_DUTY (%85)
+// devreye giriyor ve 180 ms boyunca surüyor (tepeye 100 ms'de cikiyor).
+// Yani 120-200 ms'lik bir kare neredeyse TAMAMEN darbenin icinde
+// gecıyor: tabloda 50 yazsa da motor ~%85'te doniyor.
+//
+// Bu bir hata degil, gereklilik: darbe olmadan kisa bir kare motoru hic
+// dondurmuyor, yalnizca otturuyor (06.09.2026'da olculdu). Ama tabloya
+// bakan birinin "donus %50'de" sanmasi kolay, o yuzden yaziliyor.
+//
+// Sonuclari:
+//   - Ozerk donusler yazili sayidan DAHA CANLI gorunuyor. Sakinlesmesi
+//     isteniyorsa cozum sayiyi dusurmek DEGIL, kareyi uzatmak
+//     (180 ms'den sonra darbe bitiyor ve hedefe iniliyor).
+//   - Dusme riski degismiyor: darbe de iki tekerlege ters isaretle
+//     gidiyor, yer degistirme yine sifir.
+//   - AA hattindaki akim tepesi bu jestlerde de var. Kol donus boyunca
+//     duruyor ve servo darbesi kesiliyor; ucuncu onlem 100 nF'lar.
+//
+// ⚠️ HENUZ GERCEK KARTTA GORULMEDI (06.09.2026). Ilk denemede
+// bakilacak sey: donusler cok mu sert. Oyleyse kareler uzatilacak.
+
 // Bir jestin toplam tekerlek suresi bunu asamaz. Ozerkligin siniri
 // ADIM DEGIL SURE: yer degistirme zaten yapisal olarak sifir, ama uzun
 // sure donmek kayma yuzunden ikinci dereceden bir surunme birakiyor.
