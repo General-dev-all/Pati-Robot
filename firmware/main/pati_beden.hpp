@@ -112,6 +112,10 @@ bool beden_takili();
 // tarayici kapanirsa Pati duruyor. Panelin dogru davranmasina
 // GUVENMIYORUZ — sifir gondermeyi unutan bir panel, kacan bir robot
 // demek olurdu.
+//
+// ⚠ Ebeveyn tekerlekleri KIP_KAPALI yaptiysa bu cagri hicbir sey
+// yapmiyor. Panel o durumda joystick'i de sonduruyor — basip hicbir
+// sey olmamasi, cocuga kumandanin bozuk oldugunu dusundururdu.
 void beden_surus(int x, int y);
 
 // ---------------------------------------------------------------------------
@@ -126,7 +130,23 @@ void beden_surus(int x, int y);
 // TEK YERDE tutuyor (pati_beden.cpp · KOL_SAG_AYNA). Panel ve jest
 // tablosu servo geometrisini hic bilmiyor; montaj degisirse tek bir
 // sabit degisiyor.
+//
+// ⚠ Ebeveyn kollari KIP_KAPALI yaptiysa bu cagri hicbir sey yapmiyor.
 void beden_kol(int sol_yuzde, int sag_yuzde);
+
+// 🔴 ISTEGIN KAYNAGI — kip kontrolu buna bakiyor.
+//
+// Ebeveyn bir uzvu "sadece kumandadan" kipine alabiliyor
+// (pati_ayar.hpp · KIP_KUMANDA). O kipte panelin dugmesi calisiyor ama
+// Pati kendi kararıyla oynatmiyor. Ikisini ayirt edebilmek icin istegin
+// kimden geldigi TASINMALI — sonradan bakinca "jest jesttir" demek,
+// ebeveynin ayarini sessizce delerdi.
+//
+// KUMANDA = panelin dugmesi. Cocugun parmagi var, ekrana bakiyor.
+// PATI    = Pati'nin kendi karari: ozerk jest ya da SESLI KOMUT.
+//           Sesli komut buraya giriyor cunku uzerinde parmak yok.
+constexpr int JEST_KAYNAK_KUMANDA = 0;
+constexpr int JEST_KAYNAK_PATI    = 1;
 
 // Hazir jest oynatir. Bilinmeyen ad false donuyor (panel yaziyor).
 //
@@ -140,10 +160,10 @@ void beden_kol(int sol_yuzde, int sag_yuzde);
 // 🔴 TEKERLEKLI JESTLERIN HEPSI YERINDE DONUYOR. Yer degistirebilen
 // bir jest tabloya yazilamiyor.
 //
-// Ebeveynin "konusurken kipirdasin" anahtari BURADA bakilmiyor, beden
-// gorevindeki tek bogazda bakiliyor: yeni bir cagiran eklenince
-// unutulacak ikinci bir kontrol olmasin diye.
-bool beden_jest(const char* ad);
+// Ebeveynin kip ayari BURADA bakilmiyor, beden gorevindeki tek bogazda
+// bakiliyor: yeni bir cagiran eklenince unutulacak ikinci bir kontrol
+// olmasin diye. Bu fonksiyon yalnizca kaynagi TASIYOR.
+bool beden_jest(const char* ad, int kaynak);
 
 // ---------------------------------------------------------------------------
 // Konusma akisindan ITILIYOR

@@ -163,17 +163,42 @@
         <span id="vBedenGercek" class="soluk"></span>
       </p>
 
-      <label class="anahtar">
-        <span>Konuşurken kıpırdasın</span>
-        <input id="hareket" type="checkbox">
+      <!-- HER UZUV AYRI, VE ÜÇ HÂL VAR — açma-kapama yetmiyordu.
+           "Kapalı" ile "sadece kumandadan" arasındaki fark, çocuğun
+           elinden kumandayı alıp almamak. İkisi de gerçekten
+           isteniyor, o yüzden anahtar değil seçim. -->
+      <label class="kd">
+        <span class="kd-ust"><span>Tekerlekler</span></span>
+        <select id="kipTekerlek">
+          <option value="2">Açık — Pati kendi de döner</option>
+          <option value="1">Sadece kumandadan</option>
+          <option value="0">Kapalı — motorlar hiç dönmez</option>
+        </select>
       </label>
       <p class="ip">
-        Açıkken Pati konuşurken arada kendiliğinden kıpırdıyor, ve
-        çocuk <b>&ldquo;dans et&rdquo;, &ldquo;sevin&rdquo;</b> gibi
-        şeyler söyleyince yapıyor.
-        <b>Kapalıyken tekerlekler yalnızca yukarıdaki çubukla döner</b>
-        — kollar iki durumda da çalışır.
+        <b>Açık:</b> Pati konuşurken arada kendiliğinden dönüyor ve
+        çocuk &ldquo;dans et&rdquo; deyince yapıyor.
+        <b>Sadece kumandadan:</b> yalnızca yukarıdaki çubuk ve
+        düğmeler; Pati kendi kararıyla dönmüyor, sesli komutu da
+        dinlemiyor. <b>Kapalı:</b> motorlar hiç dönmüyor, çubuk da
+        sönüyor.
       </p>
+
+      <label class="kd">
+        <span class="kd-ust"><span>Kollar</span></span>
+        <select id="kipKol">
+          <option value="2">Açık — konuşurken kendi oynatır</option>
+          <option value="1">Sadece kumandadan</option>
+          <option value="0">Kapalı — servolar hiç oynamaz</option>
+        </select>
+      </label>
+      <p class="ip">
+        <b>Açık:</b> Pati konuşurken kollarını kendiliğinden oynatıyor
+        ve &ldquo;kolunu kaldır&rdquo; deyince kaldırıyor.
+        <b>Kapalı:</b> kollar dinlenme konumuna inip susuyor — servolar
+        akım çekmiyor, hiç ses çıkarmıyor.
+      </p>
+
       <p class="ip">
         <b>Pati yürüyemez ve yürümeyi denemez.</b> Kendiliğinden
         yaptığı her hareket <b>yerinde dönmek</b>: iki tekerlek ters

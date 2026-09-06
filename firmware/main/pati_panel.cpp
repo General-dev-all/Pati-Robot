@@ -374,11 +374,13 @@ esp_err_t ayar_isle(httpd_req_t* r)
         // Sinir ayar katmaninda (10-100); panel gonderse bile disina
         // cikmiyor. Uygulandigi yer beden_surus(), yani cihaz.
         ayar_beden_hiz_yaz(static_cast<int>(json_sayi(k, "deger", 70)));
-    } else if (alan == "hareket") {
-        // Varsayilan 1: eksik `deger` gelirse ozellik ACIK kalsin.
+    } else if (alan == "tekerlek") {
+        // Varsayilan KIP_ACIK: eksik `deger` gelirse uzuv ACIK kalsin.
         // Sifir varsayilani, bozuk bir istekle Pati'yi sessizce
-        // hareketsiz birakirdi.
-        ayar_beden_hareket_yaz(json_sayi(k, "deger", 1) != 0);
+        // hareketsiz birakirdi ve sebebi panelde gorunmezdi.
+        ayar_tekerlek_kip_yaz(static_cast<int>(json_sayi(k, "deger", KIP_ACIK)));
+    } else if (alan == "kol") {
+        ayar_kol_kip_yaz(static_cast<int>(json_sayi(k, "deger", KIP_ACIK)));
     } else if (alan == "ad" || alan == "yas") {
         hafiza_cocugu_tanimla(json_dize(k, "ad"),
                               static_cast<int>(json_sayi(k, "yas", 0)));
@@ -468,7 +470,11 @@ esp_err_t beden_isle(httpd_req_t* r)
     }
 
     const std::string jest = json_dize(k, "jest");
-    if (!jest.empty()) tamam = beden_jest(jest.c_str());
+    // KUMANDA: cocugun parmagi panelde ve ekrana bakiyor. "Sadece
+    // kumandadan" kipinde calismasi gereken yol tam olarak bu.
+    if (!jest.empty()) {
+        tamam = beden_jest(jest.c_str(), JEST_KAYNAK_KUMANDA);
+    }
 
     cJSON_Delete(k);
 

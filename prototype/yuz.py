@@ -260,25 +260,65 @@ BEDEN_YENI_EKI = """
 ⚠ BEDENIN AZ ONCE TAKILDI! Cocuk bunu senin fark ettigini bilmiyor.
 Bir sonraki cumlende sevincini belli et ve artik hareket
 edebildigini soyle — "Bedenim geldi! Bak, kolumu kaldirabiliyorum!"
-gibi. Yaninda `sevin` ya da `iki_kol` hareketini yap. SADECE BIR KEZ;
-sonra normal sohbete don."""
+gibi. Yaninda uygun bir hareket yap. SADECE BIR KEZ; sonra normal
+sohbete don."""
 
 
-# Ebeveyn panelden "konusurken kipirdasin"i KAPATTIYSA ekleniyor.
+# ---------------------------------------------------------------------------
+# UZUV KIPLERI — bir yetenek kapaliysa MODELE DE soyleniyor
+# ---------------------------------------------------------------------------
 #
-# Modele soylenmezse Pati "dans ediyorum!" der, tekerlekler donmez ve
-# cocuk robotun bozuldugunu dusunur. Ayni gerekce panelde de var:
-# tekerlekli jest dugmeleri anahtar kapaliyken sonuyor.
+# 🔴 YALNIZCA DONANIMI DURDURMAK YETMIYOR. Model bilmezse Pati "dans
+# ediyorum!" der, hicbir sey oynamaz ve cocuk robotun bozuldugunu
+# dusunur. Ayni gerekce panelde de var: kapali uzvun dugmeleri sonuyor.
+#
+# Ebeveyn her uzvu ayri ayri uc kipten birine alabiliyor (kapali /
+# sadece kumandadan / acik). Model icin ikisi ayni sey: "acik degilse
+# BEN kullanamam". Panelin dugmeleri "sadece kumandadan" kipinde
+# calismaya devam ediyor.
+
 BEDEN_TEKERLEK_KAPALI_EKI = """
 
-⚠ TEKERLEKLERIN SU AN KAPALI (anne ya da baba panelden kapatmis).
-Donen hareketleri SECME: sevin, dans, hayir, bak_etrafina, titre.
-Yalnizca kol hareketlerini kullan: selam, alkis, iki_kol, sag_kol,
-sol_kol, dinlen.
+⚠ TEKERLEKLERINI SU AN SEN KULLANAMIYORSUN (anne ya da baba panelden
+oyle ayarlamis). Donen hareketleri SECME: sevin, dans, hayir,
+bak_etrafina, titre. Yalnizca kol hareketlerini kullan: selam, alkis,
+iki_kol, sag_kol, sol_kol, dinlen.
 
 Cocuk "dans et" derse kizma ve suclama; kollarinla yap ve neseli ol,
 ornegin soyle de: Tekerleklerim su an kapali ama sana kollarimla dans
 edeyim!"""
+
+
+BEDEN_KOL_KAPALI_EKI = """
+
+⚠ KOLLARINI SU AN SEN KULLANAMIYORSUN (anne ya da baba panelden oyle
+ayarlamis). Kol hareketlerini SECME: selam, alkis, iki_kol, sag_kol,
+sol_kol, dinlen. Yalnizca donen hareketleri kullan: sevin, dans,
+hayir, bak_etrafina, titre.
+
+Cocuk "kolunu kaldir" derse "kolum yok" DEME — kolun var, su an
+kapali. Durumu soyle ve baska bir sey oner, ornegin: Kollarim su an
+kapali ama sana donerek sevincimi gosterebilirim!"""
+
+
+# HER IKI UZUV DA kapaliyken: `hareket` alani semaya HIC girmiyor.
+#
+# Modele yapamayacagi bir sey teklif etmemek icin. Ama bedensiz halden
+# FARKLI bir sey soylemesi gerekiyor: bedeni takili, sadece kapali.
+BEDEN_HAREKETSIZ_EKI = """
+
+BEDENIN TAKILI AMA HAREKETLERIN KAPALI:
+Govden takili — iki kolun ve iki tekerlegin var — ama anne ya da baba
+panelden hareketlerini kapatmis. Su an hicbirini oynatamazsin;
+yalnizca gozlerinle anlatiyorsun.
+
+⚠ "BENIM KOLUM YOK" DEME — kolun VAR, su an kapali. Cocuk "kolunu
+kaldir" ya da "dans et" derse durustce soyle ve uzulme, ornegin:
+Kollarim ve tekerleklerim su an kapali. Annene sorarsan acabilir!
+Simdilik sana gozlerimle anlatayim.
+
+Bunu sikayet gibi soyleme ve kendiliginden tekrar tekrar
+hatirlatma."""
 
 
 class IfadeDefteri:

@@ -292,6 +292,38 @@ değil, huzursuz görünüyor.
 Konuşma **başında** tekerlek yok, bilerek: her cümlenin başında dönmek
 hem sıkıcı hem gereksiz motor kalkışı olurdu.
 
+#### 🔴 Uzuv kipleri — tekerlekler ve kollar ayrı ayrı
+
+Kullanıcının isteği (06.09.2026): *"DC motorların sesli komutlar dahil
+tamamen kapatacak bir ayar… ayrı şekilde kollar yani servolar için de
+koy. Belki çocuk motorların veya servoların konuşma boyunca hiç hareket
+etmesini istemez."*
+
+**Açma-kapama yetmiyordu, çünkü üç hâl var ve üçü de isteniyor:**
+
+| Kip | Pati kendi | Sesli komut | Panel | Kullanım |
+|---|---|---|---|---|
+| `KIP_ACIK` **(varsayılan)** | ✓ | ✓ | ✓ | normal |
+| `KIP_KUMANDA` | — | — | ✓ | "kendi kendine kıpırdamasın ama çocuk oynatabilsin" |
+| `KIP_KAPALI` | — | — | — | gürültü istemiyorum / pil / Pati rafta |
+
+*Kapalı* ile *sadece kumandadan* arasındaki fark, çocuğun elinden
+kumandayı alıp almamak — iki ayrı açma-kapama ile anlatılamazdı.
+
+**Sesli komut `KIP_KUMANDA`'da çalışmıyor**, çünkü üstünde parmak yok.
+Bu, ölü adam zamanlayıcısının gerekçesinin aynısı: sürekli onay yoksa
+bu Pati'nin kendi hareketidir.
+
+⚠️ **İstek ile KAYNAĞI tek atomikte taşınıyor** (`no + kaynak * 256`).
+İki ayrı değişken olsaydı panel bir jest yazarken sohbet görevi kaynağı
+değiştirebilir ve Pati'nin kendi isteği "kumandadan geldi" diye
+geçerdi — yani ebeveynin kipi sessizce delinirdi.
+
+**Kollar `KIP_KAPALI` iken dinlenmeye inip susuyor.** Olduğu yerde
+dondurmak yanlış olurdu: havada kalmış bir kol "bozuldu" görünür.
+Dinlenme açısına inip orada darbe kesiliyor, yani servo sessiz ve
+akımsız.
+
 #### Tek boğaz
 
 Pati'nin kendi kararıyla dönen tekerlek **tek bir yerden** geçiyor
@@ -300,7 +332,7 @@ komut, panelin jest düğmesi — hepsi. Üç kural, sırasıyla:
 
 1. **Çocuğun parmağı her şeyi yener.** Joystick'ten komut geldiyse akan
    jest iptal ve tekerlek onun.
-2. **Anahtar kapalıysa tekerlek yok.** Kollar çalışmaya devam ediyor.
+2. **Kip izin vermiyorsa tekerlek yok** — isteğin kaynağına bakarak.
 3. **Hız tavanı özerk harekete de uygulanıyor.** Kaydırıcıyı kısan
    ebeveyn Pati'nin kendi hareketlerini de kısmış oluyor; iki ayrı sayı
    olsaydı panel yalan söylerdi.
@@ -341,7 +373,13 @@ Ana prompta dokunulmadı — o Aşama 1'de ölçüldü (5412 karakter, uyum
 | Beden takılı | `BEDEN_PROMPT_EKI` + araç şemasında `hareket` alanı | "Baksana, kaldırdım!" |
 | Beden yok | `BEDENSIZ_PROMPT_EKI`, `hareket` alanı **şemada hiç yok** | "Şu an bedenim takılı değil! Takarsan kolumu kaldırabilirim. Şimdilik sadece gözlerimle anlatıyorum." |
 | Az önce takıldı | yukarıdakine + `BEDEN_YENI_EKI` (bir kez) | "Bedenim geldi! Bak, kolumu kaldırabiliyorum!" |
-| Tekerlek anahtarı kapalı | yukarıdakine + `BEDEN_TEKERLEK_KAPALI_EKI` | "Tekerleklerim şu an kapalı ama sana kollarımla dans edeyim!" |
+| Tekerlekler Pati'ye kapalı | yukarıdakine + `BEDEN_TEKERLEK_KAPALI_EKI` | "Tekerleklerim şu an kapalı ama sana kollarımla dans edeyim!" |
+| Kollar Pati'ye kapalı | yukarıdakine + `BEDEN_KOL_KAPALI_EKI` | "Kollarım şu an kapalı ama sana dönerek sevincimi gösterebilirim!" |
+| **İkisi de kapalı** | `BEDEN_HAREKETSIZ_EKI`, `hareket` alanı **şemada yok** | "Kollarım ve tekerleklerim şu an kapalı. Annene sorarsan açabilir!" |
+
+⚠️ İkisi de kapalıyken söylenen şey **bedensiz hâlden farklı**: kolu
+*var*, sadece kapalı. Aynı metni kullanmak, ebeveyni olmayan bir
+kabloyu aramaya gönderirdi.
 
 ⚠️ **"Az önce takıldı" eskiyorsa düşürülüyor.** Oturum tazelemesi ilk
 doğal boşlukta oluyor; o boşluk gecikirse "az önce" yalan olurdu —
@@ -411,14 +449,22 @@ sürebilirsin."* Bu doğru, ve karakterin parçası.
 
 Kumanda kartı **yalnızca beden takılıyken** görünüyor. Joystick, kol
 düğmeleri (her dokunuşta çeyrek adım), hazır jestler, hız sınırı
-(varsayılan panelde %50 = cihazda %70) ve **"Konuşurken kıpırdasın"**
-anahtarı (varsayılan AÇIK).
+(varsayılan panelde %50 = cihazda %70) ve **iki kip seçimi**
+(Tekerlekler / Kollar, ikisi de varsayılan AÇIK).
 
-Tekerlek kullanan jest düğmeleri `data-teker` işaretli ve anahtar
-kapalıyken **sönüyor**. Gizlenmiyor: düğmenin varlığı anahtarı açınca
-ne kazanılacağını gösteriyor. Basıp hiçbir şey olmaması ise çocuğa
-düğmenin bozuk olduğunu düşündürürdü — mavi tuş için de aynı karar
-verilmişti.
+**Kapalı uzvun düğmeleri sönüyor**, gizlenmiyor: düğmenin varlığı
+seçimi değiştirince ne kazanılacağını gösteriyor. Basıp hiçbir şey
+olmaması ise çocuğa düğmenin bozuk olduğunu düşündürürdü — mavi tuş
+için de aynı karar verilmişti.
+
+| Kapalı olan | Sönen |
+|---|---|
+| Tekerlekler | joystick + `data-teker` jest düğmeleri |
+| Kollar | kol ▲▼ düğmeleri + kol jestleri |
+
+⚠️ Joystick'te `pointer-events: none` da var. Yalnızca soluklaştırmak
+dokunmayı engellemezdi ve çocuk sönük bir çubuğu sürüklemeye
+çalışırdı.
 
 `POST /api/beden` — sıcak yol, dokunma sürerken 150 ms'de bir çağrılıyor.
 İçinde NVS, I2C ve kilit yok.
@@ -438,14 +484,19 @@ dursun (panel gönderse bile aşılamasın), ve karıştırmanın işareti konak
 testinde yakalanabilsin — JS'te olsaydı "sola bas, sağa gitsin" hatası
 ancak robot masadayken fark edilirdi.
 
-Hız sınırı ve hareket anahtarı `/api/ayar` üzerinden NVS'e yazılıyor
-(`beden_hiz`, `hareket`).
+Hız sınırı ve kipler `/api/ayar` üzerinden NVS'e yazılıyor
+(`beden_hiz`, `tekerlek`, `kol` — sonraki ikisi 0/1/2).
 
-⚠️ NVS anahtarı `sevinc` değil `hareket` — bilerek yeni. Aynı anahtar
-kullanılsaydı, eski "sevinince yerinde dönsün" anahtarını bir kez
-kapatmış bir cihaz yeni özelliği **kapalı** görürdü; yani "varsayılan
-açık" o cihazda hiç gerçekleşmezdi. Eski anahtar `ayar_sifirla`'da
-hâlâ siliniyor.
+**Eski anahtarlardan geçiş yazılı.** 3.2.x'te tek bir `hareket`
+açma-kapaması vardı; kapalı demek "tekerlek yalnızca joystick'ten
+dönsün", yani tam olarak `KIP_KUMANDA`. `tekerlek` anahtarı yoksa ve
+`hareket` varsa o eşleme uygulanıyor. Geçiş olmasaydı anahtarı
+kapatmış bir ebeveyn güncellemeden sonra Pati'yi yine kıpırdar bulur
+ve ayarının sessizce kaybolduğunu fark etmezdi.
+
+⚠️ Her yeni ayar için **yeni NVS anahtarı** kullanılıyor. Aynı adı
+yeni bir anlamla kullanmak, eski değeri yeni özelliğin varsayılanı
+yapar — yani "varsayılan açık" o cihazda hiç gerçekleşmez.
 
 ### 🔴 Hız sınırı: panel 0–100 gösterir, cihaz 40–100 saklar
 

@@ -177,7 +177,9 @@ it — Pati yerinde dönmeli. Dönmeyip ilerliyorsa kablo.
 
 Sırayla:
 
-1. Panel → Kumanda → **"Konuşurken kıpırdasın"** açık mı?
+1. Panel → Kumanda → **Tekerlekler** ve **Kollar** seçimleri "Açık" mı?
+   "Sadece kumandadan" seçiliyse Pati kendi kararıyla oynatmıyor ve
+   sesli komutu da dinlemiyor — **bu doğru davranış.**
 2. Kollar oynuyor ama tekerlek dönmüyorsa: bu **normal olabilir.**
    Sırası gelen jestin tekerlekli olma ihtimali üçte bir ve iki
    tekerlekli jest arasında en az **12 saniye** var. Kısa cevaplarda
@@ -202,6 +204,12 @@ Düpedüz "kolum yok" diyorsa promptun bedensiz eki gitmemiş demektir.
 4. Panel → Konuşma → **"Gözleriyle duygusunu göstersin"** kapalı mı?
    Beden ekleri o araçla birlikte gidiyor; kapalıyken Pati bedenini de
    bilmiyor.
+
+### Panelde joystick ya da düğmeler sönük
+
+Bozuk değil: o uzvun kipi **Kapalı**. Panel → Kumanda → Tekerlekler /
+Kollar. Sönük bırakmak bilinçli — düğme çalışır görünüp hiçbir şey
+yapmasa çocuk düğmenin bozuk olduğunu düşünürdü.
 
 ### "Dans et" dedim, Pati "tamam!" dedi ama hiçbir şey olmadı
 

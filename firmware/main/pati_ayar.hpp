@@ -55,22 +55,46 @@ bool ayar_yuz_araci();
 // sinir cihazda dursun, panel gonderse bile asilamasin.
 int ayar_beden_hiz();
 
-// "Pati konusurken kendi kendine kipirdasin" — varsayilan ACIK
-// (06.09.2026, kullanicinin karari).
+// ---------------------------------------------------------------------------
+// 🔴 UZUVLARIN KIPI — tekerlekler ve kollar AYRI AYRI
+// ---------------------------------------------------------------------------
 //
-// KAPALIYKEN TEKERLEK YALNIZCA JOYSTICK'TEN DONER. Kollar her iki
-// halde de calisiyor; anahtarin ebeveyne verdigi soz tam olarak bu,
-// ve tek cumleyle anlatilabilmesi bilincli.
+// Kullanicinin istegi (06.09.2026): "dc motorlarin sesli komutlar dahil
+// tamamen kapatacak bir ayar... ayri sekilde kollar yani servolar icin
+// de koy. Belki cocuk motorlarin veya servolarin konusma boyunca hic
+// hareket etmesini istemez."
 //
-// Anahtar hem ozerk jestleri hem cocugun SESLI komutunu kapsiyor:
-// ikisi de Pati'nin ustunde parmak olmadan hareket etmesi demek.
-// Panelin jest dugmeleri ayri — orada cocugun parmagi var.
+// ACMA-KAPAMA YETMIYOR, CUNKU UC HAL VAR ve ucu de gercekten isteniyor:
 //
-// ⚠ Yer degistirme riski bu anahtarla DEGIL, jest tablosunun yapisiyla
-// kapatiliyor: karenin tek `teker` alani var ve iki tekerlek her zaman
-// ters yonde donuyor (pati_beden_matematik.hpp). Anahtar kapatilsa da
-// acilsa da Pati ilerleyemiyor.
-bool ayar_beden_hareket();
+//   KIP_ACIK     Pati kendi de kullaniyor — konusurken kipirdiyor,
+//                cocugun sesli komutunu dinliyor, panel de calisiyor.
+//                VARSAYILAN.
+//
+//   KIP_KUMANDA  Yalnizca panelden, cocugun parmagi altinda. Pati
+//                kendi kararıyla oynatmiyor ve sesli komutu
+//                dinlemiyor. "Kendi kendine kipirdamasin ama cocuk
+//                oynatabilsin."
+//
+//   KIP_KAPALI   Hicbiri. Motor hic donmuyor, servo hic darbe
+//                almiyor. Gurultu istemeyen, pil suresini uzatmak
+//                isteyen ya da Pati'yi rafta tutan icin.
+//
+// Iki acma-kapama ile ayni sey anlatilamazdi: "kapali" ile "sadece
+// kumandadan" arasindaki fark, cocugun elinden kumandayi alip almamak.
+//
+// 🔴 KIP MODELE DE SOYLENIYOR, yalnizca motora degil. Yalnizca donanimi
+// durdurmak yetmiyor: Pati "dans ediyorum!" der, hicbir sey oynamaz ve
+// cocuk robotun bozuldugunu dusunur. O yuzden kip degisimi oturum
+// tazelemesi istiyor (setup mesaji).
+// enum DEGIL int: adsiz bir enum std::clamp'in sablon cikarimini
+// bozuyor (clamp(int, enum, enum) eslesmiyor) ve hata mesaji
+// "no matching function" diye cikip sebebi gorunmuyor.
+inline constexpr int KIP_KAPALI  = 0;
+inline constexpr int KIP_KUMANDA = 1;
+inline constexpr int KIP_ACIK    = 2;
+
+int ayar_tekerlek_kip();
+int ayar_kol_kip();
 
 // Hepsi NVS'e isliyor. Tur sonu gerektirenler bayragi kaldiriyor.
 void ayar_ses_adi_yaz(const std::string& ad);
@@ -80,7 +104,8 @@ void ayar_soz_kesme_yaz(bool acik);
 void ayar_vad_yaz(int ms);
 void ayar_yuz_yaz(bool acik);
 void ayar_beden_hiz_yaz(int yuzde);
-void ayar_beden_hareket_yaz(bool acik);
+void ayar_tekerlek_kip_yaz(int kip);
+void ayar_kol_kip_yaz(int kip);
 
 void ayar_sifirla();
 

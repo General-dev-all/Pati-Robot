@@ -323,10 +323,19 @@ iyi anlasın" değil, **sözlükte ilerlemenin hiç olmaması**. Pati
 "yürüyemem" diyor ve paneli gösteriyor (`prototype/yuz.py` ·
 `BEDEN_PROMPT_EKI`).
 
-Panelde tek anahtar: **"Konuşurken kıpırdasın", varsayılan AÇIK.**
-Kapalıyken tekerlek yalnızca joystick'ten döner; kollar iki durumda da
-çalışır. Anahtar tek bir boğazda okunuyor (`pati_beden.cpp`), yeni bir
-yol açanın unutabileceği ikinci bir kontrol yok.
+Panelde **her uzvun kendi kipi var** (tekerlekler / kollar), üç hâlli:
+`KIP_ACIK` (varsayılan) · `KIP_KUMANDA` (yalnızca panelden) ·
+`KIP_KAPALI` (hiç). Açma-kapama yetmiyordu: *kapalı* ile *sadece
+kumandadan* arasındaki fark, çocuğun elinden kumandayı alıp almamak.
+
+Sesli komut `KIP_KUMANDA`'da çalışmıyor — üstünde parmak yok, yani
+Pati'nin kendi hareketi sayılıyor. Bunun için **isteğin kaynağı istekle
+birlikte tek atomikte** taşınıyor (`no + kaynak * 256`); iki ayrı
+değişken olsaydı yarış çıkar ve Pati'nin kendi isteği "kumandadan
+geldi" diye geçerdi.
+
+Kipler tek bir boğazda okunuyor (`pati_beden.cpp`), yeni bir yol açanın
+unutabileceği ikinci bir kontrol yok.
 
 🔴 **Pati bedeninin olup olmadığını BİLİYOR — ve bu ölçülmüş bir
 hatadan çıktı.** Çocuk "kolunu kaldır" dedi, Pati "benim kolum yok ki"

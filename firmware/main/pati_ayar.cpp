@@ -54,19 +54,15 @@ int g_vad_ms = 0;
 bool g_yuz = true;
 int g_beden_hiz = 70;   // panelde %50
 
-// 🔴 VARSAYILAN ACIK — kullanicinin acik istegi (06.09.2026):
-// "default olarak acik gelsin bu ozelligi".
+// 🔴 IKISI DE VARSAYILAN ACIK — kullanicinin acik istegi (06.09.2026):
+// "default olarak acik gelsin".
 //
 // Acik olmasi guvenli, cunku ozerk hareket YAPISAL olarak yer
 // degistiremiyor (pati_beden_matematik.hpp · jest_donus). Eski
 // `sevinc` anahtari varsayilan KAPALIYDI ve o dogruydu: o zaman
 // tekerlegin Pati'ye acilmasi denenmemis bir seydi.
-//
-// ⚠ NVS ANAHTARI YENI ("hareket", eskisi "sevinc"). Ayni anahtar
-// kullanilsaydi, anahtari bir kez kapatmis olan bir cihaz yeni
-// ozelligi KAPALI gorurdu — yani "varsayilan acik" o cihazda hic
-// gerceklesmezdi.
-bool g_beden_hareket = true;
+int g_tekerlek_kip = KIP_ACIK;
+int g_kol_kip = KIP_ACIK;
 
 std::atomic<bool> g_yenileme{false};
 
@@ -150,14 +146,30 @@ esp_err_t ayar_baslat()
         g_beden_hiz = std::clamp(static_cast<int>(v), BEDEN_HIZ_EN_AZ,
                                  BEDEN_HIZ_EN_FAZLA);
     }
-    if (nvs_get_i32(h, "hareket", &v) == ESP_OK) g_beden_hareket = (v != 0);
+    if (nvs_get_i32(h, "tekerlek", &v) == ESP_OK) {
+        g_tekerlek_kip = std::clamp(static_cast<int>(v), KIP_KAPALI, KIP_ACIK);
+    } else if (nvs_get_i32(h, "hareket", &v) == ESP_OK) {
+        // ESKI ANAHTARDAN GECIS. 3.2.x'te tek bir acma-kapama vardi:
+        // "konusurken kipirdasin". Kapali demek "tekerlek yalnizca
+        // joystick'ten donsun" demekti — yani tam olarak KIP_KUMANDA.
+        //
+        // Gecis olmasaydi anahtari kapatmis bir ebeveyn guncellemeden
+        // sonra Pati'yi yine kipirdar bulurdu ve ayarinin sessizce
+        // kayboldugunu fark etmezdi.
+        g_tekerlek_kip = (v != 0) ? KIP_ACIK : KIP_KUMANDA;
+        ESP_LOGI(ETIKET, "eski 'hareket' anahtari tasindi: tekerlek=%d",
+                 g_tekerlek_kip);
+    }
+    if (nvs_get_i32(h, "kol", &v) == ESP_OK) {
+        g_kol_kip = std::clamp(static_cast<int>(v), KIP_KAPALI, KIP_ACIK);
+    }
     nvs_close(h);
 
     ESP_LOGI(ETIKET, "ses=%s hiz=%.2f uyku=%d dk soz_kesme=%d vad=%d yuz=%d "
-                     "beden_hiz=%d hareket=%d",
+                     "beden_hiz=%d tekerlek=%d kol=%d",
              g_ses_adi.c_str(), g_hiz, g_uyku_dk, g_soz_kesme ? 1 : 0,
-             g_vad_ms, g_yuz ? 1 : 0, g_beden_hiz,
-             g_beden_hareket ? 1 : 0);
+             g_vad_ms, g_yuz ? 1 : 0, g_beden_hiz, g_tekerlek_kip,
+             g_kol_kip);
     return ESP_OK;
 }
 
@@ -172,7 +184,8 @@ bool ayar_yuz_araci() { return g_yuz; }
 // (saniyede ~7 kez) cagiriyor; NVS'e gitseydi surus yolunda flash
 // erisimi olurdu — CLAUDE.md'deki sicak dongu tuzaginin ta kendisi.
 int ayar_beden_hiz() { return g_beden_hiz; }
-bool ayar_beden_hareket() { return g_beden_hareket; }
+int ayar_tekerlek_kip() { return g_tekerlek_kip; }
+int ayar_kol_kip() { return g_kol_kip; }
 
 void ayar_ses_adi_yaz(const std::string& ad)
 {
@@ -242,18 +255,40 @@ void ayar_beden_hiz_yaz(int yuzde)
     // Oturum yenilemesi gerekmiyor, bu ayar Gemini'ye gitmiyor.
 }
 
-void ayar_beden_hareket_yaz(bool acik)
+namespace {
+
+const char* kip_adi(int k)
 {
-    if (acik == g_beden_hareket) return;
-    g_beden_hareket = acik;
-    i32_yaz("hareket", acik ? 1 : 0);
-    // Tekerlek tarafi ANINDA gecerli (beden gorevindeki tek bogaz).
-    // Ama MODELE de soylenmesi gerekiyor: kapaliyken donen hareketleri
-    // hic secmemeli, yoksa "dans ediyorum!" der ve hicbir sey donmez.
-    // O bilgi setup mesajinda gidiyor, yani tur sonu.
+    return (k == KIP_KAPALI) ? "kapali"
+           : (k == KIP_KUMANDA) ? "sadece kumandadan" : "acik";
+}
+
+}  // namespace
+
+void ayar_tekerlek_kip_yaz(int kip)
+{
+    const int k = std::clamp(kip, KIP_KAPALI, KIP_ACIK);
+    if (k == g_tekerlek_kip) return;
+    g_tekerlek_kip = k;
+    i32_yaz("tekerlek", k);
+    // Donanim tarafi ANINDA gecerli (beden gorevindeki tek bogaz).
+    // Ama MODELE de soylenmesi gerekiyor: kip acik degilse donen
+    // hareketleri hic secmemeli, yoksa "dans ediyorum!" der ve hicbir
+    // sey donmez. O bilgi setup mesajinda gidiyor, yani tur sonu.
     g_yenileme.store(true);
-    ESP_LOGI(ETIKET, "konusurken kipirdasin: %s (tekerlek aninda, "
-                     "model tur sonunda)", acik ? "acik" : "kapali");
+    ESP_LOGI(ETIKET, "tekerlekler: %s (donanim aninda, model tur sonunda)",
+             kip_adi(k));
+}
+
+void ayar_kol_kip_yaz(int kip)
+{
+    const int k = std::clamp(kip, KIP_KAPALI, KIP_ACIK);
+    if (k == g_kol_kip) return;
+    g_kol_kip = k;
+    i32_yaz("kol", k);
+    g_yenileme.store(true);
+    ESP_LOGI(ETIKET, "kollar: %s (donanim aninda, model tur sonunda)",
+             kip_adi(k));
 }
 
 void ayar_sifirla()
@@ -261,8 +296,8 @@ void ayar_sifirla()
     const nvs_handle_t h = ac(NVS_READWRITE);
     if (h != 0) {
         for (const char* a : {"ses_adi", "hiz_yuz", "uyku_dk", "soz_kesme",
-                              "vad_ms", "yuz", "beden_hiz", "hareket",
-                              "sevinc"}) {
+                              "vad_ms", "yuz", "beden_hiz", "tekerlek",
+                              "kol", "hareket", "sevinc"}) {
             nvs_erase_key(h, a);
         }
         nvs_commit(h);
@@ -289,12 +324,12 @@ std::string ayar_json()
                   "\"hiz\":%.2f,\"ses_adi\":\"%s\"},"
                   "\"uyku\":%d,"
                   "\"konusma\":{\"soz_kesme\":%s,\"vad\":%d,\"yuz\":%s},"
-                  "\"kumanda\":{\"hiz\":%d,\"hareket\":%s}",
+                  "\"kumanda\":{\"hiz\":%d,\"tekerlek\":%d,\"kol\":%d}",
                   ses_seviyesi(), SES_SEVIYESI_EN_AZ, SES_SEVIYESI_EN_FAZLA,
                   g_hiz, g_ses_adi.c_str(), g_uyku_dk,
                   g_soz_kesme ? "true" : "false", g_vad_ms,
                   g_yuz ? "true" : "false",
-                  g_beden_hiz, g_beden_hareket ? "true" : "false");
+                  g_beden_hiz, g_tekerlek_kip, g_kol_kip);
     return b;
 }
 

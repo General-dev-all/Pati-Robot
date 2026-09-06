@@ -148,6 +148,8 @@ sinirici_denetle("beden prompt eki", yuz.BEDEN_PROMPT_EKI)
 sinirici_denetle("bedensiz prompt eki", yuz.BEDENSIZ_PROMPT_EKI)
 sinirici_denetle("yeni beden eki", yuz.BEDEN_YENI_EKI)
 sinirici_denetle("tekerlek kapali eki", yuz.BEDEN_TEKERLEK_KAPALI_EKI)
+sinirici_denetle("kol kapali eki", yuz.BEDEN_KOL_KAPALI_EKI)
+sinirici_denetle("hareketsiz eki", yuz.BEDEN_HAREKETSIZ_EKI)
 
 # ASCII disi karakterler SORUN DEGIL — ayni karakterler kisilik.py'den
 # geliyor, yani PC de aynisini gonderiyor ve iki taraf birebir ayni metni
@@ -274,6 +276,16 @@ inline constexpr const char* BEDEN_YENI_EKI =
 inline constexpr const char* BEDEN_TEKERLEK_KAPALI_EKI =
     R"{SINIR}({yuz.BEDEN_TEKERLEK_KAPALI_EKI}){SINIR}";
 
+// Kollar Pati'ye kapaliyken ekleniyor.
+inline constexpr const char* BEDEN_KOL_KAPALI_EKI =
+    R"{SINIR}({yuz.BEDEN_KOL_KAPALI_EKI}){SINIR}";
+
+// IKI UZUV DA kapaliyken. O durumda `hareket` alani semaya hic
+// girmiyor (YUZ_ARAC_SEMA kullaniliyor), ama Pati'nin soyleyecegi sey
+// bedensiz halden FARKLI: bedeni takili, sadece kapali.
+inline constexpr const char* BEDEN_HAREKETSIZ_EKI =
+    R"{SINIR}({yuz.BEDEN_HAREKETSIZ_EKI}){SINIR}";
+
 // Arac acikken sistem promptunun SONUNA ekleniyor (PC: canli.py §80).
 // Sadece tanim yetmiyor; modele araci hatirlatmak gerekiyor.
 inline constexpr const char* YUZ_PROMPT_EKI =
@@ -372,6 +384,8 @@ BEKLENEN = [
     ("bedensiz prompt eki", yuz.BEDENSIZ_PROMPT_EKI),
     ("yeni beden eki", yuz.BEDEN_YENI_EKI),
     ("tekerlek kapali eki", yuz.BEDEN_TEKERLEK_KAPALI_EKI),
+    ("kol kapali eki", yuz.BEDEN_KOL_KAPALI_EKI),
+    ("hareketsiz eki", yuz.BEDEN_HAREKETSIZ_EKI),
     ("yuz prompt eki", yuz.PROMPT_EKI),
 ]
 

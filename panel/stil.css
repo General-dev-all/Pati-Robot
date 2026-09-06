@@ -630,4 +630,13 @@ button.tehlike { color: var(--kalir); border-color: rgba(248, 81, 73, .5); }
 /* Anahtar kapaliyken tekerlekli jest dugmeleri sonuyor. Gizlemek
    yerine SONDURUYORUZ: dugmenin varligi, anahtari acinca ne
    kazanilacagini gosteriyor. */
-[data-teker]:disabled { opacity: .35; cursor: not-allowed; }
+[data-teker]:disabled,
+.kol-dugme:disabled,
+[data-jest]:disabled { opacity: .35; cursor: not-allowed; }
+
+/* Tekerlekler kapaliyken joystick de olu. Gizlemek yerine
+   sonduruyoruz: yerinin bos kalmasi karti bozar, ve cubugun varligi
+   secimi degistirince ne kazanilacagini gosteriyor.
+   pointer-events sart — yalnizca soluklastirmak, dokunmayi
+   engellemezdi. */
+.joystick.sonuk { opacity: .3; pointer-events: none; }

@@ -587,33 +587,67 @@ function kumandaKur() {
     });
   }
 
-  const har = $('#hareket');
-  if (har) {
-    har.addEventListener('change', () => {
+  [['#kipTekerlek', 'tekerlek'], ['#kipKol', 'kol']].forEach(([sec, alan]) => {
+    const e = $(sec);
+    if (!e) return;
+    e.addEventListener('change', () => {
       // Dugmeleri HEMEN guncelle, cihazin cevabini bekleme: yoklama
-      // saniyede bir donuyor ve o gecikmede anahtar ile dugmeler
+      // saniyede bir donuyor ve o gecikmede secim ile dugmeler
       // birbiriyle celisir gorunurdu.
-      tekerJestleriniYaz(har.checked);
+      kipleriYaz();
       fetch('/api/ayar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ alan: 'hareket', deger: har.checked ? 1 : 0 }),
+        body: JSON.stringify({ alan, deger: parseInt(e.value, 10) }),
       }).catch(() => {});
     });
-  }
+  });
+
+  // Ilk halin de tutarli olmasi icin bir kez cagiriliyor. Cihaz
+  // cevabi gelmeden once secimler HTML'deki ilk secenekte (Acik)
+  // duruyor; dugmeler de o hale uymali, yoksa sayfa acilir acilmaz
+  // sonuk bir dugme goruntusu cikabilir.
+  kipleriYaz();
 }
 
-// Tekerlek kullanan jest dugmeleri anahtar kapaliyken sonuyor.
+// KAPALI UZVUN DUGMELERI SONUYOR.
 //
-// Sebep: anahtar kapaliyken cihaz o jestlerin tekerlek kismini zaten
-// yapmiyor (tek bogaz, pati_beden.cpp). Dugme calisir gorunup hicbir
-// sey yapmasa cocuk dugmenin bozuk oldugunu dusunurdu — panelde ayni
-// karar mavi tus icin de verilmisti: "tus ekranda ne yaziyorsa onu
-// yapar".
-function tekerJestleriniYaz(acik) {
+// Sebep: cihaz o istekleri zaten yapmiyor (tek bogaz, pati_beden.cpp).
+// Dugme calisir gorunup hicbir sey yapmasa cocuk dugmenin bozuk
+// oldugunu dusunurdu — panelde ayni karar mavi tus icin de verilmisti:
+// "tus ekranda ne yaziyorsa onu yapar".
+//
+// GIZLEMIYORUZ, SONDURUYORUZ: dugmenin varligi, secimi degistirince ne
+// kazanilacagini gosteriyor.
+function kipleriYaz() {
+  const oku = (sec, varsayilan) => {
+    const e = $(sec);
+    const v = e ? parseInt(e.value, 10) : NaN;
+    return Number.isFinite(v) ? v : varsayilan;
+  };
+  const tk = oku('#kipTekerlek', 2);
+  const kk = oku('#kipKol', 2);
+
+  // Tekerlek KAPALI ise joystick de olu. "Sadece kumandadan" kipinde
+  // joystick tam olarak calismaya devam ediyor — o kipin anlami bu.
+  const joy = $('#joystick');
+  if (joy) {
+    joy.classList.toggle('sonuk', tk === 0);
+    joy.title = tk === 0 ? 'Tekerlekler kapalı' : '';
+  }
+
   document.querySelectorAll('[data-teker]').forEach((d) => {
-    d.disabled = !acik;
-    d.title = acik ? '' : 'Aşağıdaki "Konuşurken kıpırdasın" kapalı';
+    d.disabled = (tk === 0);
+    d.title = (tk === 0) ? 'Tekerlekler kapalı' : '';
+  });
+  document.querySelectorAll('.kol-dugme').forEach((d) => {
+    d.disabled = (kk === 0);
+    d.title = (kk === 0) ? 'Kollar kapalı' : '';
+  });
+  // Kol jestleri: tekerleksiz olanlar kola bagli.
+  document.querySelectorAll('[data-jest]:not([data-teker])').forEach((d) => {
+    d.disabled = (kk === 0);
+    d.title = (kk === 0) ? 'Kollar kapalı' : '';
   });
 }
 
@@ -654,11 +688,16 @@ function bedenYaz(beden, kumanda) {
       h.value = g;
       hizYaz(g);
     }
-    const h2 = $('#hareket');
-    if (h2 && document.activeElement !== h2) {
-      h2.checked = !!kumanda.hareket;
-      tekerJestleriniYaz(h2.checked);
-    }
+    let degisti = false;
+    [['#kipTekerlek', kumanda.tekerlek], ['#kipKol', kumanda.kol]]
+      .forEach(([sec, deger]) => {
+        const e = $(sec);
+        if (!e || document.activeElement === e) return;
+        if (deger === undefined || deger === null) return;
+        const y = String(deger);
+        if (e.value !== y) { e.value = y; degisti = true; }
+      });
+    if (degisti) kipleriYaz();
   }
 }
 

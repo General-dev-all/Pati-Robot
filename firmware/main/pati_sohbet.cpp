@@ -304,18 +304,34 @@ void prompt_kur()
     g_ayar.tools.clear();
     if (ayar_yuz_araci()) {
         p += YUZ_PROMPT_EKI;
+        // ---- UZUV KIPLERI ---------------------------------------------
+        //
+        // Ebeveyn her uzvu ayri ayri kapatabiliyor. Model icin
+        // "kapali" ile "sadece kumandadan" ayni sey: ikisinde de PATI
+        // kullanamiyor, panel kullanabiliyor.
+        //
+        // 🔴 KIP MODELE DE SOYLENIYOR. Yalnizca donanimi durdurmak
+        // yetmiyor: Pati "dans ediyorum!" der, hicbir sey oynamaz ve
+        // cocuk robotun bozuldugunu dusunur. Kip degisince oturum
+        // tazeleniyor (ayar_tekerlek_kip_yaz / ayar_kol_kip_yaz).
         const bool beden = beden_takili();
-        if (beden) {
-            p += BEDEN_PROMPT_EKI;
+        const bool teker_acik = (ayar_tekerlek_kip() == KIP_ACIK);
+        const bool kol_acik   = (ayar_kol_kip() == KIP_ACIK);
+        const bool oynatabilir = beden && (teker_acik || kol_acik);
 
-            // Ebeveyn tekerlekleri kapattiysa modele SOYLENIYOR.
-            // Soylenmezse Pati "dans ediyorum!" der, tekerlekler
-            // donmez ve cocuk robotun bozuldugunu dusunur. Anahtar
-            // degisince oturum tazeleniyor (ayar_beden_hareket_yaz).
-            if (!ayar_beden_hareket()) p += BEDEN_TEKERLEK_KAPALI_EKI;
+        if (oynatabilir) {
+            p += BEDEN_PROMPT_EKI;
+            if (!teker_acik) p += BEDEN_TEKERLEK_KAPALI_EKI;
+            if (!kol_acik)   p += BEDEN_KOL_KAPALI_EKI;
 
             // Beden AZ ONCE takildiysa bir kereligine.
             if (beden_yeni_takildi_al()) p += BEDEN_YENI_EKI;
+        } else if (beden) {
+            // Beden takili ama iki uzuv da Pati'ye kapali. Bedensiz
+            // halden FARKLI bir sey soylemesi gerekiyor: kolu VAR,
+            // sadece kapali.
+            p += BEDEN_HAREKETSIZ_EKI;
+            beden_yeni_takildi_al();   // bayrak bayatlamasin
         } else {
             // 🔴 BEDENSIZ HAL DE ANLATILIYOR, ve bu bir olcumden cikti:
             // cocuk "kolunu kaldir" dedi, Pati "benim kolum yok ki"
@@ -324,10 +340,11 @@ void prompt_kur()
             // "kucucuk bir robotsun, gozlerin ekranda" diyor ve model
             // oradan dogru bir cikarim yapiyor.
             p += BEDENSIZ_PROMPT_EKI;
+            beden_yeni_takildi_al();   // bayrak bayatlamasin
         }
         g_ayar.tools.push_back(stackchan::conversation::ToolDefinition{
             YUZ_ARAC_ADI, YUZ_ARAC_ACIKLAMA,
-            beden ? YUZ_ARAC_SEMA_BEDEN : YUZ_ARAC_SEMA});
+            oynatabilir ? YUZ_ARAC_SEMA_BEDEN : YUZ_ARAC_SEMA});
     }
 
     const std::string blok = hafiza_prompt_blogu();
@@ -829,7 +846,10 @@ void olayi_isle(const ConversationEvent& olay)
                 // Beden takili degilse sessizce hicbir sey yapmiyor;
                 // o durumda `hareket` alani semada da yok, yani
                 // buraya normalde hic gelinmiyor.
-                beden_jest(hareket.c_str());
+                // PATI: sesli komutun ustunde parmak yok, yani bu
+                // Pati'nin kendi hareketi sayiliyor ve "sadece
+                // kumandadan" kipinde calismiyor.
+                beden_jest(hareket.c_str(), JEST_KAYNAK_PATI);
                 ESP_LOGI(ETIKET, "hareket: %s", hareket.c_str());
             }
             if (const auto r = g_istemci->submit_tool_result(

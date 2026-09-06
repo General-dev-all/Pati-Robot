@@ -164,6 +164,13 @@ std::atomic<std::int64_t> g_surus_us{0};
 
 std::atomic<int> g_kol_hedef[2] = {{0}, {0}};      // yuzde 0..100
 std::atomic<std::uint32_t> g_kol_elle{0};          // elle mudahale sayaci
+// Jest istegi VE KAYNAGI tek bir atomikte: `no + kaynak * 256`.
+//
+// Iki ayri atomik olsaydi arada yaris olurdu — panel bir jest yazarken
+// sohbet gorevi kaynagi degistirebilir ve Pati'nin kendi istegi
+// "kumandadan geldi" diye gecerdi. Yani ebeveynin kipi sessizce
+// delinirdi. Tek yazmada tasinmasi bunu imkansiz kiliyor.
+constexpr int JEST_KAYNAK_CARPAN = 256;
 std::atomic<int> g_jest_istek{-1};
 std::atomic<bool> g_konusuyor{false};
 
@@ -262,6 +269,11 @@ void beden_gorevi(void*)
     int son_jest = -1;
     std::int64_t son_teker_us = 0;
 
+    // Akan jesti KIM istedi. Kip kontrolu buna bakiyor: "sadece
+    // kumandadan" kipinde panelin dugmesi calisiyor, Pati'nin kendi
+    // karari calismiyor.
+    int akan_kaynak = JEST_KAYNAK_KUMANDA;
+
     // Uygulanan motor degerleri — degismedikce yazmaca dokunmuyoruz.
     int uygulanan_sol = 0, uygulanan_sag = 0;
 
@@ -292,8 +304,13 @@ void beden_gorevi(void*)
                 // konumuna al ve sevin.
                 g_kol_hedef[0].store(0);
                 g_kol_hedef[1].store(0);
-                g_jest_istek.store(ayar_beden_hareket() ? jest_no("sevin")
-                                                        : jest_no("selam"));
+                // Bedenin geldigini hangi uzuvla kutlayacagi kipine
+                // bagli. Ikisi de kapaliysa hicbir sey yapmiyor —
+                // "kapali" gercekten kapali demek.
+                g_jest_istek.store(
+                    (ayar_tekerlek_kip() == KIP_ACIK) ? jest_no("sevin")
+                    : (ayar_kol_kip() == KIP_ACIK)    ? jest_no("selam")
+                                                      : -1);
                 sonraki_jest_us = simdi + rastgele_ara();
                 g_takma_us.store(simdi, std::memory_order_relaxed);
                 // Modele bedeni oldugunu SOYLEMEK gerekiyor: `hareket`
@@ -366,6 +383,15 @@ void beden_gorevi(void*)
         //   3. HIZ TAVANI OZERK HAREKETE DE UYGULANIYOR (jest_donus).
         //      Kaydiriciyi kisan ebeveyn Pati'nin kendi hareketlerini de
         //      kismis oluyor; iki ayri sayi olsaydi panel yalan soylerdi.
+        const int tekerlek_kip = ayar_tekerlek_kip();
+        const int kol_kip = ayar_kol_kip();
+
+        // Bu kaynaktan gelen bir istek bu kipte gecerli mi?
+        const auto izinli = [](int kip, int kaynak) {
+            return kip == KIP_ACIK
+                   || (kip == KIP_KUMANDA && kaynak == JEST_KAYNAK_KUMANDA);
+        };
+
         const bool cocuk_suruyor = (istek_sol != 0 || istek_sag != 0);
         if (cocuk_suruyor) {
             if (jest_teker != 0) {
@@ -373,7 +399,7 @@ void beden_gorevi(void*)
                 akan = nullptr;
             }
         } else if (jest_teker != 0) {
-            if (ayar_beden_hareket()) {
+            if (izinli(tekerlek_kip, akan_kaynak)) {
                 const Surus d = jest_donus(jest_teker, ayar_beden_hiz());
                 istek_sol = d.sol;
                 istek_sag = d.sag;
@@ -466,9 +492,13 @@ void beden_gorevi(void*)
         }
 
         // ---- JEST BASLATMA ----------------------------------------------
-        const int istek = g_jest_istek.exchange(-1, std::memory_order_relaxed);
+        const int ham_istek = g_jest_istek.exchange(-1,
+                                                    std::memory_order_relaxed);
+        const int istek = (ham_istek < 0) ? -1
+                                          : (ham_istek % JEST_KAYNAK_CARPAN);
         if (istek >= 0 && istek < JEST_ADET) {
             akan = &JESTLER[istek];
+            akan_kaynak = ham_istek / JEST_KAYNAK_CARPAN;
             son_jest = istek;
             // Elle ya da sesle istenen jest de seyreklik sayacini
             // besliyor: cocuk "dans et" dedikten hemen sonra Pati'nin
@@ -489,22 +519,29 @@ void beden_gorevi(void*)
             // secilseydi tekerlekli jestlerin payi tabloya kac satir
             // ekledigimize bagli olurdu — yani sikligi kimse
             // secmemis olurdu.
+            // OZERK SECIM YALNIZCA KIP_ACIK'TA. "Sadece kumandadan"
+            // kipinin tamami bu satirda: Pati kendi kendine secmiyor.
             const bool teker_uygun =
-                ayar_beden_hareket()
+                tekerlek_kip == KIP_ACIK
                 && simdi - son_teker_us >= TEKER_ARA_EN_AZ_US;
             const bool teker_turu =
                 teker_uygun && (esp_random() % TEKER_KURA) == 0;
 
             int aday = -1;
-            for (int deneme = 0; deneme < 12 && aday < 0; ++deneme) {
-                const int s = static_cast<int>(esp_random() % JEST_ADET);
-                if (!JESTLER[s].kendiliginden) continue;
-                if (JESTLER[s].teker_var != teker_turu) continue;
-                if (s == son_jest) continue;   // ust uste ayni jest olmasin
-                aday = s;
+            // Tekerlek turu secilmediyse kol jesti aranacak; kollar
+            // acik degilse aranacak bir sey yok.
+            if (teker_turu || kol_kip == KIP_ACIK) {
+                for (int deneme = 0; deneme < 12 && aday < 0; ++deneme) {
+                    const int s = static_cast<int>(esp_random() % JEST_ADET);
+                    if (!JESTLER[s].kendiliginden) continue;
+                    if (JESTLER[s].teker_var != teker_turu) continue;
+                    if (s == son_jest) continue;   // ust uste ayni olmasin
+                    aday = s;
+                }
             }
             if (aday >= 0) {
                 akan = &JESTLER[aday];
+                akan_kaynak = JEST_KAYNAK_PATI;
                 son_jest = aday;
                 if (JESTLER[aday].teker_var) son_teker_us = simdi;
                 kare_no = 0;
@@ -516,8 +553,18 @@ void beden_gorevi(void*)
         // ---- JEST ILERLETME ---------------------------------------------
         if (akan != nullptr) {
             const Kare& k = akan->kare[kare_no];
-            if (k.sol >= 0) g_kol_hedef[0].store(k.sol, std::memory_order_relaxed);
-            if (k.sag >= 0) g_kol_hedef[1].store(k.sag, std::memory_order_relaxed);
+            // Kol kipi izin vermiyorsa jestin KOL kismi atlaniyor,
+            // tekerlek kismi (izinliyse) yine oynuyor. Jesti tamamen
+            // dusurmek yerine kirpmak, "dans et" denince hic bir sey
+            // olmamasindansa yarim bir dans vermeyi tercih ediyor.
+            if (izinli(kol_kip, akan_kaynak)) {
+                if (k.sol >= 0) {
+                    g_kol_hedef[0].store(k.sol, std::memory_order_relaxed);
+                }
+                if (k.sag >= 0) {
+                    g_kol_hedef[1].store(k.sag, std::memory_order_relaxed);
+                }
+            }
 
             // 🔴 TEKERLEK KARESI KOLUN VARMASINI BEKLEMIYOR.
             //
@@ -555,6 +602,17 @@ void beden_gorevi(void*)
         // ---- KOL HAREKETI -----------------------------------------------
         constexpr int ADIM10 = KOL_HIZ_DERECE_SN * DONGU_MESGUL_MS / 100;
         bool kol_oynuyor = false;
+        // 🔴 KOLLAR KAPALIYSA DINLENMEYE GIDIP SUSUYOR.
+        //
+        // Oldugu yerde dondurmak yanlis olurdu: havada kalmis bir kol
+        // "bozuldu" gorunur. Dinlenme acisina inip orada darbe kesiliyor
+        // (KOL_SUS_GECIKME), yani servo sessiz ve akimsiz kaliyor —
+        // ebeveynin "hic hareket etmesin" istegi tam olarak bu.
+        if (kol_kip == KIP_KAPALI) {
+            g_kol_hedef[0].store(0, std::memory_order_relaxed);
+            g_kol_hedef[1].store(0, std::memory_order_relaxed);
+        }
+
         // Tekerlek donerken kollar DURUYOR — hedefi unutmadan.
         //
         // Darbeyi yukarida kesmek tek basina yetmezdi: bu dongu
@@ -725,6 +783,10 @@ std::uint32_t beden_takma_sayisi()
 void beden_surus(int x, int y)
 {
     if (!g_takili.load(std::memory_order_relaxed)) return;
+    // KIP_KAPALI'da joystick de olu. Panel bu durumda joystick'i
+    // sonduruyor, yani buraya normalde hic gelinmiyor; yine de
+    // kontrol burada, cunku istek elle de atilabilir.
+    if (ayar_tekerlek_kip() == KIP_KAPALI) return;
 
     // Karistirma ve hiz siniri CIHAZDA — panelde degil. Panel yalnizca
     // joystick'in nerede oldugunu soyluyor; iki tekerlegin ne yapacagina
@@ -743,6 +805,7 @@ void beden_surus(int x, int y)
 void beden_kol(int sol_yuzde, int sag_yuzde)
 {
     if (!g_takili.load(std::memory_order_relaxed)) return;
+    if (ayar_kol_kip() == KIP_KAPALI) return;
     if (sol_yuzde >= 0) {
         g_kol_hedef[0].store(std::clamp(sol_yuzde, 0, 100),
                              std::memory_order_relaxed);
@@ -755,13 +818,17 @@ void beden_kol(int sol_yuzde, int sag_yuzde)
     uyandir();
 }
 
-bool beden_jest(const char* ad)
+bool beden_jest(const char* ad, int kaynak)
 {
     if (ad == nullptr) return false;
     for (int i = 0; i < JEST_ADET; ++i) {
         if (std::strcmp(ad, JESTLER[i].ad) == 0) {
             if (!g_takili.load(std::memory_order_relaxed)) return true;
-            g_jest_istek.store(i, std::memory_order_relaxed);
+            // Kaynak istekle BIRLIKTE tasiniyor: ayri bir degiskene
+            // yazilsaydi iki cagiran arasinda yaris olur ve Pati'nin
+            // kendi istegi "kumandadan geldi" diye gecebilirdi.
+            g_jest_istek.store(i + kaynak * JEST_KAYNAK_CARPAN,
+                               std::memory_order_relaxed);
             uyandir();
             return true;
         }
@@ -780,12 +847,19 @@ void beden_konusma_bildir(bool konusuyor)
     if (!g_takili.load(std::memory_order_relaxed)) return;
 
     if (konusuyor && !onceki) {
+        // Kollar acik degilse konusma basinda da bir sey yapmiyor.
+        if (ayar_kol_kip() != KIP_ACIK) {
+            uyandir();
+            return;
+        }
         // Konusma basladi: hemen el salla.
         //
         // BURADA TEKERLEK YOK ve bu bilincli: her cumlenin basinda
         // donmek hem sikici hem gereksiz motor kalkisi olurdu. Tekerlek
         // konusmanin ICINDE, seyrek ve kurayla geliyor (TEKER_ARA_EN_AZ).
-        g_jest_istek.store(jest_no("selam"), std::memory_order_relaxed);
+        g_jest_istek.store(
+            jest_no("selam") + JEST_KAYNAK_PATI * JEST_KAYNAK_CARPAN,
+            std::memory_order_relaxed);
     } else if (!konusuyor && onceki) {
         g_kol_hedef[0].store(0, std::memory_order_relaxed);
         g_kol_hedef[1].store(0, std::memory_order_relaxed);
