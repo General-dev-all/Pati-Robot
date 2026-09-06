@@ -371,6 +371,229 @@ function gonder(nesne) {
   return false;
 }
 
+
+// ---------------------------------------------------------------------------
+// KUMANDA — cocugun Pati'yi surdugu kart
+// ---------------------------------------------------------------------------
+//
+// 🔴 BU BOLUM `gonder()` YOLUNU KULLANMIYOR, DOGRUDAN /api/beden'e
+// yaziyor. Panelin geri kalani iki tarafi da (robot / tezgah) bilmeyen
+// tek bir kod yolu kullaniyor ve bu iyi bir kural — ama burada
+// karsiligi yok: tezgahtaki Python sunucusunda beden diye bir sey yok.
+// Sahte bir karsilik uydurmak, calisiyor gorunup hicbir sey yapmayan
+// bir dugme demek olurdu.
+//
+// Kart zaten yalnizca robot modunda ve beden takiliyken goruluyor.
+
+const KUMANDA_ARALIK_MS = 150;   // dokunma surerken gonderim sikligi
+
+const K = {
+  aktif: false,      // parmak joystick'te mi
+  x: 0,              // -100..100, saga pozitif
+  y: 0,              // -100..100, ileri pozitif
+  kol: { sol: 0, sag: 0 },
+  zamanlayici: null,
+  takili: false,
+};
+
+async function bedeneYolla(govde) {
+  try {
+    await fetch('/api/beden', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(govde),
+    });
+  } catch {
+    // Sessiz: surus sirasinda tek bir kayip paket onemsiz ve firmware
+    // zaten komut kesilirse duruyor. Tost cikarmak, hareket halindeki
+    // cocugun ekranini uyarilarla doldururdu.
+  }
+}
+
+// 🔴 KARISTIRMA BURADA DEGIL, CIHAZDA.
+//
+// Panel yalnizca joystick'in NEREDE oldugunu soyluyor; hangi tekerlegin
+// ne yapacagina ve ebeveynin hiz tavanina firmware karar veriyor
+// (pati_beden_matematik.hpp · surus_karistir).
+//
+// Iki sebep:
+//   1. Tavan cihazda dursun — panel gonderse bile asilamasin.
+//   2. Karistirmanin isareti ancak KONAK TESTINDE yakalanabiliyor;
+//      JS'te olsaydi "sola bas saga gitsin" hatasi ancak robot
+//      masadayken fark edilirdi.
+
+function kolYaz() {
+  const a = $('#vKolSol');
+  const b = $('#vKolSag');
+  if (a) a.textContent = `%${K.kol.sol}`;
+  if (b) b.textContent = `%${K.kol.sag}`;
+}
+
+function kumandaKur() {
+  const alan = $('#joystick');
+  const topuz = $('#joyTopuz');
+  if (!alan || !topuz) return;
+
+  // Topuzun merkezden cikabilecegi en uzak nokta: yaricap eksi topuzun
+  // yarisi. Sabit yazilmiyor cunku dar telefonda joystick kuculuyor
+  // (stil.css, 360 px kirilimi).
+  const yaricap = () => Math.max(1, alan.clientWidth / 2 - topuz.offsetWidth / 2);
+
+  function topuzKoy(dx, dy) {
+    topuz.style.transform = `translate(${dx}px, ${dy}px)`;
+  }
+
+  function hesapla(olay) {
+    const k = alan.getBoundingClientRect();
+    const mx = olay.clientX - (k.left + k.width / 2);
+    const my = olay.clientY - (k.top + k.height / 2);
+    const r = yaricap();
+    const uz = Math.hypot(mx, my);
+    const olcek = uz > r ? r / uz : 1;
+    const dx = mx * olcek;
+    const dy = my * olcek;
+    topuzKoy(dx, dy);
+    // Ekranda y ASAGI dogru buyuyor, ileri ise YUKARI: isaret ters.
+    K.x = Math.round((dx / r) * 100);
+    K.y = Math.round((-dy / r) * 100);
+  }
+
+  function basla(olay) {
+    if (!K.takili) return;
+    K.aktif = true;
+    alan.classList.add('suruyor');
+    try { alan.setPointerCapture(olay.pointerId); } catch {}
+    hesapla(olay);
+    bedeneYolla({ x: K.x, y: K.y });
+    // Dokunma SURDUKCE gonderiyoruz, deger degismese bile: firmware'in
+    // olu adam zamanlayicisi beslenmezse 600 ms sonra motorlari
+    // durduruyor.
+    clearInterval(K.zamanlayici);
+    K.zamanlayici = setInterval(() => {
+      if (K.aktif) bedeneYolla({ x: K.x, y: K.y });
+    }, KUMANDA_ARALIK_MS);
+  }
+
+  function surdur(olay) {
+    if (!K.aktif) return;
+    olay.preventDefault();
+    hesapla(olay);
+  }
+
+  function bitir() {
+    if (!K.aktif) return;
+    K.aktif = false;
+    alan.classList.remove('suruyor');
+    clearInterval(K.zamanlayici);
+    K.zamanlayici = null;
+    K.x = 0;
+    K.y = 0;
+    topuzKoy(0, 0);
+    // Sifiri IKI KEZ gonderiyoruz. Tek paket kaybolursa Pati 600 ms
+    // daha giderdi — olu adam yakalar ama masa kenarinda o sure uzun.
+    // Ikinci paket bedava.
+    bedeneYolla({ x: 0, y: 0 });
+    setTimeout(() => bedeneYolla({ x: 0, y: 0 }), 60);
+  }
+
+  alan.addEventListener('pointerdown', basla);
+  alan.addEventListener('pointermove', surdur);
+  alan.addEventListener('pointerup', bitir);
+  alan.addEventListener('pointercancel', bitir);
+
+  // 🔴 SEKME ARKA PLANA ATILIRSA pointerup HIC GELMIYOR — telefonda bir
+  // bildirim gelmesi bile yetiyor. Parmak "kalkmis" sayilmadigi icin
+  // panel sifir gondermezdi. Olu adam zamanlayicisi yine yakalar; bu
+  // satirlar onu 600 ms beklemeden kesiyor.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') bitir();
+  });
+  window.addEventListener('blur', bitir);
+
+  // ---- kollar: her dokunusta ceyrek adim ---------------------------------
+  //
+  // Basili tutmak yerine dokunma secildi: bir cocuk icin "bas ve tut,
+  // istedigin yerde birak" zor, "dort kez bas, kol yukarida" kolay.
+  document.querySelectorAll('.kol-dugme').forEach((d) => {
+    d.addEventListener('click', () => {
+      const hangi = d.dataset.kol;
+      const yon = parseInt(d.dataset.yon, 10);
+      K.kol[hangi] = Math.max(0, Math.min(100, K.kol[hangi] + yon * 25));
+      kolYaz();
+      bedeneYolla(hangi === 'sol' ? { kol_sol: K.kol.sol }
+                                  : { kol_sag: K.kol.sag });
+    });
+  });
+
+  document.querySelectorAll('[data-jest]').forEach((d) => {
+    d.addEventListener('click', () => {
+      if (d.dataset.jest === 'dinlen') {
+        K.kol.sol = 0;
+        K.kol.sag = 0;
+        kolYaz();
+      }
+      bedeneYolla({ jest: d.dataset.jest });
+    });
+  });
+
+  const hiz = $('#kBedenHiz');
+  if (hiz) {
+    hiz.addEventListener('input', () => {
+      $('#vBedenHiz').textContent = `%${hiz.value}`;
+    });
+    // Kaydirici BIRAKILINCA yaziliyor, her pikselde degil: /api/ayar
+    // NVS'e (flash) yaziyor ve surukleme boyunca yuzlerce yazma demekti.
+    hiz.addEventListener('change', () => {
+      fetch('/api/ayar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alan: 'beden_hiz',
+                               deger: parseInt(hiz.value, 10) }),
+      }).catch(() => {});
+    });
+  }
+
+  const sev = $('#sevinc');
+  if (sev) {
+    sev.addEventListener('change', () => {
+      fetch('/api/ayar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alan: 'sevinc', deger: sev.checked ? 1 : 0 }),
+      }).catch(() => {});
+    });
+  }
+}
+
+// /api/durum'dan gelen beden bilgisini karta uygular.
+function bedenYaz(beden, kumanda) {
+  const kart = $('#kumandaKart');
+  if (!kart) return;
+
+  if (beden) {
+    K.takili = !!beden.takili;
+    kart.hidden = !K.takili;
+    // Kol konumu CIHAZDAN geliyor: jestler de kollari oynatiyor ve
+    // panelin kendi sayaci onlari bilmiyordu. Parmak dugmedeyken
+    // yazmiyoruz, yoksa dokunma ile yoklama yarisir.
+    if (K.takili && !K.aktif) {
+      K.kol.sol = beden.kol_sol || 0;
+      K.kol.sag = beden.kol_sag || 0;
+      kolYaz();
+    }
+  }
+
+  if (kumanda) {
+    const h = $('#kBedenHiz');
+    if (h && document.activeElement !== h) {
+      h.value = kumanda.hiz;
+      $('#vBedenHiz').textContent = `%${kumanda.hiz}`;
+    }
+    const s = $('#sevinc');
+    if (s) s.checked = !!kumanda.sevinc;
+  }
+}
+
 // /api/durum cevabini panelin bekledigi olaylara cevirir. Boylece
 // robot modu da `mesaj()` yolunu kullaniyor.
 function durumu_uygula(d) {
@@ -403,6 +626,9 @@ function durumu_uygula(d) {
   if (d.kullanim) {
     mesaj({ tip: 'kullanim', bugun_dk: d.kullanim.bugun_dk,
             ay_dk: d.kullanim.ay_dk, tahmin_usd: d.kullanim.tahmin_usd });
+  }
+  if (d.beden || d.kumanda) {
+    bedenYaz(d.beden, d.kumanda);
   }
   if (d.hafiza) {
     hafizaAl(d.hafiza);
@@ -1505,6 +1731,7 @@ hafizaYaz();
 durumYaz();
 gucYaz();
 seritGuncelle();
+kumandaKur();
 
 // ---------------------------------------------------------------------------
 // Hangi taraftayiz?

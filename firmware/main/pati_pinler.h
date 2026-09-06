@@ -295,10 +295,106 @@
 #define PATI_TUS_2 GPIO_NUM_12
 
 // ---------------------------------------------------------------------------
+// BEDEN — 2 DC motor + 2 servo, ayri beslemeli
+// ---------------------------------------------------------------------------
+//
+// StickS3 bir gövdeye takilabiliyor: iki tekerlek (sari TT redüktörlü
+// motor, L9110S surucu) ve iki kol (SG90 sinifi mini servo). Gövdenin
+// kendi 4'lu AA pil yuvasi var.
+//
+// ===========================================================================
+// 🔴 AA PILIN (+) UCU BU KARTA HICBIR SEKILDE GELMIYOR
+// ===========================================================================
+//
+// Gövdeden Stick'e giden sekiz kablonun hepsi ya TOPRAK ya da Stick'in
+// KENDI CIKISI. 6 V hatti gövdenin icinde kaliyor, konnektöre hic
+// ugramiyor.
+//
+// Sebebi asagidaki Hat2-Bus dizilisi: sinyal pinlerinin arasinda BAT
+// (lityum hucrenin kendi ucu), 5V_IN, 3V3_L2 ve EXT_5V duruyor. Oraya
+// 6 V girerse hucre ve M5PM1 gider ve geri donusu kutuyu acmak.
+//
+// Bu bir uyari degil, PIN SECIMININ SEBEBI: kural boyle kurulunca bir
+// kablo yanlis pine kaysa bile en kotu ihtimal "motor surekli donuyor"
+// oluyor — yakmiyor.
+//
+// Ayri besleme ayrica pazarlik konusu degil: 250 mAh'lik hucre
+// 01.09.2026'da YALNIZCA hoparlor akimiyla brownout yasadi (TESHIS.md).
+// Motorlari ayni raydan beslemek Pati'yi her harekette kapatirdi.
+//
+// ===========================================================================
+// Hat2-Bus — ustteki 16 pinlik baslik
+// ===========================================================================
+//
+// docs.m5stack.com/en/core/StickS3 · PinMap · Hat2-Bus (06.09.2026):
+//
+//        SOL              SAG
+//   GND    1  ────────  2   G5     sol motor ileri
+//   EXT_5V 3  ────────  4   G4     sol motor geri
+//   Boot   5  ────────  6   G6     sag motor ileri
+//   G1     7  ────────  8   G7     sag motor geri
+//   G8     9  ──────── 10   G43
+//   BAT   11  ──────── 12   G44
+//   3V3_L2 13 ──────── 14   G2     beden algilama
+//   5V_IN 15  ──────── 16   G3
+//
+// Sira keyfi degil, uc gerekce var:
+//
+//   1. MOTORLAR HEP SAG SUTUNDA. Sag sutunun tamami GPIO — orada tek
+//      bir guc pini yok. Motor kablosunun yanlislikla BAT'a dusmesi
+//      imkansiz.
+//
+//   2. SERVOLAR SOL SUTUNDA (7 ve 9). Sol sutunda guc pinleri var, ama
+//      bir servo sinyali kayip BAT'a duserse servo yalnizca gecersiz
+//      darbe gorur ve durur. Motor kablosu kaysaydi motor SUREKLI
+//      donerdi — yani Pati masadan duserdi. Riski, sonucu daha
+//      zararsiz olan uca kaydirdik.
+//
+//   3. G43 / G44 BILEREK BOS. ESP32-S3'un ROM UART0'i orada ve HER
+//      ACILISTA G43'ten onyukleyici copu cikiyor. Motor girisine bagli
+//      olsaydi Pati her sifirlamada segirirdi — ustelik Pati brownout
+//      yuzunden sik sifirlaniyor (PIL.md).
+//
+// G0 (Boot) ve G3 strapping pini oldugu icin de kullanilmiyor; yedi pin
+// zaten yetiyor.
+
+// ---- DC motorlar: L9110S cift kanal ---------------------------------------
+//
+// L9110'un lojik girisleri 2,5 V ustunu "yuksek" sayiyor, yani ESP32'nin
+// 3,3 V'u yetiyor; besleme araligi 2,5-12 V ve AA paketinin 6 V'u tam
+// ortada. Kanal basina 800 mA surekli.
+//
+// Yon "hangi girise PWM verildigi" ile seciliyor: ileri icin A pini
+// darbeli ve B pini sifir, geri icin tersi. Ikisi birden yuksek olursa
+// motor frenler; kodda bu durum hic uretilmiyor.
+#define PATI_BEDEN_SOL_ILERI  GPIO_NUM_5   // L9110 A-1A
+#define PATI_BEDEN_SOL_GERI   GPIO_NUM_4   // L9110 A-1B
+#define PATI_BEDEN_SAG_ILERI  GPIO_NUM_6   // L9110 B-1A
+#define PATI_BEDEN_SAG_GERI   GPIO_NUM_7   // L9110 B-1B
+
+// ---- Kollar: SG90 sinifi mini servo ---------------------------------------
+//
+// Yalnizca SINYAL burada; besleme AA paketinden geliyor.
+#define PATI_BEDEN_KOL_SOL    GPIO_NUM_1
+#define PATI_BEDEN_KOL_SAG    GPIO_NUM_8
+
+// ---- Beden algilama -------------------------------------------------------
+//
+// Iceri cekmeli (pull-up) giris. Beden yokken pin havada -> 1 okunuyor;
+// takilinca gövde topragina baglanip 0 oluyor. Sifir ek parca, tek
+// kablo.
+//
+// ⚠️ BUNUN BILMEDIGI SEY: AA pil yuvasinin anahtari acik mi. "Beden
+// takili" diyor, "beden calisiyor" demiyor. Kapali anahtarla takili bir
+// bedende panel kumandayi gosterir ama hicbir sey oynamaz — panel bunu
+// yaziyor.
+#define PATI_BEDEN_ALGILA     GPIO_NUM_2
+
+// ---------------------------------------------------------------------------
 // Bos kalanlar
 // ---------------------------------------------------------------------------
 //
-//   G9  / G10 : Grove (HY2.0-4P). Ileride servo ya da sensor icin.
+//   G9  / G10 : Grove (HY2.0-4P). Sensor icin.
 //               ⚠️ Grove'un tasiyabilecegi en fazla yuk 4,88 V @ 0,38 A.
 //               Servo BURADAN BESLENMEZ — ayri besleme, sadece GND
 //               ortak. M5Stack kendi belgesinde cikis modundaki bir
@@ -307,4 +403,5 @@
 //   G46 / G42 : kizilotesi verici / alici. Pati kullanmiyor.
 //               (Kullanilsaydi: alicinin calismasi icin hoparlor
 //               amfisinin KAPALI olmasi gerekiyor.)
-//   Hat2-Bus  : ust taraftaki 16 pinlik genisleme yolu.
+//   G43 / G44 : Hat2-Bus'ta ama ROM UART0 — yukaridaki 3. gerekce.
+//   G0 / G3   : strapping.

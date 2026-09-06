@@ -5,7 +5,7 @@ rem NEDEN AYRI: bunlar firmware'in parcasi DEGIL. `main/` icinde
 rem olmadiklari icin idf.py build'i etkilemiyorlar; konak derleyicisi
 rem olmayan bir makinede sadece testler atlaniyor.
 rem
-rem UC TEST VAR:
+rem DORT TEST VAR:
 rem
 rem   goz_karsilastir     pati_gozler.cpp <-> panel/gozler240.js
 rem                       Ayni girdiyle PIKSEL PIKSEL karsilastiriyor.
@@ -24,7 +24,15 @@ rem                       (her sinirda tik sesi) ve uzun akista faz
 rem                       kaymasi. Ikisi de kulakla duyulur, gozle
 rem                       gorulmez.
 rem
-rem Ucunun de ortak gerekcesi: "portladim" ile "dogru portladim" ayri
+rem   beden_karsilastir   pati_beden_matematik.hpp — kollar ve tekerlekler
+rem                       Dort seyi sinayan saf tam sayi testi: servo
+rem                       darbesinin araliktan cikmasi (servo dayanmaya
+rem                       biner, isinir), karistirmanin ters isareti
+rem                       ("sola bas saga gitsin"), hiz tavaninin
+rem                       caprazda kaybolmasi, ve olu bolge. Dordu de
+rem                       ancak GERCEK ROBOT MASADAYKEN fark edilirdi.
+rem
+rem Dordunun de ortak gerekcesi: "portladim" ile "dogru portladim" ayri
 rem seyler ve fark gozle gorulmuyor.
 rem
 rem NOT: bu dosya CRLF satir sonuyla durmali. LF ile yazilirsa cmd.exe
@@ -141,17 +149,38 @@ rem
 rem iki WAV yaziyor — biri onceki kartin caldigi sey, digeri yeni
 rem yolun ciktisi. Ikisi ayni duyulmali.
 
+rem ==================================================== 4) BEDEN
+echo.
+echo  ============================================================
+echo   4) BEDEN  -  kollarin ve tekerleklerin matematigi
+echo  ============================================================
+rem Donanima dokunmayan kisim ayri bir baslikta durdugu icin (
+rem pati_beden_matematik.hpp) burada stub'siz derleniyor.
+echo   derleniyor...
+cl /nologo /std:c++20 /EHsc /O2 /W3 beden_karsilastir.cpp /Fe:beden_karsilastir.exe /Fo:obj\ >derleme4.log 2>&1
+if errorlevel 1 (
+  echo.
+  echo   DERLEME HATASI - derleme4.log:
+  type derleme4.log
+  exit /b 1
+)
+
+.\beden_karsilastir.exe
+if errorlevel 1 set BEDEN_HATA=1
+
 rem ====================================================
 echo.
 echo  ============================================================
 if defined GOZ_HATA echo   GOZLER: BASARISIZ
 if defined HAFIZA_HATA echo   HAFIZA: BASARISIZ
 if defined SES_HATA echo   SES: BASARISIZ
-if not defined GOZ_HATA if not defined HAFIZA_HATA if not defined SES_HATA echo   UC TEST DE GECTI
+if defined BEDEN_HATA echo   BEDEN: BASARISIZ
+if not defined GOZ_HATA if not defined HAFIZA_HATA if not defined SES_HATA if not defined BEDEN_HATA echo   DORT TEST DE GECTI
 echo  ============================================================
 echo.
 
 if defined GOZ_HATA exit /b 1
 if defined HAFIZA_HATA exit /b 1
 if defined SES_HATA exit /b 1
+if defined BEDEN_HATA exit /b 1
 exit /b 0

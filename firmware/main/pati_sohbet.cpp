@@ -19,6 +19,7 @@
 
 #include "pati_kisilik_uretilmis.h"
 #include "pati_anahtar.hpp"
+#include "pati_beden.hpp"
 #include "pati_ayar.hpp"
 #include "pati_cikarim.hpp"
 #include "pati_gozler.hpp"
@@ -534,6 +535,7 @@ void kopmayi_toparla()
     // konusmuyor hem duymuyor olurdu.
     tur_kapat();
     g_konusuyor = false;
+    beden_konusma_bildir(false);
 
     // OLU OTURUM DAKIKA YAKMASIN. Olculdu: kopmadan sonra sayac
     // isliyordu (14,0 -> 17,6 dk). Basarili olursa asagida devam ediyor.
@@ -617,6 +619,10 @@ void olayi_isle(const ConversationEvent& olay)
             gozler_konusuyor();
         }
         g_konusuyor = (olay.state == ConversationState::Speaking);
+        // Kollar da konusma AKISINDAN suruluyor, gozlerle ayni yerden.
+        // Beden hicbir sey SORMUYOR — durum ona itiliyor (pati_beden.hpp).
+        // Beden takili degilse bu cagri hicbir sey yapmiyor.
+        beden_konusma_bildir(g_konusuyor);
         ESP_LOGD(ETIKET, "durum: %d", static_cast<int>(olay.state));
         break;
 
@@ -643,6 +649,7 @@ void olayi_isle(const ConversationEvent& olay)
             }
             hoparlor_temizle();
             g_konusuyor = false;
+            beden_konusma_bildir(false);
         }
         break;
 
@@ -674,6 +681,7 @@ void olayi_isle(const ConversationEvent& olay)
         damga_ilk_hoparlor();
         if (!g_konusuyor) {
             gozler_konusuyor();
+            beden_konusma_bildir(true);
         }
         g_konusuyor = true;
         break;
@@ -701,6 +709,7 @@ void olayi_isle(const ConversationEvent& olay)
             ++g_tur;
         }
         g_konusuyor = false;
+        beden_konusma_bildir(false);
         gozler_bos();
         // Tur bitti — yenileme icin dogru an burasi.
         yenileme_gerekirse();

@@ -53,6 +53,84 @@ sebebini söylüyor.
 
 ---
 
+## 🔴 Beden takılıyken — önce gürültüye bak, yazılıma değil
+
+Bu bölüm gövde (2 DC motor + 2 servo) takılıyken geçerli. Kablo şeması
+ve devreye alma sırası `BEDEN.md`'de.
+
+Motor akımı I2S ve I2C hatlarına biniyor ve **belirtileri bu belgedeki
+"01.09.2026 — dört belirti, tek kök neden" tablosunun aynısı**:
+
+| Belirti | Bedensiz Pati'de sebebi | Beden takılıyken ÖNCE bakılacak |
+|---|---|---|
+| Ses cızırdıyor | ses yolu / seviye | motor gürültüsü |
+| ES8311 cevap vermiyor | I2C 400 kHz, L3B kapalı | motor gürültüsü |
+| M5PM1 NACK veriyor | I2C hızı | motor gürültüsü |
+| Ekran siyah kalıyor | L3B açılmadı | motor gürültüsü |
+
+🔴 **Sıra tersine döndü.** Motor eklenmeden önce bu belirtilerin sebebi
+neredeyse kesin olarak I2C/L3B idi ve orada aranırdı. Motor eklendikten
+sonra aynı belirtiler **önce gürültü** demek — çünkü yazılım tarafı
+değişmedi, elektriksel ortam değişti.
+
+**Ayırt etme yolu bir dakika sürüyor:** AA pil yuvasının anahtarını
+kapat. Belirti kayboluyorsa sebep gürültü; sürüyorsa yazılım.
+
+**Çare:** 100 nF seramikleri motor uçlarına takmak — üçer tane: iki uç
+arasına, ve her uçtan motor gövdesine.
+
+### Beden takılı görünmüyor
+
+`api/durum` → `beden.takili` false, panelde kumanda kartı yok.
+
+1. Seri portta açılış özetine bak: `beden : takili` yazıyor mu.
+2. `beden.takma` sayısına bak. **Hızla artıyorsa kablo temassız** —
+   algılama pini bağlanıp kopuyor demektir. Sabit kalıyorsa kablo hiç
+   bağlı değil.
+3. Algılama pini Hat2-Bus **pin 14** (G2) ve gövde tarafında **AA (−)**
+   hattına gidiyor. Pin 1'deki toprak kablosuyla karıştırılmış olabilir.
+
+⚠️ **"Beden takılı" ile "beden çalışıyor" ayrı şeyler.** Algılama AA pil
+yuvasının anahtarını göremiyor. Kart görünüyor ama hiçbir şey oynamıyorsa
+ilk bakılacak yer o anahtar — panel de bunu yazıyor.
+
+### Kol ters yöne gidiyor / dayanıyor
+
+İki servo karşılıklı monte edilmiş ve aynalama tek bir sabitte:
+`pati_beden_matematik.hpp` → `KOL_SAG_AYNA`. Aralık uçları aynı
+dosyada (`KOL_DINLENME_DERECE`, `KOL_TAVAN_DERECE`).
+
+⚠️ Servo dayanmaya binerse **durmuyor, akım çekmeye devam ediyor**:
+ısınır, pil yer ve sürekli vızıldar. Belirtisi "kol biraz eksik
+kalkıyor" + bitmeyen vızıltı. Konak testi darbenin 500-2500 µs dışına
+çıkmasını yakalıyor (`derle.bat`, 4. test) ama mekanik dayanmayı
+yakalayamaz — o gözle görülüyor.
+
+### Tekerlek dönmüyor, sadece vızıldıyor
+
+Ölü bölgenin altında kalıyor. `MOTOR_EN_AZ_DUTY` şu an **%35 ve bu bir
+tahmin, ölçüm değil** (`pati_beden_matematik.hpp`). Ölçüp yaz.
+
+İkinci ihtimal PWM frekansı: 20 kHz seçildi çünkü mikrofon sürekli açık
+ve düşük frekanslı cıvıltı doğrudan Gemini'ye gidiyor. Ama L9110'un
+kenarları yavaş; yüksek frekansta düşük hızlarda dönmeyebiliyor ve
+sürücü ısınabiliyor. Sürücü elle sıcaksa 10 kHz'e in ve yeniden ölç.
+
+### Pati kendiliğinden ilerliyor
+
+**Olmaması gereken şey.** Tekerlekler yalnızca panelden sürülüyor ve
+komut kesilirse 600 ms içinde duruyor.
+
+1. Açılışta mı oluyor? Yazılım pinleri kurana kadar L9110 girişleri
+   havada — `BEDEN.md` adım A. Çare iki adet 10 kΩ direnç.
+2. Sürerken bırakınca mı sürüyor? Ölü adam çalışmıyor demektir; seri
+   portta `olu adam: komut kesildi` satırı çıkmalı.
+3. Ara ara kısa dönüyorsa: **sevinç dönüşü** açık olabilir (panel →
+   Kumanda → "Sevinince yerinde dönsün"). O yerinde döner, ilerlemez;
+   ilerliyorsa tekerleklerden biri ters bağlı.
+
+---
+
 ## Sayılar ve sağlıklı değerleri
 
 Beş saniyede bir basılan rapordan:

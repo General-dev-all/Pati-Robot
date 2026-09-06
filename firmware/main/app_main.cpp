@@ -21,6 +21,7 @@
 
 #include <conversation/gemini_live_client.hpp>
 
+#include "pati_beden.hpp"
 #include "pati_ekran.hpp"
 #include "pati_gozler.hpp"
 #include "pati_guc.hpp"
@@ -459,6 +460,22 @@ extern "C" void app_main()
                          "ekran arka isigi calismayacak");
     }
 
+    // ---- BEDEN — MOTOR PINLERI MUMKUN OLAN EN ERKEN ANDA ASAGI ----------
+    //
+    // 🔴 BU SATIR NEDEN TAM BURADA: ESP32 cikislari yazilim kurana kadar
+    // HAVADA kaliyor ve gövde takiliysa L9110'un girisleri o sirada
+    // belirsiz — yani motorlar acilista kendiliginden donebilir.
+    // Pencereyi kapatmanin tek yolu erken kurmak.
+    //
+    // Donanim kilidinden ONCE, cunku kilit yanlis kartta esp_restart()
+    // cagirabiliyor ve o yol motorlari asagi cekmis olarak birakmali.
+    //
+    // Basarisiz olursa DEVAM EDIYORUZ: bedensiz Pati zaten calisiyor.
+    if (pati::beden_baslat() != ESP_OK) {
+        ESP_LOGW(ETIKET, "beden katmani kurulamadi — kollar ve tekerlekler "
+                         "calismayacak");
+    }
+
     // ---- DONANIM KILIDI -------------------------------------------------
     donanimi_dogrula();
 
@@ -626,6 +643,10 @@ extern "C" void app_main()
              pati::ses_hazir() ? "hazir" : "KURULAMADI");
     ESP_LOGW(ETIKET, "  ekran     : %s",
              pati::ekran_hazir() ? "hazir" : "KURULAMADI");
+    // Beden takili mi — kablo temassizsa burada gorunuyor. "Kumanda
+    // panelde cikmiyor" sikayetinin ilk bakilacak yeri bu satir.
+    ESP_LOGW(ETIKET, "  beden     : %s",
+             pati::beden_takili() ? "takili" : "yok");
 
     // Guc kaynagi — ses tavaninin dayanagi (SES_PIL_TAVANI).
     {

@@ -83,6 +83,75 @@
       </div>
     </section>
 
+
+    <!-- KUMANDA — yalnizca beden takiliyken gorunuyor.
+         Beden yoksa kart hic yok: olmayan bir seyin dugmesini gostermek,
+         ebeveyne bozuk oldugunu dusundururdu. -->
+    <section class="kart" id="kumandaKart" hidden>
+      <h2>Kumanda</h2>
+      <p class="ip">
+        Beden takılı. Tekerlekler dönmüyorsa
+        <b>pil yuvasının düğmesine</b> bak — Pati bedeni görüyor ama
+        pilin açık olup olmadığını göremiyor.
+      </p>
+
+      <div class="kumanda">
+        <div class="kol-sutun">
+          <button class="kol-dugme" data-kol="sol" data-yon="1"
+                  aria-label="Sol kolu kaldır">▲</button>
+          <span class="kol-ad">Sol kol<b id="vKolSol">0</b></span>
+          <button class="kol-dugme" data-kol="sol" data-yon="-1"
+                  aria-label="Sol kolu indir">▼</button>
+        </div>
+
+        <!-- Parmak birakilinca topuz ortaya donuyor VE sifir gonderiliyor.
+             Ama guvenlik ona bagli degil: firmware'in olu adam
+             zamanlayicisi komut kesilirse motorlari zaten durduruyor. -->
+        <div class="joystick" id="joystick" role="application"
+             aria-label="Pati'yi sür">
+          <span class="joy-ok joy-ust">▲</span>
+          <span class="joy-ok joy-alt">▼</span>
+          <span class="joy-ok joy-sol">◄</span>
+          <span class="joy-ok joy-sag">►</span>
+          <div class="joy-topuz" id="joyTopuz"></div>
+        </div>
+
+        <div class="kol-sutun">
+          <button class="kol-dugme" data-kol="sag" data-yon="1"
+                  aria-label="Sağ kolu kaldır">▲</button>
+          <span class="kol-ad">Sağ kol<b id="vKolSag">0</b></span>
+          <button class="kol-dugme" data-kol="sag" data-yon="-1"
+                  aria-label="Sağ kolu indir">▼</button>
+        </div>
+      </div>
+
+      <div class="jestler">
+        <button class="ikincil ince" data-jest="selam">Selam ver</button>
+        <button class="ikincil ince" data-jest="alkis">Alkışla</button>
+        <button class="ikincil ince" data-jest="iki_kol">İki kol yukarı</button>
+        <button class="ikincil ince" data-jest="dinlen">Dinlen</button>
+      </div>
+
+      <label class="kd">
+        <span class="kd-ust"><span>Hız sınırı</span><b id="vBedenHiz">—</b></span>
+        <input id="kBedenHiz" type="range" min="10" max="100" step="5">
+      </label>
+      <p class="ip">
+        Masada oynanacak bir robot için tam güç fazla. Sınır
+        <b>cihazda</b> uygulanıyor — panel daha fazlasını gönderse bile
+        Pati kabul etmiyor.
+      </p>
+
+      <label class="anahtar">
+        <span>Sevinince yerinde dönsün</span>
+        <input id="sevinc" type="checkbox">
+      </label>
+      <p class="ip">
+        İki tekerlek ters yönde döner: Pati <b>yerinde döner, yer
+        değiştirmez</b>. Yapısı gereği masadan düşemez.
+      </p>
+    </section>
+
     <!-- KONUŞMA — panelin en üstünde, en sık değişen ayarlar olduğu için.
          Üçü de setup mesajında gidiyor, yani çalışan oturumda değişmiyor;
          GoAway yenilemesiyle tur arasında uygulanıyor (ölçüldü 568 ms,

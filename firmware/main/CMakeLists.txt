@@ -4,6 +4,7 @@ idf_component_register(
         "pati_ag.cpp"
         "pati_anahtar.cpp"
         "pati_ayar.cpp"
+        "pati_beden.cpp"
         "pati_cikarim.cpp"
         "pati_ekran.cpp"
         "pati_gozler.cpp"

@@ -51,6 +51,17 @@ bool ayar_soz_kesme();
 int ayar_vad_ms();          // 0 = Google varsayilani
 bool ayar_yuz_araci();
 
+// Bedenin surus hizi tavani (10-100). Panel degil FIRMWARE uyguluyor:
+// sinir cihazda dursun, panel gonderse bile asilamasin.
+int ayar_beden_hiz();
+
+// "Pati sevinince yerinde donsun" — varsayilan KAPALI.
+//
+// Iki motor TERS yonde donuyor, yani robot yerinde doner ve yer
+// degistirmez; yapi geregi masadan dusemez. Tekerlekleri Pati'nin kendi
+// kararina acmanin tek guvenli bicimi bu.
+bool ayar_sevinc();
+
 // Hepsi NVS'e isliyor. Tur sonu gerektirenler bayragi kaldiriyor.
 void ayar_ses_adi_yaz(const std::string& ad);
 void ayar_hiz_yaz(float hiz);
@@ -58,6 +69,8 @@ void ayar_uyku_yaz(int dakika);
 void ayar_soz_kesme_yaz(bool acik);
 void ayar_vad_yaz(int ms);
 void ayar_yuz_yaz(bool acik);
+void ayar_beden_hiz_yaz(int yuzde);
+void ayar_sevinc_yaz(bool acik);
 
 void ayar_sifirla();
 

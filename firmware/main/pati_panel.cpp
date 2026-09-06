@@ -17,6 +17,7 @@
 #include "pati_ag.hpp"
 #include "pati_anahtar.hpp"
 #include "pati_ayar.hpp"
+#include "pati_beden.hpp"
 #include "pati_gozler.hpp"
 #include "pati_guc.hpp"
 #include "pati_guncelleme.hpp"
@@ -275,6 +276,7 @@ esp_err_t durum_isle(httpd_req_t* r)
     if (govde.size() > 2) {
         govde.pop_back();                       // kapanis }
         govde += "," + ayar_json();
+        govde += "," + beden_json();
         govde += ",\"hafiza\":" + hafiza_ozet_json();
         govde += "," + anahtar_json();
         govde += "," + guncelleme_json();
@@ -368,6 +370,12 @@ esp_err_t ayar_isle(httpd_req_t* r)
         ayar_vad_yaz(static_cast<int>(json_sayi(k, "deger", 0)));
     } else if (alan == "yuz") {
         ayar_yuz_yaz(json_sayi(k, "deger", 1) != 0);
+    } else if (alan == "beden_hiz") {
+        // Sinir ayar katmaninda (10-100); panel gonderse bile disina
+        // cikmiyor. Uygulandigi yer beden_surus(), yani cihaz.
+        ayar_beden_hiz_yaz(static_cast<int>(json_sayi(k, "deger", 60)));
+    } else if (alan == "sevinc") {
+        ayar_sevinc_yaz(json_sayi(k, "deger", 0) != 0);
     } else if (alan == "ad" || alan == "yas") {
         hafiza_cocugu_tanimla(json_dize(k, "ad"),
                               static_cast<int>(json_sayi(k, "yas", 0)));
@@ -405,6 +413,65 @@ esp_err_t ayar_isle(httpd_req_t* r)
 
     if (!tamam) return hata_yolla(r, "400", "bilinmeyen ayar");
     return json_yolla(r, "{\"tamam\":true}");
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/beden — cocugun kumandasi
+// ---------------------------------------------------------------------------
+//
+// 🔴 BU YOL SICAK: panel dokunma surerken 150 ms'de bir cagiriyor.
+//
+// O yuzden burada NVS, I2C ve kilit YOK. Yapilan tek is JSON'u cozup
+// atomik degisken yazmak; motorlari beden gorevi suruyor.
+//
+// Ayri bir yol olmasinin sebebi de bu: /api/ayar NVS'e yaziyor ve
+// saniyede yedi kez cagrilamaz.
+//
+// ⚠️ SIFIR GONDERMEK DE BIR KOMUTTUR ve panel dokunma bitince hemen
+// gonderiyor. Ama ona GUVENMIYORUZ: beden katmaninin olu adam
+// zamanlayicisi komut kesilirse motorlari zaten durduruyor
+// (pati_beden.hpp). Panelin unutmasi, kacan bir robot olmamali.
+
+esp_err_t beden_isle(httpd_req_t* r)
+{
+    std::string govde;
+    if (!govde_oku(r, govde)) return hata_yolla(r, "400", "govde okunamadi");
+
+    cJSON* k = cJSON_Parse(govde.c_str());
+    if (k == nullptr) return hata_yolla(r, "400", "bozuk JSON");
+
+    bool tamam = true;
+
+    // Surus: joystick konumu (x saga, y ileri; ikisi de -100..100).
+    //
+    // Hangi tekerlegin ne yapacagi ve hiz tavani CIHAZDA hesaplaniyor —
+    // panel yalnizca parmagin nerede oldugunu soyluyor.
+    //
+    // Iki alan da varsa uygulaniyor. Yoklugu "degistirme" demek, sifir
+    // demek DEGIL: kol komutu gonderirken tekerlekleri durdurmak
+    // istemiyoruz.
+    const cJSON* x = cJSON_GetObjectItemCaseSensitive(k, "x");
+    const cJSON* y = cJSON_GetObjectItemCaseSensitive(k, "y");
+    if (cJSON_IsNumber(x) && cJSON_IsNumber(y)) {
+        beden_surus(static_cast<int>(x->valuedouble),
+                    static_cast<int>(y->valuedouble));
+    }
+
+    const cJSON* ks = cJSON_GetObjectItemCaseSensitive(k, "kol_sol");
+    const cJSON* kd = cJSON_GetObjectItemCaseSensitive(k, "kol_sag");
+    if (cJSON_IsNumber(ks) || cJSON_IsNumber(kd)) {
+        beden_kol(cJSON_IsNumber(ks) ? static_cast<int>(ks->valuedouble) : -1,
+                  cJSON_IsNumber(kd) ? static_cast<int>(kd->valuedouble) : -1);
+    }
+
+    const std::string jest = json_dize(k, "jest");
+    if (!jest.empty()) tamam = beden_jest(jest.c_str());
+
+    cJSON_Delete(k);
+
+    if (!tamam) return hata_yolla(r, "400", "bilinmeyen jest");
+    return json_yolla(r, std::string("{\"tamam\":true,\"takili\":")
+                             + (beden_takili() ? "true" : "false") + "}");
 }
 
 // ---------------------------------------------------------------------------
@@ -701,11 +768,11 @@ esp_err_t panel_baslat()
     // Joker isleyici bilinmeyen adresleri de yakaliyor (captive portal),
     // o yuzden az sayida isleyici yetiyor.
     //
-    // ⚠️ Su an 9 yol kayitli. Sinir asilirsa httpd son yollari SESSIZCE
+    // ⚠️ Su an 11 yol kayitli. Sinir asilirsa httpd son yollari SESSIZCE
     // kaydetmiyor — hata donuyor ama biz donus degerine bakmiyoruz ve
     // eksik olan yol 404 veriyor. Panelin bir dugmesi calismaz ve sebebi
     // hicbir yerde gorunmez. Pay birakiliyor.
-    k.max_uri_handlers = 12;
+    k.max_uri_handlers = 14;
     k.lru_purge_enable = true;
     k.stack_size = 6144;
 
@@ -735,6 +802,7 @@ esp_err_t panel_baslat()
         {"/api/aglar", HTTP_GET, aglar_isle, nullptr},
         {"/api/wifi", HTTP_POST, wifi_isle, nullptr},
         {"/api/ayar", HTTP_POST, ayar_isle, nullptr},
+        {"/api/beden", HTTP_POST, beden_isle, nullptr},
         {"/api/hafiza", HTTP_POST, hafiza_isle, nullptr},
         {"/api/anahtar", HTTP_POST, anahtar_isle, nullptr},
         {"/api/guncelleme", HTTP_POST, guncelleme_isle, nullptr},

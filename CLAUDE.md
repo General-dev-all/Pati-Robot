@@ -81,18 +81,23 @@ Bir şey takılıyor, donuyor ya da kendiliğinden yeniden başlıyorsa:
 **`firmware/TESHIS.md`** — belirti → sebep tablosu, sağlıklı sayılar,
 gözlem yöntemleri ve daha önce yapılmış yanlış teşhisler.
 
+**`firmware/BEDEN.md`** — gövde: kablo şeması, pin tablosu, devreye
+alma sırası ve ölçülmesi bekleyen sayılar. Motora, servoya ya da
+kumandaya dokunmadan önce oku.
+
 **`firmware/PIL.md` — DEVAM EDEN İŞ.** Pati pilde hâlâ çöküyor
 (konuşmaya başlarken brownout, 20-60 sn'de bir). Amaç, kullanıcının
 feda etme sırası (ses 0.70'in altına İNMEZ), denenenler, denenmemiş
 adaylar ve A/B ölçüm yöntemi orada. Pil tarafına dokunmadan önce oku.
 
-Konak testleri (üçü de geçmeli):
+Konak testleri (dördü de geçmeli):
 ```
 cd firmware\test && derle.bat
 ```
 1. Göz çizici ↔ tarayıcı, piksel piksel
 2. Hafıza motoru ↔ Python prototipi
 3. Yeniden örnekleyici — Pati'nin sesi
+4. Beden matematiği — servo aralığı, sürüş karıştırması, hız tavanı
 
 Üretilen dosyalar **elle düzenlenmez**:
 `goz_uret.mjs` → `pati_goz_uretilmis.h`, `prompt_uret.py` →
@@ -276,47 +281,58 @@ doğrulandığını ve neyin hâlâ ayarlanabilir olduğunu tutuyor.
 
 ---
 
-## Gelecek: 2 DC motor + 2 servo
+## Beden — 2 DC motor + 2 servo
 
-Pati'ye ileride **iki DC motor ve iki servo** eklenecek, **ayrı
-beslemeli**. Henüz yapılmadı ama bugünkü kararları etkiliyor, o yüzden
-burada:
+Pati bir gövdeye takılabiliyor: iki tekerlek (sarı TT redüktörlü motor,
+L9110S sürücü), iki kol (SG90 sınıfı mini servo) ve gövdenin kendi
+**4'lü AA pil** yuvası. StickS3 takılınca Pati bunu kendi anlıyor;
+takılı değilken bedenle ilgili hiçbir şey görünmüyor.
 
-**Ayrı besleme pazarlıksız.** Kart 250 mAh'lik hücreyle zaten sınırda:
-01.09.2026'da yalnızca hoparlör akımıyla brownout yaşandı
-(`TESHIS.md`). Motorları aynı raydan beslemek Pati'yi her harekette
-kapatır. Motor beslemesi ayrı olmalı ve **yalnızca toprak ortak**.
+Ayrıntı, kablo şeması ve devreye alma ölçümleri: **`firmware/BEDEN.md`**.
 
-**Boş pin az.** StickS3'te ne varsa `pati_pinler.h`'de yazılı: I2C
-(47/48), I2S (14-18), ekran (38-45), tuşlar (11/12). Kalanlar Grove
-portu ve HAT başlığı. Dört PWM kanalı (2 motor + 2 servo) buraya
-sığmalı; sığmazsa I2C'den bir PWM sürücüsü (PCA9685 gibi) tek çözüm ve
-hat zaten kurulu.
+🔴 **AA pilin (+) ucu StickS3'e HİÇBİR ŞEKİLDE gitmiyor.** Gövdeden
+Stick'e giden sekiz kablonun hepsi ya toprak ya Stick'in kendi çıkışı;
+6 V hattı gövdenin içinde kalıyor. Sebebi Hat2-Bus'ın dizilişi: sinyal
+pinlerinin arasında BAT, 5V_IN, 3V3_L2 ve EXT_5V duruyor. Bu bir uyarı
+değil, **pin seçiminin sebebi** — kural böyle kurulunca yanlış pine
+kayan bir kablonun en kötü sonucu "motor sürekli dönüyor" oluyor.
 
-**Gürültü asıl risk.** Motor akımı I2S ve I2C hatlarına biniyor.
-Belirtisi tanıdık olacak: ses cızırdar, ES8311 cevap vermez, M5PM1
-NACK verir — yani `TESHIS.md`'deki "yanlış kart" tablosunun aynısı.
-Motor eklendikten sonra bu belirtiler görülürse **önce gürültüye
-bakılmalı**, yazılıma değil.
+**Kollar özerk, tekerlekler değil.** Kollar Pati konuşurken
+kendiliğinden hareket ediyor; tekerlekler yalnızca panelden, çocuğun
+parmağı altında dönüyor. Ayrımın sebebi teknik: **Pati'de uçurum
+sensörü yok**, masanın kenarını görebileceği hiçbir yol yok. Kendi
+kararıyla ilerleyen bir Pati eninde sonunda düşer; "az hareket etsin"
+bunu geciktirir, engellemez. Bir gün mesafe ya da uçurum sensörü
+eklenirse bu karar yeniden açılabilir, o zamana kadar açılmamalı.
 
-**Zamanlama bütçesi dar.** Göz karesi 24-30 ms, bütçe 50 ms. LEDC
-donanımdan sürüyor, yani PWM'in kendisi bedava; ama motor mantığı ses
-ve göz görevleriyle aynı çekirdekleri paylaşacak. O gün geldiğinde
-`TESHIS.md`'deki sayılar (atlanan kare, dahili SRAM dip noktası)
-karşılaştırma zemini olacak — bugünkü değerler oraya yazılı.
+Tek istisna **sevinç dönüşü** (varsayılan kapalı): iki motor ters yönde
+döndüğü için robot yerinde döner, yer değiştirmez — yapı gereği masadan
+düşemez.
 
-🔴 **Motor görevi yazılırken bakılacak yer: yukarıdaki "sıcak döngü"
-tuzağı.** Bu tuzağa 02.09.2026'da iki kez düşüldü ve pil çökmelerini
-altı katına çıkardı. Bir servo döngüsü doğal olarak 20-50 ms'de bir
-dönmek ister ve içine bir sensör okuması, bir durum sorusu ya da bir
-ayar koymak çok kolay. Motor mantığı yazılırken sorulacak soru:
+🔴 **Ölü adam zamanlayıcısı pazarlıksız.** Komut gelmeden 600 ms geçerse
+motorlar duruyor. Panel dokunma sürerken 150 ms'de bir gönderiyor.
+Çocuk parmağını kaldırırsa, telefon kilitlenirse, wifi takılırsa Pati
+duruyor — **panelin doğru davranmasına güvenmiyoruz.**
 
-> Bu döngü saniyede kaç kez dönüyor, ve içindeki her çağrı flash'a,
-> I2C'ye ya da bir kilide dokunuyor mu?
+**Sıcak döngü tuzağına en yakın duran dosya `pati_beden.cpp`.** Bir
+servo döngüsü doğası gereği 20-50 ms'de bir dönmek ister. Çözüm döngüyü
+yavaşlatmak değil, **çoğu zaman hiç var olmaması**: görev boşta 200
+ms'de bir uyanıyor, 20 ms'lik döngü yalnızca gerçekten bir şey hareket
+ederken çalışıyor, ve komut gelince bildirimle uyandırılıyor. İçinde
+I2C, kilit ve NVS yok; tek donanım teması LEDC yazmaçları.
 
-PWM sürücüsü I2C'ye taşınırsa (PCA9685) bu daha da kritik: o zaman
-motor döngüsünün **kendisi** I2C'ye dokunuyor olacak ve hat ES8311
-ile paylaşılıyor.
+**Motor gürültüsü asıl risk ve belirtisi tanıdık olacak:** ses cızırdar,
+ES8311 cevap vermez, M5PM1 NACK verir — yani `TESHIS.md`'deki "yanlış
+kart" tablosunun aynısı. Motor eklendikten sonra bu belirtiler görülürse
+**önce gürültüye bakılacak, yazılıma değil.** Çare 100 nF'ları motor
+uçlarına takmak.
+
+**Sıradaki adım bedenin Pati'yi de beslemesi.** `PIL.md`'deki brownout
+hâlâ açık ve bedende 4 AA pil var. Hat2-Bus'ın EXT_5V pini varsayılan
+olarak giriş kipinde; 6 V → 5 V küçük bir çevirici Stick'i besleyebilir.
+O zaman `guc_kaynak()` "USB" görür ve ses tavanı ile göz hızı
+kendiliğinden yükselir — kod zaten öyle yazılmış. Ama o kablo yukarıdaki
+kuralı deler, yani ayrı bir aşama ve ayrı bir karar.
 
 ---
 

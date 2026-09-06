@@ -26,12 +26,25 @@ constexpr int UYKU_EN_FAZLA = 15;
 constexpr int VAD_EN_AZ = 200;
 constexpr int VAD_EN_FAZLA = 2000;
 
+// Bedenin surus hizi tavani, yuzde.
+//
+// EN AZ 10: altinda L9110'un olu bolgesine giriliyor ve tekerlek
+// donmuyor — kaydirici calisiyor gibi gorunup hicbir sey yapmazdi.
+//
+// Varsayilan 60, ve bilincli olarak tam guc DEGIL: masada oynanacak bir
+// robot icin tam guc fazla, ustelik ilk denemeyi de tehlikeli yapardi.
+// Ebeveyn isterse yukseltiyor.
+constexpr int BEDEN_HIZ_EN_AZ = 10;
+constexpr int BEDEN_HIZ_EN_FAZLA = 100;
+
 std::string g_ses_adi;
 float g_hiz = 1.30f;
 int g_uyku_dk = 4;
 bool g_soz_kesme = false;
 int g_vad_ms = 0;
 bool g_yuz = true;
+int g_beden_hiz = 60;
+bool g_sevinc = false;
 
 std::atomic<bool> g_yenileme{false};
 
@@ -111,11 +124,17 @@ esp_err_t ayar_baslat()
                                              VAD_EN_AZ, VAD_EN_FAZLA);
     }
     if (nvs_get_i32(h, "yuz", &v) == ESP_OK) g_yuz = (v != 0);
+    if (nvs_get_i32(h, "beden_hiz", &v) == ESP_OK) {
+        g_beden_hiz = std::clamp(static_cast<int>(v), BEDEN_HIZ_EN_AZ,
+                                 BEDEN_HIZ_EN_FAZLA);
+    }
+    if (nvs_get_i32(h, "sevinc", &v) == ESP_OK) g_sevinc = (v != 0);
     nvs_close(h);
 
-    ESP_LOGI(ETIKET, "ses=%s hiz=%.2f uyku=%d dk soz_kesme=%d vad=%d yuz=%d",
+    ESP_LOGI(ETIKET, "ses=%s hiz=%.2f uyku=%d dk soz_kesme=%d vad=%d yuz=%d "
+                     "beden_hiz=%d sevinc=%d",
              g_ses_adi.c_str(), g_hiz, g_uyku_dk, g_soz_kesme ? 1 : 0,
-             g_vad_ms, g_yuz ? 1 : 0);
+             g_vad_ms, g_yuz ? 1 : 0, g_beden_hiz, g_sevinc ? 1 : 0);
     return ESP_OK;
 }
 
@@ -125,6 +144,12 @@ int ayar_uyku_dk() { return g_uyku_dk; }
 bool ayar_soz_kesme() { return g_soz_kesme; }
 int ayar_vad_ms() { return g_vad_ms; }
 bool ayar_yuz_araci() { return g_yuz; }
+
+// 🔴 RAM'DEN OKUNUYOR, NVS'TEN DEGIL. beden_surus() bunu her komutta
+// (saniyede ~7 kez) cagiriyor; NVS'e gitseydi surus yolunda flash
+// erisimi olurdu — CLAUDE.md'deki sicak dongu tuzaginin ta kendisi.
+int ayar_beden_hiz() { return g_beden_hiz; }
+bool ayar_sevinc() { return g_sevinc; }
 
 void ayar_ses_adi_yaz(const std::string& ad)
 {
@@ -184,12 +209,29 @@ void ayar_yuz_yaz(bool acik)
              acik ? "acik" : "kapali");
 }
 
+void ayar_beden_hiz_yaz(int yuzde)
+{
+    const int y = std::clamp(yuzde, BEDEN_HIZ_EN_AZ, BEDEN_HIZ_EN_FAZLA);
+    if (y == g_beden_hiz) return;
+    g_beden_hiz = y;
+    i32_yaz("beden_hiz", y);
+    // ANINDA gecerli: bir sonraki surus komutu yeni tavani kullaniyor.
+    // Oturum yenilemesi gerekmiyor, bu ayar Gemini'ye gitmiyor.
+}
+
+void ayar_sevinc_yaz(bool acik)
+{
+    if (acik == g_sevinc) return;
+    g_sevinc = acik;
+    i32_yaz("sevinc", acik ? 1 : 0);
+}
+
 void ayar_sifirla()
 {
     const nvs_handle_t h = ac(NVS_READWRITE);
     if (h != 0) {
         for (const char* a : {"ses_adi", "hiz_yuz", "uyku_dk", "soz_kesme",
-                              "vad_ms", "yuz"}) {
+                              "vad_ms", "yuz", "beden_hiz", "sevinc"}) {
             nvs_erase_key(h, a);
         }
         nvs_commit(h);
@@ -203,16 +245,18 @@ void ayar_yenileme_temizle() { g_yenileme.store(false); }
 
 std::string ayar_json()
 {
-    char b[320];
+    char b[420];
     std::snprintf(b, sizeof(b),
                   "\"ses\":{\"seviye\":%.3f,\"en_az\":%.2f,\"en_fazla\":%.2f,"
                   "\"hiz\":%.2f,\"ses_adi\":\"%s\"},"
                   "\"uyku\":%d,"
-                  "\"konusma\":{\"soz_kesme\":%s,\"vad\":%d,\"yuz\":%s}",
+                  "\"konusma\":{\"soz_kesme\":%s,\"vad\":%d,\"yuz\":%s},"
+                  "\"kumanda\":{\"hiz\":%d,\"sevinc\":%s}",
                   ses_seviyesi(), SES_SEVIYESI_EN_AZ, SES_SEVIYESI_EN_FAZLA,
                   g_hiz, g_ses_adi.c_str(), g_uyku_dk,
                   g_soz_kesme ? "true" : "false", g_vad_ms,
-                  g_yuz ? "true" : "false");
+                  g_yuz ? "true" : "false",
+                  g_beden_hiz, g_sevinc ? "true" : "false");
     return b;
 }
 
