@@ -1,2 +1,2 @@
 3.3.0
-Artık tekerlekleri ve kolları ayrı ayrı ayarlayabilirsiniz. Her biri için üç seçenek var: Açık (Pati konuşurken kendi de oynatır ve çocuğun sözünü dinler), Sadece kumandadan (yalnızca panelden, Pati kendi kararıyla oynatmaz) ve Kapalı (hiç oynamaz, motorlar ve servolar tamamen susar). İkisi de Açık geliyor. Kapattığınız şeyin düğmeleri panelde sönüyor, ve Pati de kapalı olduğunu biliyor: "kolum yok" demiyor, "kollarım şu an kapalı" diyor.
+Artık tekerlekleri ve kolları ayrı ayrı ayarlayabilirsiniz. Her biri için üç seçenek var: Açık (Pati konuşurken kendi de oynatır ve çocuğun sözünü dinler), Sadece kumandadan (yalnızca panelden, Pati kendi kararıyla oynatmaz) ve Kapalı (hiç oynamaz, motorlar ve servolar tamamen s
