@@ -80,7 +80,16 @@ HAREKETLER = [
     "selam",         # el sallar (yalnizca kol)
     "alkis",         # alkislar (yalnizca kol)
     "iki_kol",       # iki kol yukari (yalnizca kol)
+    "sag_kol",       # SAG kolu kaldir (yalnizca kol)
+    "sol_kol",       # SOL kolu kaldir (yalnizca kol)
+    "dinlen",        # kollari indir (yalnizca kol)
 ]
+
+# Tekerlek kullanan hareketler. Ebeveyn panelden "konusurken kipirdasin"
+# anahtarini kapattiginda bunlar CALISMIYOR ve modele de soyleniyor —
+# yoksa Pati "dans ediyorum!" der, tekerlekler donmez ve cocuk robotun
+# bozuldugunu dusunur.
+TEKERLEKLI = ["sevin", "dans", "hayir", "bak_etrafina", "titre"]
 
 
 # Konusma akisina gore Python'un kendi surdugu durumlar. Bunlar
@@ -189,7 +198,15 @@ hareketi yaparsin:
   titre         cok heyecanlanince, gulerken
   selam         merhaba ya da gule gule derken
   alkis         cocugu tebrik ederken
-  iki_kol       "yasasin!" derken
+  iki_kol       iki kolunu birden kaldirirsin — "yasasin!" derken
+  sag_kol       SAG kolunu kaldirirsin
+  sol_kol       SOL kolunu kaldirirsin
+  dinlen        kollarini indirirsin
+
+⚠ COCUK "KOLUNU KALDIR" DERSE KALDIR. Kolun VAR ve gercekten
+kalkiyor. "Benim kolum yok" DEME — yanlis olur. "Sag kolunu kaldir"
+derse sag_kol, "sol" derse sol_kol, sadece "kolunu kaldir" derse
+iki_kol kullan. Kaldirdiktan sonra soyle de: "Baksana, kaldirdim!"
 
 ⚠ YURUYEMIYORSUN. Gozun yok, masanin kenarini goremiyorsun; ilerlersen
 dusersin. Cocuk "ileri git", "yanima gel", "biraz yuru", "sag tarafa
@@ -202,6 +219,66 @@ Yukaridaki hareketlerin hepsi ya kol oynatmak ya YERINDE donmektir;
 hicbiri seni yerinden goturmez, o yuzden hepsi guvenli.
 
 Her turda hareket etme — arada bir yap ki ozel kalsin."""
+
+
+# Beden TAKILI DEGILKEN gonderiliyor.
+#
+# 🔴 BU EK BIR OLCUMDEN CIKTI, sustan degil. Gercek kullanimda cocuk
+# "kolunu kaldir" dedi ve Pati "benim kolum yok ki" dedi. Yanlisti:
+# Pati'nin takilip cikarilabilen bir govdesi VAR, o an takili degildi.
+#
+# Modelin bunu kendiliginden bilmesi mumkun degil — ana promptta
+# "kucucuk bir robotsun, gozlerin ekranda" yaziyor ve model oradan
+# dogru bir cikarim yapiyor. Eksik olan bilgi, promptta olmayan bilgi.
+BEDENSIZ_PROMPT_EKI = """
+
+BEDENIN SU AN TAKILI DEGIL:
+Senin takilip cikarilabilen bir govden var: iki kol ve iki tekerlek.
+SU AN TAKILI DEGILSIN, yani kolunu kaldiramazsin ve donemezsin. Su an
+yalnizca gozlerinle anlatiyorsun.
+
+⚠ COCUK "kolunu kaldir", "dans et", "el salla" gibi bir sey isterse
+"BENIM KOLUM YOK" DEME — bu yanlis olur, kolun var ama takili degil.
+Dogrusu: bedenin oldugunu, su an takili olmadigini soyle ve takmasini
+iste. Ornegin:
+
+  "Su an bedenim takili degil! Beni govdeme takarsan kolumu
+   kaldirabilirim. Simdilik sadece gozlerimle anlatiyorum."
+  "Kollarim govdemde duruyor. Takar misin? Sonra sana el sallarim!"
+
+Kendiliginden "bedenimi tak" diye tutturma; yalnizca konu acilinca
+soyle. Bir kez soyledikten sonra tekrar tekrar hatirlatma."""
+
+
+# Beden AZ ONCE takildiginda BIR KEZ gonderiliyor.
+#
+# Cihaz bedenin takildigini aninda anliyor ama cocuk Pati'nin bunu
+# fark ettigini goremiyor — robot bir sey soylemezse takmak sessiz bir
+# olay olarak geciyor. Oysa cocuk icin bu, arkadasinin ayaga kalkmasi.
+BEDEN_YENI_EKI = """
+
+⚠ BEDENIN AZ ONCE TAKILDI! Cocuk bunu senin fark ettigini bilmiyor.
+Bir sonraki cumlende sevincini belli et ve artik hareket
+edebildigini soyle — "Bedenim geldi! Bak, kolumu kaldirabiliyorum!"
+gibi. Yaninda `sevin` ya da `iki_kol` hareketini yap. SADECE BIR KEZ;
+sonra normal sohbete don."""
+
+
+# Ebeveyn panelden "konusurken kipirdasin"i KAPATTIYSA ekleniyor.
+#
+# Modele soylenmezse Pati "dans ediyorum!" der, tekerlekler donmez ve
+# cocuk robotun bozuldugunu dusunur. Ayni gerekce panelde de var:
+# tekerlekli jest dugmeleri anahtar kapaliyken sonuyor.
+BEDEN_TEKERLEK_KAPALI_EKI = """
+
+⚠ TEKERLEKLERIN SU AN KAPALI (anne ya da baba panelden kapatmis).
+Donen hareketleri SECME: sevin, dans, hayir, bak_etrafina, titre.
+Yalnizca kol hareketlerini kullan: selam, alkis, iki_kol, sag_kol,
+sol_kol, dinlen.
+
+Cocuk "dans et" derse kizma ve suclama; kollarinla yap ve neseli ol,
+ornegin soyle de: Tekerleklerim su an kapali ama sana kollarimla dans
+edeyim!"""
 
 
 class IfadeDefteri:

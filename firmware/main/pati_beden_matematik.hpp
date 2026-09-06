@@ -422,6 +422,18 @@ inline constexpr Kare JEST_DANS[] = {
     { 0,  0,   0,   0},
 };
 
+// Tek kol. Cocuk "sag kolunu kaldir" dedi diye var.
+//
+// Kaldirip 900 ms TUTUYOR, sonra indiriyor. Tutmanin bedeli yok: servo
+// hedefe varinca darbe kesiliyor (KOL_SUS_GECIKME) ve kol hafif plastik
+// oldugu icin kendi agirligiyla dusmuyor.
+//
+// Sifirinci kare digerini de acikca INDIRIYOR (-1 degil 0): "tek kolunu
+// kaldir" denince onceki jestten kalan oteki kolun havada kalmasi,
+// hareketi okunmaz yapardi.
+inline constexpr Kare JEST_SAG_KOL[] = {{0, 95, 0, 900}, {0, 0, 0, 0}};
+inline constexpr Kare JEST_SOL_KOL[] = {{95, 0, 0, 900}, {0, 0, 0, 0}};
+
 struct Jest {
     const char*  ad;
     const Kare*  kare;
@@ -445,6 +457,8 @@ inline constexpr Jest JESTLER[] = {
     {"hayir",        JEST_HAYIR,   8, false, true},
     {"bak_etrafina", JEST_BAK,     4, true,  true},
     {"dans",         JEST_DANS,   11, false, true},
+    {"sag_kol",      JEST_SAG_KOL, 2, false, false},
+    {"sol_kol",      JEST_SOL_KOL, 2, false, false},
 };
 inline constexpr int JEST_ADET = sizeof(JESTLER) / sizeof(JESTLER[0]);
 

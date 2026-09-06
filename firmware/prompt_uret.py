@@ -82,6 +82,16 @@ YUZ_SEMA_BEDEN = json.dumps(
 # dans etmiyor" olur ve sebebi aranmaz.
 HAREKET_LISTESI = ",\n    ".join(f'"{a}"' for a in yuz.HAREKETLER)
 
+# Tekerlek kullanan hareketler. Prompt "tekerleklerin kapali, sunlari
+# secme" derken bu listeyi sayiyor; jest tablosunda ise ayni bilgi
+# `teker_var` alaninda duruyor. Ikisi ayrisirsa Pati kapali anahtara
+# ragmen donmeye calisir ya da tam tersi. Konak testi karsilastiriyor.
+for _a in yuz.TEKERLEKLI:
+    if _a not in yuz.HAREKETLER:
+        raise SystemExit(f"HATA: TEKERLEKLI icindeki {_a!r} "
+                         f"HAREKETLER listesinde yok")
+TEKERLEKLI_LISTESI = ",\n    ".join(f'"{a}"' for a in yuz.TEKERLEKLI)
+
 # 🔴 hafiza_ac=False — BU BIR HATADAN CIKTI.
 #
 # Once `kisilik.SISTEM_PROMPTU` kullaniliyordu. O sabit
@@ -135,6 +145,9 @@ sinirici_denetle("yuz araci semasi", YUZ_SEMA)
 sinirici_denetle("yuz prompt eki", yuz.PROMPT_EKI)
 sinirici_denetle("yuz araci beden semasi", YUZ_SEMA_BEDEN)
 sinirici_denetle("beden prompt eki", yuz.BEDEN_PROMPT_EKI)
+sinirici_denetle("bedensiz prompt eki", yuz.BEDENSIZ_PROMPT_EKI)
+sinirici_denetle("yeni beden eki", yuz.BEDEN_YENI_EKI)
+sinirici_denetle("tekerlek kapali eki", yuz.BEDEN_TEKERLEK_KAPALI_EKI)
 
 # ASCII disi karakterler SORUN DEGIL — ayni karakterler kisilik.py'den
 # geliyor, yani PC de aynisini gonderiyor ve iki taraf birebir ayni metni
@@ -232,6 +245,35 @@ inline constexpr const char* HAREKET_ADLARI[] = {{
     {HAREKET_LISTESI},
 }};
 
+// Bunlarin tekerlegi var. Prompt "tekerleklerin kapali, sunlari secme"
+// derken bu listeyi sayiyor; jest tablosunda ayni bilgi `teker_var`
+// alaninda. Ikisi ayrisirsa Pati kapali anahtara ragmen donmeye
+// calisir. Konak testi ikisini karsilastiriyor.
+inline constexpr const char* HAREKET_TEKERLEKLI[] = {{
+    {TEKERLEKLI_LISTESI},
+}};
+
+// BEDEN TAKILI DEGILKEN gonderiliyor.
+//
+// 🔴 BU EK BIR OLCUMDEN CIKTI. Gercek kullanimda cocuk "kolunu kaldir"
+// dedi ve Pati "benim kolum yok ki" dedi. Yanlisti: Pati'nin takilip
+// cikarilabilen bir govdesi VAR, o an takili degildi. Modelin bunu
+// bilmesi mumkun degildi — promptta yoktu.
+inline constexpr const char* BEDENSIZ_PROMPT_EKI =
+    R"{SINIR}({yuz.BEDENSIZ_PROMPT_EKI}){SINIR}";
+
+// Beden AZ ONCE takildiginda BIR KEZ gonderiliyor. Cihaz takilmayi
+// aninda anliyor ama cocuk Pati'nin fark ettigini goremiyor; robot bir
+// sey soylemezse takmak sessiz bir olay olarak geciyor.
+inline constexpr const char* BEDEN_YENI_EKI =
+    R"{SINIR}({yuz.BEDEN_YENI_EKI}){SINIR}";
+
+// Ebeveyn "konusurken kipirdasin"i kapattiysa ekleniyor. Soylenmezse
+// Pati "dans ediyorum!" der, tekerlekler donmez ve cocuk robotun
+// bozuldugunu dusunur.
+inline constexpr const char* BEDEN_TEKERLEK_KAPALI_EKI =
+    R"{SINIR}({yuz.BEDEN_TEKERLEK_KAPALI_EKI}){SINIR}";
+
 // Arac acikken sistem promptunun SONUNA ekleniyor (PC: canli.py §80).
 // Sadece tanim yetmiyor; modele araci hatirlatmak gerekiyor.
 inline constexpr const char* YUZ_PROMPT_EKI =
@@ -327,6 +369,9 @@ BEKLENEN = [
     ("yuz araci semasi", YUZ_SEMA),
     ("yuz araci beden semasi", YUZ_SEMA_BEDEN),
     ("beden prompt eki", yuz.BEDEN_PROMPT_EKI),
+    ("bedensiz prompt eki", yuz.BEDENSIZ_PROMPT_EKI),
+    ("yeni beden eki", yuz.BEDEN_YENI_EKI),
+    ("tekerlek kapali eki", yuz.BEDEN_TEKERLEK_KAPALI_EKI),
     ("yuz prompt eki", yuz.PROMPT_EKI),
 ]
 

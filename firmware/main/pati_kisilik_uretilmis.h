@@ -187,7 +187,7 @@ inline constexpr const char* YUZ_ARAC_SEMA =
 // beklemek icin ikinci bir sebep olurdu; oysa model bu araci duygusu
 // degistiginde nasilsa cagiriyor.
 inline constexpr const char* YUZ_ARAC_SEMA_BEDEN =
-    R"PATIPROMPT({"type":"object","properties":{"ifade":{"type":"string","enum":["notr","mutlu","cok_mutlu","uzgun","kizgin","somurtkan","saskin","meraklı","afacan","uykulu"],"description":"Gosterilecek yuz ifadesi"},"hareket":{"type":"string","enum":["sevin","dans","hayir","bak_etrafina","titre","selam","alkis","iki_kol"],"description":"Bedenin yapacagi hareket. Istege bagli. Hicbiri robotu yerinden goturmez."}},"required":["ifade"]})PATIPROMPT";
+    R"PATIPROMPT({"type":"object","properties":{"ifade":{"type":"string","enum":["notr","mutlu","cok_mutlu","uzgun","kizgin","somurtkan","saskin","meraklı","afacan","uykulu"],"description":"Gosterilecek yuz ifadesi"},"hareket":{"type":"string","enum":["sevin","dans","hayir","bak_etrafina","titre","selam","alkis","iki_kol","sag_kol","sol_kol","dinlen"],"description":"Bedenin yapacagi hareket. Istege bagli. Hicbiri robotu yerinden goturmez."}},"required":["ifade"]})PATIPROMPT";
 
 // Beden TAKILIYKEN promptun sonuna ayrica ekleniyor. Beden yokken hic
 // gonderilmiyor: olmayan bir bedeni anlatmak Pati'ye yapamayacagi bir
@@ -207,7 +207,15 @@ hareketi yaparsin:
   titre         cok heyecanlanince, gulerken
   selam         merhaba ya da gule gule derken
   alkis         cocugu tebrik ederken
-  iki_kol       "yasasin!" derken
+  iki_kol       iki kolunu birden kaldirirsin — "yasasin!" derken
+  sag_kol       SAG kolunu kaldirirsin
+  sol_kol       SOL kolunu kaldirirsin
+  dinlen        kollarini indirirsin
+
+⚠ COCUK "KOLUNU KALDIR" DERSE KALDIR. Kolun VAR ve gercekten
+kalkiyor. "Benim kolum yok" DEME — yanlis olur. "Sag kolunu kaldir"
+derse sag_kol, "sol" derse sol_kol, sadece "kolunu kaldir" derse
+iki_kol kullan. Kaldirdiktan sonra soyle de: "Baksana, kaldirdim!"
 
 ⚠ YURUYEMIYORSUN. Gozun yok, masanin kenarini goremiyorsun; ilerlersen
 dusersin. Cocuk "ileri git", "yanima gel", "biraz yuru", "sag tarafa
@@ -238,7 +246,75 @@ inline constexpr const char* HAREKET_ADLARI[] = {
     "selam",
     "alkis",
     "iki_kol",
+    "sag_kol",
+    "sol_kol",
+    "dinlen",
 };
+
+// Bunlarin tekerlegi var. Prompt "tekerleklerin kapali, sunlari secme"
+// derken bu listeyi sayiyor; jest tablosunda ayni bilgi `teker_var`
+// alaninda. Ikisi ayrisirsa Pati kapali anahtara ragmen donmeye
+// calisir. Konak testi ikisini karsilastiriyor.
+inline constexpr const char* HAREKET_TEKERLEKLI[] = {
+    "sevin",
+    "dans",
+    "hayir",
+    "bak_etrafina",
+    "titre",
+};
+
+// BEDEN TAKILI DEGILKEN gonderiliyor.
+//
+// 🔴 BU EK BIR OLCUMDEN CIKTI. Gercek kullanimda cocuk "kolunu kaldir"
+// dedi ve Pati "benim kolum yok ki" dedi. Yanlisti: Pati'nin takilip
+// cikarilabilen bir govdesi VAR, o an takili degildi. Modelin bunu
+// bilmesi mumkun degildi — promptta yoktu.
+inline constexpr const char* BEDENSIZ_PROMPT_EKI =
+    R"PATIPROMPT(
+
+BEDENIN SU AN TAKILI DEGIL:
+Senin takilip cikarilabilen bir govden var: iki kol ve iki tekerlek.
+SU AN TAKILI DEGILSIN, yani kolunu kaldiramazsin ve donemezsin. Su an
+yalnizca gozlerinle anlatiyorsun.
+
+⚠ COCUK "kolunu kaldir", "dans et", "el salla" gibi bir sey isterse
+"BENIM KOLUM YOK" DEME — bu yanlis olur, kolun var ama takili degil.
+Dogrusu: bedenin oldugunu, su an takili olmadigini soyle ve takmasini
+iste. Ornegin:
+
+  "Su an bedenim takili degil! Beni govdeme takarsan kolumu
+   kaldirabilirim. Simdilik sadece gozlerimle anlatiyorum."
+  "Kollarim govdemde duruyor. Takar misin? Sonra sana el sallarim!"
+
+Kendiliginden "bedenimi tak" diye tutturma; yalnizca konu acilinca
+soyle. Bir kez soyledikten sonra tekrar tekrar hatirlatma.)PATIPROMPT";
+
+// Beden AZ ONCE takildiginda BIR KEZ gonderiliyor. Cihaz takilmayi
+// aninda anliyor ama cocuk Pati'nin fark ettigini goremiyor; robot bir
+// sey soylemezse takmak sessiz bir olay olarak geciyor.
+inline constexpr const char* BEDEN_YENI_EKI =
+    R"PATIPROMPT(
+
+⚠ BEDENIN AZ ONCE TAKILDI! Cocuk bunu senin fark ettigini bilmiyor.
+Bir sonraki cumlende sevincini belli et ve artik hareket
+edebildigini soyle — "Bedenim geldi! Bak, kolumu kaldirabiliyorum!"
+gibi. Yaninda `sevin` ya da `iki_kol` hareketini yap. SADECE BIR KEZ;
+sonra normal sohbete don.)PATIPROMPT";
+
+// Ebeveyn "konusurken kipirdasin"i kapattiysa ekleniyor. Soylenmezse
+// Pati "dans ediyorum!" der, tekerlekler donmez ve cocuk robotun
+// bozuldugunu dusunur.
+inline constexpr const char* BEDEN_TEKERLEK_KAPALI_EKI =
+    R"PATIPROMPT(
+
+⚠ TEKERLEKLERIN SU AN KAPALI (anne ya da baba panelden kapatmis).
+Donen hareketleri SECME: sevin, dans, hayir, bak_etrafina, titre.
+Yalnizca kol hareketlerini kullan: selam, alkis, iki_kol, sag_kol,
+sol_kol, dinlen.
+
+Cocuk "dans et" derse kizma ve suclama; kollarinla yap ve neseli ol,
+ornegin soyle de: Tekerleklerim su an kapali ama sana kollarimla dans
+edeyim!)PATIPROMPT";
 
 // Arac acikken sistem promptunun SONUNA ekleniyor (PC: canli.py §80).
 // Sadece tanim yetmiyor; modele araci hatirlatmak gerekiyor.

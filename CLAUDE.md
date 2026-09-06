@@ -328,6 +328,23 @@ Kapalıyken tekerlek yalnızca joystick'ten döner; kollar iki durumda da
 çalışır. Anahtar tek bir boğazda okunuyor (`pati_beden.cpp`), yeni bir
 yol açanın unutabileceği ikinci bir kontrol yok.
 
+🔴 **Pati bedeninin olup olmadığını BİLİYOR — ve bu ölçülmüş bir
+hatadan çıktı.** Çocuk "kolunu kaldır" dedi, Pati "benim kolum yok ki"
+dedi. Yanlıştı; gövdesi var, o an takılı değildi. Model bunu bilemezdi:
+ana prompt "küçücük bir robotsun, gözlerin ekranda" diyor ve model
+oradan **doğru** çıkarım yapıyor — eksik olan promptta olmayan bilgiydi.
+
+Ana prompta dokunulmadı (Aşama 1'de ölçüldü, değişirse sayılar
+karşılaştırılamaz). `yuz.PROMPT_EKI` deseni izlendi: duruma göre ek —
+beden var / beden yok / az önce takıldı / tekerlek anahtarı kapalı.
+Bedensizken `hareket` alanı **şemada hiç yok**, yani Pati yapamayacağı
+bir şeyi teklif bile edemiyor.
+
+⚠️ **Bir yetenek anahtarla kapatıldıysa MODELE de söylenmeli.**
+Yalnızca motoru durdurmak yetmiyor: Pati "dans ediyorum!" der,
+tekerlekler dönmez ve çocuk robotun bozulduğunu düşünür. Aynı gerekçe
+panelde de var (tekerlekli jest düğmeleri anahtar kapalıyken sönüyor).
+
 **Hareket için İKİNCİ BİR ARAÇ YOK, var olana alan eklendi.**
 Ölçülmüş: her araç çağrısı cevabın önüne bir gidiş-dönüş koyuyor
 (~682 ms) ve cihazda araçlar **sıralı** çalışıyor. İkinci bir araç,

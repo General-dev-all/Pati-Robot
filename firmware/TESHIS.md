@@ -187,6 +187,22 @@ Sırayla:
 4. AA pil anahtarı açık mı? Pati bunu **göremiyor** — bedeni görüyor
    ama pilin açık olup olmadığını göremiyor.
 
+### Pati "benim kolum yok" diyor
+
+Beden takılı değil — ya da cihaz öyle sanıyor. Pati bedensizken
+"kolum yok" **demez**, "şu an takılı değil, takarsan kaldırırım" der.
+Düpedüz "kolum yok" diyorsa promptun bedensiz eki gitmemiş demektir.
+
+1. `/api/durum` → `beden.takili` ne diyor?
+2. `false` ise doğru cevap **budur** ve beden gerçekten takılı değil.
+3. `true` ama Pati hâlâ "kolum yok" diyorsa: beden konuşma
+   **başladıktan sonra** takılmış olabilir. Prompt setup mesajında
+   gidiyor; beden takılınca oturum tazelemesi isteniyor ama tazeleme
+   ilk doğal boşlukta oluyor. Bir tur bekle.
+4. Panel → Konuşma → **"Gözleriyle duygusunu göstersin"** kapalı mı?
+   Beden ekleri o araçla birlikte gidiyor; kapalıyken Pati bedenini de
+   bilmiyor.
+
 ### "Dans et" dedim, Pati "tamam!" dedi ama hiçbir şey olmadı
 
 Model hareketi istedi, cihaz adı tanımadı. Seri portta:

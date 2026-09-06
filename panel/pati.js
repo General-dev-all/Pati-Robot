@@ -625,6 +625,17 @@ function bedenYaz(beden, kumanda) {
   if (beden) {
     K.takili = !!beden.takili;
     kart.hidden = !K.takili;
+
+    // Beden BU ACILISTA takildiysa ve simdi yoksa: kablo gevsemis.
+    // `takma` sifirsa beden hic takilmamis demektir — o kisiye
+    // "beden cikti" demek anlamsiz olurdu.
+    const gitti = document.getElementById('bedenGittiKart');
+    if (gitti) {
+      const vardi = (beden.takma || 0) > 0;
+      gitti.hidden = !(vardi && !K.takili);
+      const say = document.getElementById('vTakma');
+      if (say) say.textContent = beden.takma || 0;
+    }
     // Kol konumu CIHAZDAN geliyor: jestler de kollari oynatiyor ve
     // panelin kendi sayaci onlari bilmiyordu. Parmak dugmedeyken
     // yazmiyoruz, yoksa dokunma ile yoklama yarisir.

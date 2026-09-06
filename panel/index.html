@@ -183,6 +183,22 @@
       </p>
     </section>
 
+    <!-- BEDEN VARDI, ŞİMDİ YOK.
+         Kumanda kartı beden yokken hiç görünmüyor ve bu doğru: beden
+         almamış birine olmayan bir şeyin düğmelerini göstermek
+         yanlış olurdu. Ama beden BU AÇILIŞTA takılmışsa ve şimdi
+         yoksa, sebebi büyük ihtimalle gevşek bir kablo — kart sessizce
+         kaybolduğu için ebeveyn bunu "panel bozuldu" diye okur. -->
+    <section class="kart" id="bedenGittiKart" hidden>
+      <h2>Beden çıktı</h2>
+      <p class="ip">
+        Pati bedeni gördü, sonra kayboldu (<b id="vTakma">0</b> kez
+        takıldı). Genelde sebebi <b>gevşek bir jumper</b> —
+        özellikle toprak ucu. Takınca kumanda bölümü kendiliğinden
+        geri geliyor.
+      </p>
+    </section>
+
     <!-- KONUŞMA — panelin en üstünde, en sık değişen ayarlar olduğu için.
          Üçü de setup mesajında gidiyor, yani çalışan oturumda değişmiyor;
          GoAway yenilemesiyle tur arasında uygulanıyor (ölçüldü 568 ms,
@@ -226,6 +242,13 @@
         Sevinme, şaşırma, sitem gözlere yansır. Karşılığı
         <b>~0,6 saniye</b> daha yavaş cevap. Kapalıyken gözler yine
         hareket eder.
+        <!-- Gizli bağ, yazılmazsa kimse bulamaz: bedeni bildiren
+             prompt ekleri ve `hareket` alanı AYNI araçla gidiyor.
+             Bu anahtar kapalıyken Pati bedeninin farkında olmuyor ve
+             "kolunu kaldır" işlemiyor. Ebeveynin bunu panelde
+             görmesi gerekiyor. -->
+        <b>Beden takılıysa bu anahtar onu da kapatır:</b> Pati kolunu
+        kaldıramaz ve &ldquo;dans et&rdquo; gibi istekleri anlamaz.
       </p>
     </section>
 

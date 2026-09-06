@@ -247,6 +247,13 @@ void ayar_beden_hareket_yaz(bool acik)
     if (acik == g_beden_hareket) return;
     g_beden_hareket = acik;
     i32_yaz("hareket", acik ? 1 : 0);
+    // Tekerlek tarafi ANINDA gecerli (beden gorevindeki tek bogaz).
+    // Ama MODELE de soylenmesi gerekiyor: kapaliyken donen hareketleri
+    // hic secmemeli, yoksa "dans ediyorum!" der ve hicbir sey donmez.
+    // O bilgi setup mesajinda gidiyor, yani tur sonu.
+    g_yenileme.store(true);
+    ESP_LOGI(ETIKET, "konusurken kipirdasin: %s (tekerlek aninda, "
+                     "model tur sonunda)", acik ? "acik" : "kapali");
 }
 
 void ayar_sifirla()

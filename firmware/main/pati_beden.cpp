@@ -152,6 +152,12 @@ std::atomic<bool> g_kuruldu{false};
 std::atomic<bool> g_takili{false};
 std::atomic<std::uint32_t> g_takma{0};
 
+// Takilma ANI. 0 = okundu ya da hic takilmadi.
+std::atomic<std::int64_t> g_takma_us{0};
+
+// Bundan eskiyse "az once takildi" demek yalan olurdu.
+constexpr std::int64_t YENI_TAKMA_TAZE_US = 90000000;   // 90 sn
+
 std::atomic<int> g_sol{0};            // -100..100
 std::atomic<int> g_sag{0};
 std::atomic<std::int64_t> g_surus_us{0};
@@ -289,6 +295,7 @@ void beden_gorevi(void*)
                 g_jest_istek.store(ayar_beden_hareket() ? jest_no("sevin")
                                                         : jest_no("selam"));
                 sonraki_jest_us = simdi + rastgele_ara();
+                g_takma_us.store(simdi, std::memory_order_relaxed);
                 // Modele bedeni oldugunu SOYLEMEK gerekiyor: `hareket`
                 // alani ve prompt eki yalnizca beden takiliyken
                 // gonderiliyor. Bayrak atomik bir store, yani sicak
@@ -304,6 +311,7 @@ void beden_gorevi(void*)
                 akan = nullptr;
                 jest_teker = 0;
                 g_jest_istek.store(-1);
+                g_takma_us.store(0, std::memory_order_relaxed);
                 // Beden gitti: model artik hareket teklif etmesin.
                 ayar_yenileme_iste();
             }
@@ -699,6 +707,15 @@ esp_err_t beden_baslat()
 }
 
 bool beden_takili() { return g_takili.load(std::memory_order_relaxed); }
+
+bool beden_yeni_takildi_al()
+{
+    const std::int64_t t = g_takma_us.exchange(0, std::memory_order_relaxed);
+    if (t == 0) return false;
+    // Eskimisse SESSIZCE dusuruyoruz — bayrak zaten temizlendi, yani
+    // bir daha sorulmuyor.
+    return (esp_timer_get_time() - t) < YENI_TAKMA_TAZE_US;
+}
 
 std::uint32_t beden_takma_sayisi()
 {

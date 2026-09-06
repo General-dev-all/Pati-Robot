@@ -305,7 +305,26 @@ void prompt_kur()
     if (ayar_yuz_araci()) {
         p += YUZ_PROMPT_EKI;
         const bool beden = beden_takili();
-        if (beden) p += BEDEN_PROMPT_EKI;
+        if (beden) {
+            p += BEDEN_PROMPT_EKI;
+
+            // Ebeveyn tekerlekleri kapattiysa modele SOYLENIYOR.
+            // Soylenmezse Pati "dans ediyorum!" der, tekerlekler
+            // donmez ve cocuk robotun bozuldugunu dusunur. Anahtar
+            // degisince oturum tazeleniyor (ayar_beden_hareket_yaz).
+            if (!ayar_beden_hareket()) p += BEDEN_TEKERLEK_KAPALI_EKI;
+
+            // Beden AZ ONCE takildiysa bir kereligine.
+            if (beden_yeni_takildi_al()) p += BEDEN_YENI_EKI;
+        } else {
+            // 🔴 BEDENSIZ HAL DE ANLATILIYOR, ve bu bir olcumden cikti:
+            // cocuk "kolunu kaldir" dedi, Pati "benim kolum yok ki"
+            // dedi. Yanlisti — kolu VAR, o an takili degildi. Model
+            // bunu bilemezdi cunku promptta yoktu; ana prompt
+            // "kucucuk bir robotsun, gozlerin ekranda" diyor ve model
+            // oradan dogru bir cikarim yapiyor.
+            p += BEDENSIZ_PROMPT_EKI;
+        }
         g_ayar.tools.push_back(stackchan::conversation::ToolDefinition{
             YUZ_ARAC_ADI, YUZ_ARAC_ACIKLAMA,
             beden ? YUZ_ARAC_SEMA_BEDEN : YUZ_ARAC_SEMA});

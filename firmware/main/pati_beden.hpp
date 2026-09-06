@@ -169,6 +169,18 @@ void beden_konusma_bildir(bool konusuyor);
 // /api/durum icin JSON parcasi: "beden":{...} (disi suslu parantez yok).
 std::string beden_json();
 
+// Beden AZ ONCE mi takildi? OKUYUNCA TEMIZLENIYOR.
+//
+// Tek cagirani sohbet katmani: bayrak duruyorsa modele "bedenin az once
+// takildi, sevincini belli et" diye bir prompt eki gidiyor. Cihaz
+// takilmayi aninda anliyor ama cocuk Pati'nin fark ettigini goremiyor;
+// robot bir sey soylemezse takmak sessiz bir olay olarak geciyor.
+//
+// ⚠ ESKIYORSA GECERSIZ. Oturum tazelemesi ilk dogal boslukta oluyor ve
+// o bosluk gecikirse "az once" yalan olurdu — cocuk bedeni cok once
+// takmis ve Pati bir anda sevinmeye baslamis gibi gorunurdu.
+bool beden_yeni_takildi_al();
+
 // Kac kez takildi — teshis. Kablo temassizsa bu sayi hizla artiyor ve
 // "beden ara ara kayboluyor" sikayeti sayiyla karsilanabiliyor.
 std::uint32_t beden_takma_sayisi();

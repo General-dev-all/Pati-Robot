@@ -321,6 +321,59 @@ kola bağlardı: kol yolda takılırsa kare hiç ilerlemez ve tekerlek
 **sınırsız** dönerdi. Bir motorun durma koşulu asla başka bir şeyin
 varması olmamalı — yer değiştirme sıfır olsa bile.
 
+### 🔴 Pati bedeninin farkında — dört ayrı hâl
+
+Bu bir süs değil, **ölçülmüş bir hatadan çıktı.** Gerçek kullanımda
+çocuk *"kolunu kaldır"* dedi ve Pati *"benim kolum yok ki"* dedi.
+Yanlıştı: Pati'nin takılıp çıkarılabilen bir gövdesi **var**, o an
+takılı değildi.
+
+Modelin bunu kendiliğinden bilmesi mümkün değildi. Ana promptta
+*"Kucucuk bir robotsun. Gozlerin ekranda"* yazıyor ve model oradan
+**doğru** bir çıkarım yapıyor. Eksik olan bilgi, promptta olmayan bilgi.
+
+Ana prompta dokunulmadı — o Aşama 1'de ölçüldü (5412 karakter, uyum
+%9 → %86) ve değişirse sayılar karşılaştırılamaz olur. Bunun yerine
+`yuz.PROMPT_EKI`'nin deseni izlendi: duruma göre **ek**.
+
+| Durum | Gönderilen | Pati ne diyor |
+|---|---|---|
+| Beden takılı | `BEDEN_PROMPT_EKI` + araç şemasında `hareket` alanı | "Baksana, kaldırdım!" |
+| Beden yok | `BEDENSIZ_PROMPT_EKI`, `hareket` alanı **şemada hiç yok** | "Şu an bedenim takılı değil! Takarsan kolumu kaldırabilirim. Şimdilik sadece gözlerimle anlatıyorum." |
+| Az önce takıldı | yukarıdakine + `BEDEN_YENI_EKI` (bir kez) | "Bedenim geldi! Bak, kolumu kaldırabiliyorum!" |
+| Tekerlek anahtarı kapalı | yukarıdakine + `BEDEN_TEKERLEK_KAPALI_EKI` | "Tekerleklerim şu an kapalı ama sana kollarımla dans edeyim!" |
+
+⚠️ **"Az önce takıldı" eskiyorsa düşürülüyor.** Oturum tazelemesi ilk
+doğal boşlukta oluyor; o boşluk gecikirse "az önce" yalan olurdu —
+çocuk bedeni çok önce takmış, Pati bir anda sevinmeye başlamış
+görünürdü. 90 saniyeden eskiyse bayrak sessizce düşüyor
+(`beden_yeni_takildi_al`).
+
+⚠️ **Tekerlek anahtarı MODELE de söyleniyor, sadece motora değil.**
+Söylenmezse Pati "dans ediyorum!" der, tekerlekler dönmez ve çocuk
+robotun bozulduğunu düşünür. Bu yüzden `ayar_beden_hareket_yaz` oturum
+tazelemesi istiyor — tekerlek tarafı anında geçerli, model tarafı tur
+sonunda.
+
+**İki listenin ayrışması sessiz bir hata olurdu:** prompt "şunları
+seçme" derken `HAREKET_TEKERLEKLI`'yi sayıyor, cihaz ise jest
+tablosunun `teker_var` alanına bakıyor. Konak testi ikisini
+karşılaştırıyor (§7).
+
+#### Tek kol jestleri
+
+`sag_kol` ve `sol_kol` doğrudan *"kolunu kaldır"* için var: kaldırıp
+**900 ms tutuyor**, sonra indiriyor. Tutmanın bedeli yok — servo
+hedefe varınca darbe kesiliyor ve hafif plastik kol kendi ağırlığıyla
+düşmüyor.
+
+Sıfırıncı kare öteki kolu açıkça **indiriyor** (`-1` değil `0`):
+"tek kolunu kaldır" denince önceki jestten kalan diğer kolun havada
+kalması, hareketi okunmaz yapardı.
+
+⚠️ Sağ/sol **Pati'nin kendi tarafı**, çocuğun değil. Karşılıklı duran
+iki kişide bu her zaman böyle.
+
 ### Sesli komut — asıl risk yanlış anlama değil
 
 Çocuk "dans et" deyince Pati dans ediyor. Bunu model, zaten açık olan

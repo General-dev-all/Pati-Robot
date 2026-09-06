@@ -527,12 +527,54 @@ void jest_tablosu()
     // okumaz.
     const int ad_adet = static_cast<int>(sizeof(HAREKET_ADLARI)
                                          / sizeof(HAREKET_ADLARI[0]));
+    const int tek_adet = static_cast<int>(sizeof(HAREKET_TEKERLEKLI)
+                                          / sizeof(HAREKET_TEKERLEKLI[0]));
+
     for (int i = 0; i < ad_adet; ++i) {
         const int no = jest_no(HAREKET_ADLARI[i]);
         kontrol(no >= 0, "modelin isteyebilecegi hareket tabloda yok");
-        if (no < 0) std::printf("      EKSIK: %s\n", HAREKET_ADLARI[i]);
+        if (no < 0) {
+            std::printf("      EKSIK: %s\n", HAREKET_ADLARI[i]);
+            continue;
+        }
+
+        // ---- PROMPTUN "TEKERLEKLI" IDDIASI TABLOYLA UYUSUYOR MU ---------
+        //
+        // Ebeveyn anahtari kapatinca prompt modele "sunlari secme" diye
+        // bir liste veriyor (HAREKET_TEKERLEKLI). Cihaz tarafinda ayni
+        // bilgi jest tablosunun `teker_var` alaninda duruyor.
+        //
+        // Ayrisirlarsa iki yonlu hata cikiyor ve ikisi de sessiz:
+        //   - Listede eksik bir jest -> anahtar kapaliyken model onu
+        //     seciyor, tekerlek donmuyor, Pati "dans ediyorum" diyor.
+        //   - Listede fazla bir jest -> anahtar kapaliyken model
+        //     gereksiz yere kol jestinden de kaciniyor.
+        bool listede = false;
+        for (int t = 0; t < tek_adet; ++t) {
+            if (jest_adi_esit(HAREKET_TEKERLEKLI[t], HAREKET_ADLARI[i])) {
+                listede = true;
+                break;
+            }
+        }
+        kontrol(listede == JESTLER[no].teker_var,
+                "promptun tekerlekli listesi jest tablosuyla uyusmuyor");
+        if (listede != JESTLER[no].teker_var) {
+            std::printf("      AYRISMA: %s  prompt=%d  tablo=%d\n",
+                        HAREKET_ADLARI[i], listede ? 1 : 0,
+                        JESTLER[no].teker_var ? 1 : 0);
+        }
     }
-    std::printf("    modelin %d hareket adinin hepsi tabloda var\n", ad_adet);
+
+    // Ters yon: listede olup HAREKETLER'de olmayan bir ad, modelin hic
+    // gormeyecegi bir yasak demek olurdu. Uretici de bunu denetliyor
+    // (prompt_uret.py) ama iki kapi bir kapidan iyi.
+    for (int t = 0; t < tek_adet; ++t) {
+        kontrol(jest_no(HAREKET_TEKERLEKLI[t]) >= 0,
+                "tekerlekli listede tabloda olmayan ad var");
+    }
+
+    std::printf("    modelin %d hareket adinin hepsi tabloda var "
+                "(%d tekerlekli)\n", ad_adet, tek_adet);
 }
 
 }  // namespace
