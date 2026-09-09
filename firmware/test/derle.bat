@@ -5,7 +5,7 @@ rem NEDEN AYRI: bunlar firmware'in parcasi DEGIL. `main/` icinde
 rem olmadiklari icin idf.py build'i etkilemiyorlar; konak derleyicisi
 rem olmayan bir makinede sadece testler atlaniyor.
 rem
-rem DORT TEST VAR:
+rem BES TEST VAR:
 rem
 rem   goz_karsilastir     pati_gozler.cpp <-> panel/gozler240.js
 rem                       Ayni girdiyle PIKSEL PIKSEL karsilastiriyor.
@@ -32,7 +32,18 @@ rem                       ("sola bas saga gitsin"), hiz tavaninin
 rem                       caprazda kaybolmasi, ve olu bolge. Dordu de
 rem                       ancak GERCEK ROBOT MASADAYKEN fark edilirdi.
 rem
-rem Dordunun de ortak gerekcesi: "portladim" ile "dogru portladim" ayri
+rem   yeniden_baglan     pati_sohbet.cpp - kopma sonrasi geri cekilme
+rem                      Gercek kopmayi_toparla() govdesini kaynaktan
+rem                      KESIP sahte istemciyle derliyor, yani kopyayi
+rem                      degil yayinlanan kodu siniyor.
+rem                      Gercek logda bulunan kusuru koruyor: start()
+rem                      yalnizca WebSocket gorevini basliyor, TLS sonra
+rem                      da cokebiliyor. Erken "basarili" demek geri
+rem                      cekilmeyi TAMAMEN devre disi birakiyordu ve
+rem                      Pati sunucuya saniyede onlarca el sikismasi
+rem                      atiyordu (usb-2026-09-09-reset.log, PIL.md).
+rem
+rem Besinin de ortak gerekcesi: "portladim" ile "dogru portladim" ayri
 rem seyler ve fark gozle gorulmuyor.
 rem
 rem NOT: bu dosya CRLF satir sonuyla durmali. LF ile yazilirsa cmd.exe
@@ -168,6 +179,16 @@ if errorlevel 1 (
 .\beden_karsilastir.exe
 if errorlevel 1 set BEDEN_HATA=1
 
+rem ==================================================== 5) YENIDEN BAGLANMA
+echo.
+echo  ============================================================
+echo   5) YENIDEN BAGLANMA  -  kopma sonrasi geri cekilme
+echo  ============================================================
+rem Betik kendi derleyicisini cagiriyor; gerekcesi dosyanin icinde.
+echo   derleniyor...
+"%PY%" yeniden_baglan_test.py
+if errorlevel 1 set BAGLANTI_HATA=1
+
 rem ====================================================
 echo.
 echo  ============================================================
@@ -175,7 +196,8 @@ if defined GOZ_HATA echo   GOZLER: BASARISIZ
 if defined HAFIZA_HATA echo   HAFIZA: BASARISIZ
 if defined SES_HATA echo   SES: BASARISIZ
 if defined BEDEN_HATA echo   BEDEN: BASARISIZ
-if not defined GOZ_HATA if not defined HAFIZA_HATA if not defined SES_HATA if not defined BEDEN_HATA echo   DORT TEST DE GECTI
+if defined BAGLANTI_HATA echo   YENIDEN BAGLANMA: BASARISIZ
+if not defined GOZ_HATA if not defined HAFIZA_HATA if not defined SES_HATA if not defined BEDEN_HATA if not defined BAGLANTI_HATA echo   BES TEST DE GECTI
 echo  ============================================================
 echo.
 
@@ -183,4 +205,5 @@ if defined GOZ_HATA exit /b 1
 if defined HAFIZA_HATA exit /b 1
 if defined SES_HATA exit /b 1
 if defined BEDEN_HATA exit /b 1
+if defined BAGLANTI_HATA exit /b 1
 exit /b 0

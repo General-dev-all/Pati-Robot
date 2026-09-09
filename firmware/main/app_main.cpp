@@ -683,7 +683,7 @@ extern "C" void app_main()
 
     // ---- NEDEN ACILDIK --------------------------------------------------
     //
-    // 🔴 SES SEVIYESININ TEK DURUST OLCUTU BU SATIR.
+    // Reset nedeni, tetikleyen parçanın teşhisi değildir.
     //
     // 01.09.2026, gercek kartta olculdu: ses seviyesi 1.00'DE ve kart
     // USB'ye TAKILIYKEN, bir oturumda dort kez
@@ -691,8 +691,8 @@ extern "C" void app_main()
     //     E BOD: Brownout detector was triggered
     //     rst:0x3 (RTC_SW_SYS_RST)
     //
-    // Hoparlor akim cekince (AW8737A + 8 ohm) ray cokuyor ve yonga
-    // kendini sifirliyor. Brownout esigi zaten en musamahakar kademede
+    // Konuşma sırasında görüldü; hangi yükün gerilimi düşürdüğü bu
+    // kayıtla tek başına ayrılamaz. Brownout eşiği en toleranslı kademede
     // (CONFIG_ESP_BROWNOUT_DET_LVL 7), yani yazilimdan gevsetilecek yer
     // yok — gerilim gercekten dusuyor.
     //
@@ -701,14 +701,12 @@ extern "C" void app_main()
     // baglantinin kopmasi gibi gorunuyor ve sebep agda aranir. Ikisini
     // ayiran tek sey bu satir.
     //
-    // KULLANIMI: ses seviyesini panelden artirdiktan sonra buraya bak.
-    // "brownout" cikiyorsa seviye o donanim icin YUKSEK, bir kademe geri
-    // al. M5Stack'in kendi belgesi de pilde %75'in altini soyluyor
-    // (pati_ses.hpp'deki gerekce).
+    // Ses yükü bir adaydır; USB kaynağı, kartın güç yolu ve eşzamanlı
+    // diğer yükler ayrıca ayrıştırılmadan kesin neden ilan edilmez.
     const esp_reset_reason_t sebep = esp_reset_reason();
     ESP_LOGW(ETIKET, "  acilis    : %s",
              sebep == ESP_RST_BROWNOUT
-                 ? "BROWNOUT — ses seviyesi bu donanim icin yuksek"
+                 ? "BROWNOUT — besleme gerilimi dustu; tetikleyici bilinmiyor"
              : sebep == ESP_RST_POWERON    ? "guc verildi"
              : sebep == ESP_RST_SW         ? "yazilim (guncelleme/yeniden baslat)"
              : sebep == ESP_RST_PANIC      ? "COKME (panic) — yigit izine bak"

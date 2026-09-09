@@ -412,3 +412,109 @@ ses geldiğini doğruladı. Bu arada firmware değişmedi. Sessizliğin
 nedenini amfiye bağlayan kanıt yok. 14:34 kontrolünde kaynak pil,
 sayaç 24; yeni koşu `prototype/olcumler/pil-2026-09-05-sessizlik.jsonl`
 dosyasına kaydediliyor. Kısa süreli ses dönüşü reset çözümü değildir.
+
+## 09–10.09.2026 — USB bağlıyken konuşmada brownout
+
+Kullanıcı pilde resetlerin çok azaldığını, bilgisayar USB'sinde ise
+sıklaştığını bildirdi. Motor/servo bağlı olmadığını doğruladı.
+Seri kayıtta çalışan sürüm 3.5.0 ve arızalı açılış sayısı 48;
+reset nedeni brownout. Kullanıcının yan tuşla yaptığı ayrı kapanma
+arıza sayılmadı. Sonraki ağ kayıtlarında sayaç 49 → 50 oldu.
+Kaynak USB; açılışta VIN 4942 mV, ses tavanı 1.00. Bu VIN değeri
+reset anındaki minimum değildir.
+
+USB'de pilin 0.70 sınırı kalkıyor, ekran %100 ve 20 fps oluyor.
+Panelden 0.70 isteği kabul edildi ve hemen geri okundu; sonra reset
+oldu ve ayar 1.00'a döndü. Ses seçimi yalnız RAM'de tutuluyor.
+Bu kısa deneme, kesintisiz ve doğrulanmış uzun bir 0.70 A/B koşusu
+değildir; yalnız ses kısmanın yeterli olduğu kanıtlanmadı.
+
+Ham kayıtlar depoya girmeyen prototype/olcumler altında:
+usb-2026-09-09-reset.log ve usb-ses070-2026-09-10.jsonl.
+Google TLS zaman aşımı da görüldü; brownout ile karıştırılmamalı.
+Sıradaki ayrım aynı kabloyla bilgisayar portu / şarj adaptörü;
+sonra gerekirse USB'deki ekran yükü ayrı sınanacak. Henüz düzeltildi
+diye bir sonuç yok.
+
+3.5.1 test adayı: USB'de de ekran %35, gözler 10/5 fps ve ses tavanı
+0.70. Paneldeki ses_tavani doğrudan ses sürücüsünün kullandığı işlevden
+okunur; USB var diye sınırsız güç varsayılmaz. Kaynak USB olarak kalır;
+şarj göstergesi ve OTA korumaları değiştirilmedi. USB portu/adaptör
+karşılaştırmasını kullanıcı istemedi; bu aday yükleri birlikte azaltır,
+etkili olsa bile tek yükün kök neden olduğunu kanıtlamaz. Kart testi
+sonucu aşağıda. Yeniden örnekleme ve Puck 1.30× değişmedi.
+
+Sonuç: 3.5.1 kartta USB, 0.70 tavan ve konuşurken 5 fps olarak
+doğrulandı. 00:04:42 başlangıcında sayaç 51; 00:06:38'de 52 ve
+brownout görüldü. Kayıt: usb-tasarruf-2026-09-10.jsonl. Profil reseti
+durdurmadı, belirgin kazanç kanıtlanmadı; kaynak değişikliği geri
+alındı, yayımlanmadı. Kablo/port/şarj devresi karşılaştırması yapılmadan
+bu parçalar arasında kök neden ayrımı yapılamıyor.
+
+### Amfi kapalı ayrıştırma denemesi
+
+10.09.2026 00:14:14–00:18:13, aynı USB bağlantısında yalnız
+hoparlör amfisi açılışta kapalı tutuldu. Mikrofon, ağ, yeniden örnekleme,
+I2S ve ekran çalışmaya devam etti; panel amfi=0, göz=20 fps,
+ses tavanı=1.00 gösterdi. Kullanıcı 20–30 saniye arayla soru sormayı
+kabul etti. 117 ağ örneğinde sayaç 54 → 54; 12 örnekte ifade
+`konusuyor` idi. Örnekler cevap sayısı değildir; kısa cevaplar iki
+saniyelik yoklamalar arasına düşebilir. Kayıt:
+`prototype/olcumler/usb-amfi-kapali-2026-09-10.jsonl`.
+
+Bu kısa koşuda reset görülmemesi, amfi/hoparlör güç yükü ihtimalini
+destekler; arıza aralıklı olduğundan kök neden kanıtı değildir.
+Amfi arızası, besleme zayıflığı ve kısa akım tepeleri ayrılmadı.
+Geçici sessiz sürüm yayımlanmadı; resmi 3.5.0 imajı USB'den geri
+yüklendi ve panelden doğrulandı (amfi=4, ses=1.00, Puck 1.30×).
+İlk başarılı geri okumada sayaç 55 ve brownout; 00:20:08'de sayaç
+56 idi. Kullanıcı sesin geldiğini ve konuşurken üç çökme gördüğünü
+bildirdi. Bu bildirim, kayıtta sayılan iki artıştan ayrı tutulmalı;
+geri yükleme ile ilk erişim arasındaki olayların zamanı bilinmiyor.
+Normal sürüme dönüş kaydı:
+`prototype/olcumler/usb-amfi-acik-donus-2026-09-10.jsonl`.
+00:21:52'de konuşma örneğinden sonra 00:21:57'de sayaç 57;
+00:22:18'de ayrı doğrulamada 58 ve brownout görüldü. Böylece normal
+sürüme dönüşten sonraki toplam artış dört oldu (54 → 58).
+Son doğrulama: `usb-amfi-geri-yukleme-dogrulama-2026-09-10.json`.
+Dönüş izleme dosyasında sürüm alanı yanlış JSON yolundan okunduğu
+için null; sürüm 3.5.0 ayrı doğrulamada `guncelleme.su_anki` alanından
+okundu. Ham kayıttaki null değerler sonradan doldurulmadı.
+
+AW8737A veri sayfası V1.2 s.8 ve s.16 yeniden kontrol edildi:
+Mode4, 8 ohm + 33 µH test yükünde nominal 0.6 W ile en düşük
+NCN güç seçeneğidir; dört kipte de küçük sinyal kazancı aynıdır.
+NCN kazancının 13.5 dB azalması için belirtilen süre 40 ms'dir.
+Bu yüzden 0.6 W seçimi anlık tepe akımını kesin sınırlıyor varsayımı
+yanlıştır. Ancak bu kartta böyle bir tepe henüz ölçülmedi. Belgelenen
+dört kip arasında daha düşük güç ya da ayarlanabilir saldırı süresi
+yoktur. PMIC kip geri okuması fiziksel SHDN darbe ölçümü değildir.
+Kaynak: https://doc.awinic.com/doc/20230609wm/ba30d80d-55b2-46f8-8f8a-505cd74a8826.pdf
+
+### Bağlantı toparlamasında doğrulanan ayrı kusur
+
+`usb-2026-09-09-reset.log` içinde 128223 ve 138403 ms'de yeniden
+bağlanma girişimleri var. Her ikisi 22 ms sonra başarılı yazılıyor;
+arada TLS zaman aşımı geliyor ve sonraki girişim yine deneme 1.
+İstemcinin `start()` işlevi WebSocket görevini başlatıp hemen dönüyor;
+sunucunun hazır oluşu daha sonraki `setupComplete` ile bildiriliyor.
+Toparlama kodu erken başarıda sayacı sıfırladığı için asenkron bağlantı
+hatalarında artan bekleme çalışmıyordu. Başarı artık güncel istemcinin
+Listening durumunda doğrulanıyor; start sırasında gelen hata bayrağı
+da dönüşte silinmiyor. Uzun kesintideki sınırsız bit kaydırma düzeltildi.
+
+`firmware/test/yeniden_baglan_test.py` gerçek toparlama gövdesini sahte
+istemciyle derleyip asenkron başarısızlık, 2/4/8/16/30 saniyelik bekleme,
+eski hazır olayı, anında hata ve sayaç sınırlarını doğruluyor.
+Firmware derlemesi ve dört mevcut konak testi geçti. Bu yazılım
+kusuru, brownout'un kök nedeni olarak kanıtlanmadı. Derlenen düzeltme
+ilk aşamada cihaza yüklenmedi; çalışan kart 3.5.0 olarak bırakıldı.
+
+Kullanıcının yükleme isteğiyle 10.09.2026'da 3.5.1 USB'den yüklendi.
+İlk yükleme kontrolünde amfi=0 görüldü: sessiz testten geri kopyalanan
+kaynağın eski zaman damgası nedeniyle artımlı derleme eski nesneyi
+kullanmıştı. `idf.py clean build` sonrası yeniden yüklendi; flash özeti
+doğrulandı. 00:35:02 panel doğrulaması: sürüm 3.5.1, amfi=4,
+ses=1.00, Puck 1.30×, göz=20 fps, sayaç=62, açılış=diger.
+Kayıt: `prototype/olcumler/usb-3.5.1-baglanti-duzeltme-yukleme.json`.
+Bu açılış kontrolü uzun süreli reset testinin yerine geçmez.

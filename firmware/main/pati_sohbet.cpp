@@ -2,6 +2,8 @@
 
 #include <atomic>
 #include <array>
+#include <algorithm>
+#include <cstdint>
 #include <cmath>
 #include <cstring>
 #include <memory>
@@ -580,10 +582,10 @@ void kopmayi_toparla()
 
     const std::int64_t simdi = esp_timer_get_time();
     if (g_deneme > 0) {
-        int bekle = GERI_CEKILME_TABAN_MS << (g_deneme - 1);
-        if (bekle > GERI_CEKILME_EN_COK_MS || bekle <= 0) {
-            bekle = GERI_CEKILME_EN_COK_MS;
-        }
+        // Sınır kaydırmadan ÖNCE uygulanır: uzun kesintide 32 ve üstü
+        // kaydırma tanımsızdır; sonradan tavan koymak bunu düzeltmez.
+        const int bekle = std::min(GERI_CEKILME_EN_COK_MS,
+            GERI_CEKILME_TABAN_MS << std::min<std::uint32_t>(g_deneme - 1, 4));
         if ((simdi - g_son_deneme_us) / 1000 < bekle) return;
     }
     g_son_deneme_us = simdi;
@@ -614,12 +616,17 @@ void kopmayi_toparla()
 
     g_istemci->stop();
     prompt_kur();
+    // start() yalnız WebSocket görevini başlatır. TLS daha sonra
+    // başarısız olabilir; deneme sayısı ancak sunucu hazırsa sıfırlanır.
+    if (g_deneme < UINT32_MAX) ++g_deneme;
+    // stop() artık bitti. start() içinden veya hemen ardından gelen
+    // hata da yakalanmalı; çağrıdan sonra bayrağı silmek onu kaybeder.
+    g_koptu = false;
+    g_yenileniyor = false;
     const auto sonuc = g_istemci->start(g_ayar);
 
-    g_yenileniyor = false;
-
     if (!sonuc.has_value()) {
-        ++g_deneme;
+        g_koptu = true;
         ESP_LOGE(ETIKET, "yeniden baglanilamadi — tekrar denenecek");
         // SEBEBINI SOR. WebSocket el sikismasi basarisiz oldugunda HTTP
         // kodu gorunmuyor: "anahtar iptal edilmis" ile "wifi koptu" ayni
@@ -634,17 +641,11 @@ void kopmayi_toparla()
         return;
     }
 
-    g_koptu = false;
-    g_deneme = 0;
     // Setup yeniden gitti: bekleyen goAway ve ayar degisikligi de bu
     // mesajla kapandi, ikisini de tekrar tetiklemeye gerek yok.
     g_goaway = false;
     ayar_yenileme_temizle();
-    anahtar_kod_bildir(200);
-    kullanim_devam();
-    bekci_sifirla();
-    gozler_dinliyor();
-    ESP_LOGI(ETIKET, "yeniden baglandi (%lld ms)",
+    ESP_LOGI(ETIKET, "yeniden baglanti girisimi baslatildi (%lld ms)",
              (esp_timer_get_time() - simdi) / 1000);
 }
 
@@ -714,6 +715,18 @@ void olayi_isle(const ConversationEvent& olay)
 {
     switch (olay.type) {
     case ConversationEventType::StateChanged:
+        // Kuyrukta eski bir Listening kalmış olabilir. Güncel istemci
+        // de hazır olmadan, sırf start() döndü diye başarı bildirilmez.
+        if (olay.state == ConversationState::Listening && g_deneme > 0 &&
+            !g_koptu && !g_uykuda &&
+            g_istemci->state() == ConversationState::Listening) {
+            g_deneme = 0;
+            anahtar_kod_bildir(200);
+            kullanim_devam();
+            bekci_sifirla();
+            gozler_dinliyor();
+            ESP_LOGI(ETIKET, "yeniden baglandi — sunucu hazir");
+        }
         // Gemini Speaking olayını ilk ses paketinden ÖNCE gönderir.
         // Bayrağı önce yükseltmek, paket yolundaki göz geçişini atlatıyordu.
         if (olay.state == ConversationState::Speaking && !g_konusuyor) {

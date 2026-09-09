@@ -90,7 +90,7 @@ kumandaya dokunmadan önce oku.
 feda etme sırası (ses 0.70'in altına İNMEZ), denenenler, denenmemiş
 adaylar ve A/B ölçüm yöntemi orada. Pil tarafına dokunmadan önce oku.
 
-Konak testleri (dördü de geçmeli):
+Konak testleri (beşi de geçmeli):
 ```
 cd firmware\test && derle.bat
 ```
@@ -98,6 +98,12 @@ cd firmware\test && derle.bat
 2. Hafıza motoru ↔ Python prototipi
 3. Yeniden örnekleyici — Pati'nin sesi
 4. Beden matematiği — servo aralığı, sürüş karıştırması, hız tavanı
+5. Yeniden bağlanma — kopma sonrası geri çekilme
+
+Beşincisi `pati_sohbet.cpp`'den **gerçek `kopmayi_toparla()` gövdesini
+kesip** sahte bir istemciyle derliyor, yani kopyayı değil yayınlanan
+kodu sınıyor. Kaynaktaki o satırlar değişirse test kesme noktasını
+bulamayıp **gürültülü şekilde** düşüyor — sessizce geçmiyor.
 
 Üretilen dosyalar **elle düzenlenmez**:
 `goz_uret.mjs` → `pati_goz_uretilmis.h`, `prompt_uret.py` →

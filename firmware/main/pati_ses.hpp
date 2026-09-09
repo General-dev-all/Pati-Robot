@@ -174,8 +174,19 @@ constexpr float SES_SEVIYESI_EN_FAZLA  = 2.00f;
 //     00:13:05  COKTU
 //     00:13:10  geri geldi -> acilis=brownout
 //
-// Tam konusmaya baslarken. Yani hoparlorun cektigi akim, PSRAM sorunu
-// giderildikten SONRA da tek basina brownout yapmaya yetiyor.
+// Tam konusmaya baslarken. Yani PSRAM sorunu giderildikten SONRA da
+// brownout kaliyor ve konusma ani bir ADAY.
+//
+// ⚠️ "HOPARLORUN AKIMI TEK BASINA YETIYOR" DEMEK DEGIL — 10.09.2026'da
+// geri cekildi (PIL.md, ayni gerekce app_main.cpp'deki acilis sebebi
+// yorumunda da yazili). Reset sebebi hangi yukun gerilimi dusurdugunu
+// SOYLEMIYOR; USB kaynagi, kartin guc yolu ve esZAMANLI diger yukler
+// (tam ekran cizim de brownout yapti) ayristirilmadi.
+//
+// Amfi kapali kosulan kisa bir deneme amfi ihtimalini DESTEKLEDI ama
+// ariza aralikli oldugu icin kanit degil. Asagidaki 0.70 tavani
+// yerinde duruyor: gerekcesi zayiflasa da olcum yapilana kadar
+// kaldirilmasi icin sebep yok.
 //
 // 0.70 geri alindi: elimizdeki tek destekli deger o.
 //
