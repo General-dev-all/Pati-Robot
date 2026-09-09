@@ -1,2 +1,2 @@
 3.4.1
-Kurulum sayfasının bazen kendiliğinden açılmaması düzeltildi. Aynı hata yüzünden ekrandaki kurulum yönlendirmesi de çıkmıyordu; artık Pati kendi ağını yayınlarken ekranda ağın adı, telefonunuz bağlanınca da kare kod görünüyor. Ayrıca bilgi ekranında "tekrar bas: kare kod" yazıyor, yani panelin kare kodunun orada olduğunu bilmeniz gerekmiyor.
+Kurulum sayfasının bazen kendiliğinden açılmaması düzeltildi. Aynı hata yüzünden ekrandaki kurulum yönlendirmesi de çıkmıyordu; artık Pati kendi ağını yayınlarken ekranda ağın adı, telefonunuz bağlanınca da kare kod görünüyor. Ayrıca bilgi ekranında "tekrar bas: kare kod
