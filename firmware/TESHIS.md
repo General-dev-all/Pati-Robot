@@ -297,6 +297,35 @@ beden takılınca oturum tazeleniyor (`ayar_yenileme_iste`) ama tazeleme
 ilk doğal boşlukta oluyor — konuşmanın ortasında takarsan bir tur
 gecikebilir.
 
+### Kol sürekli vızıldıyor / ısınıyor
+
+🔴 **Servo bir yere DAYANMIŞ.** Yazılım hatası gibi görünmüyor ve
+görünmemeli — servo dönmeye çalışıp duruyor, akım çekmeye devam
+ediyor. Uzun sürerse yanar.
+
+1. Panel → Kumanda → **kol aralıkları** doğru mu? Varsayılan sol
+   %10–%70, sağ %0–%100.
+2. Kolu elle o aralığın uçlarına getir: bir şeye değiyorsa aralık dar
+   tutulmalı.
+3. Aralık doğruysa mekanik: kol sıkışmış, vida gevşemiş ya da dişli
+   atlamış olabilir.
+
+⚠️ Bu aralıklar **fabrika ayarlarına dönünce silinmiyor** (ayrı flash
+bölümünde). Yani "sıfırladım, o yüzden bozuldu" açıklaması geçerli
+değil — başka bir yere bak.
+
+### "Hadi uyu" dedim, Pati uyumuyor
+
+3.5.0'dan itibaren iki yol birden var: modelin araç alanı ve çocuğun
+dökümünde kalıp araması. İkisi de tutmuyorsa:
+
+1. Pati cümlesini **bitirdi mi**? Uyku bilerek cümle bitince geliyor;
+   yarıda uyumak "iyi geceler"i keserdi.
+2. Panel → Konuşma → **"Gözleriyle duygusunu göstersin"** kapalıysa
+   araç yolu yok — ama kalıp yolu yine çalışır.
+3. Seri portta `istenerek uyudu` satırı çıkıyor mu? Çıkıyorsa uyku
+   gerçekleşti ve sorun başka yerde (gözler).
+
 ### Dönerken kol titriyor ya da kol bir yere sıçrıyor
 
 İkisi aynı AA hattında ve motor kalkışı gerilimde çöküntü yapıyor.

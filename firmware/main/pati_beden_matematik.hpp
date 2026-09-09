@@ -57,6 +57,48 @@ inline constexpr int KOL_TAVAN_DERECE    = 150;   // kol yukarida
 // Kol ters yone gidiyorsa bakilacak ilk yer bu satir.
 inline constexpr bool KOL_SAG_AYNA = true;
 
+// ---------------------------------------------------------------------------
+// 🔴 KOLUN GIDEBILECEGI ARALIK — MEKANIK, YAZILIMSAL DEGIL
+// ---------------------------------------------------------------------------
+//
+// Kollarin ucuna gercek kol takilinca ikisi ayni yerlere gidemiyor
+// (09.09.2026, kullanicinin olcumu): SOL kol asagida tekerlege,
+// yukarida ustteki kablo demetine carpiyor. SAG kolun onunde bir sey
+// yok.
+//
+//     sol  %10 .. %70
+//     sag  %0  .. %100
+//
+// Bu bir tercih degil, MEKANIK BIR SINIR. Asilirsa kol bir yere
+// dayaniyor, servo donmeye calisip duruyor, isiniyor ve akim cekmeye
+// devam ediyor — belirtisi surekli bir vizilti ve sonu yanmis servo.
+//
+// ⚠️ SINIR YUZDEYE UYGULANIYOR, ACIYA DEGIL. Sebep: jest tablosu da
+// panel de yuzde konusuyor (bkz. KOL_SAG_AYNA gerekcesi). Aciya
+// uygulansaydi aynalanmis sag kolda ters ucu kirpardi.
+//
+// Degerler PANELDEN degistirilebiliyor ve FABRIKA AYARLARINA DONMEK
+// BUNLARI SILMIYOR (pati_anahtar.hpp · kalici_sayi_oku). Kullanicinin
+// gerekcesi: "tekrar ayarlanmasi unutulursa bir yerlere carpip servo
+// bozulabilir."
+inline constexpr int KOL_SOL_VARSAYILAN_AZ  = 10;
+inline constexpr int KOL_SOL_VARSAYILAN_COK = 70;
+inline constexpr int KOL_SAG_VARSAYILAN_AZ  = 0;
+inline constexpr int KOL_SAG_VARSAYILAN_COK = 100;
+
+// Bir kol hedefini o kolun araligina kirpar.
+//
+// Sinirin kendisi de kirpiliyor: panel bozuk bir deger gonderebilir ve
+// `en_az > en_cok` gelirse aralik ters doner. O durumda TABANA
+// yaslaniyoruz — kolun hic oynamamasi, yanlis yere gitmesinden iyi.
+inline int kol_sinirla(int yuzde, int en_az, int en_cok)
+{
+    const int a = std::clamp(en_az, 0, 100);
+    const int b = std::clamp(en_cok, 0, 100);
+    if (a > b) return a;
+    return std::clamp(yuzde, a, b);
+}
+
 // Kaldirma yuzdesini (0 = asagi, 100 = yukari) servo acisina cevirir.
 // Donen deger ONDA BIR DERECE — 20 ms'lik adimlarda sicrama gorunmesin
 // diye tam sayi cozunurlugu artiriliyor.

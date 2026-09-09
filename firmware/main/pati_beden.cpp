@@ -234,6 +234,29 @@ std::int64_t rastgele_ara()
                                             - JEST_ARA_EN_AZ_US));
 }
 
+// 🔴 KOL HEDEFI YALNIZCA BURADAN YAZILIYOR.
+//
+// Kolun gidebilecegi aralik MEKANIK bir sinir: sol kol asagida
+// tekerlege, yukarida ustteki kabloya carpiyor ve dayanan bir servo
+// isinip yaniyor (gerekce pati_beden_matematik.hpp).
+//
+// Tek bogaz olmasi sart, cunku hedefi yazan BES ayri yer var: panel
+// dugmeleri, jest kareleri, konusma sonu, beden takilmasi ve kol
+// kipinin kapatilmasi. Kirpmayi her birine ayri koymak, birini
+// unutmaya davetiye olurdu — ve unutulan yer kolu bir kez fazla
+// gonderip servoyu bitirebilir.
+//
+// ⚠️ KIRPMA YAZARKEN YAPILIYOR, OKURKEN DEGIL. Sebep: jest ilerletme
+// "kol hedefe vardi mi" diye bakarken ayni degeri okuyor. Kirpma
+// okuma tarafinda olsaydi hedef ile gercek konum hicbir zaman
+// esitlenmez, jest de hic ilerlemezdi.
+void kol_hedef_yaz(int i, int yuzde)
+{
+    g_kol_hedef[i].store(
+        kol_sinirla(yuzde, ayar_kol_en_az(i), ayar_kol_en_cok(i)),
+        std::memory_order_relaxed);
+}
+
 // ---------------------------------------------------------------------------
 // Beden gorevi
 // ---------------------------------------------------------------------------
@@ -302,8 +325,8 @@ void beden_gorevi(void*)
                          static_cast<unsigned>(g_takma.load()));
                 // Pati bedeninin geldigini fark etsin: kollari dinlenme
                 // konumuna al ve sevin.
-                g_kol_hedef[0].store(0);
-                g_kol_hedef[1].store(0);
+                kol_hedef_yaz(0, 0);
+                kol_hedef_yaz(1, 0);
                 // Bedenin geldigini hangi uzuvla kutlayacagi kipine
                 // bagli. Ikisi de kapaliysa hicbir sey yapmiyor —
                 // "kapali" gercekten kapali demek.
@@ -558,12 +581,8 @@ void beden_gorevi(void*)
             // dusurmek yerine kirpmak, "dans et" denince hic bir sey
             // olmamasindansa yarim bir dans vermeyi tercih ediyor.
             if (izinli(kol_kip, akan_kaynak)) {
-                if (k.sol >= 0) {
-                    g_kol_hedef[0].store(k.sol, std::memory_order_relaxed);
-                }
-                if (k.sag >= 0) {
-                    g_kol_hedef[1].store(k.sag, std::memory_order_relaxed);
-                }
+                if (k.sol >= 0) kol_hedef_yaz(0, k.sol);
+                if (k.sag >= 0) kol_hedef_yaz(1, k.sag);
             }
 
             // 🔴 TEKERLEK KARESI KOLUN VARMASINI BEKLEMIYOR.
@@ -609,8 +628,8 @@ void beden_gorevi(void*)
         // (KOL_SUS_GECIKME), yani servo sessiz ve akimsiz kaliyor —
         // ebeveynin "hic hareket etmesin" istegi tam olarak bu.
         if (kol_kip == KIP_KAPALI) {
-            g_kol_hedef[0].store(0, std::memory_order_relaxed);
-            g_kol_hedef[1].store(0, std::memory_order_relaxed);
+            kol_hedef_yaz(0, 0);
+            kol_hedef_yaz(1, 0);
         }
 
         // Tekerlek donerken kollar DURUYOR — hedefi unutmadan.
@@ -806,14 +825,8 @@ void beden_kol(int sol_yuzde, int sag_yuzde)
 {
     if (!g_takili.load(std::memory_order_relaxed)) return;
     if (ayar_kol_kip() == KIP_KAPALI) return;
-    if (sol_yuzde >= 0) {
-        g_kol_hedef[0].store(std::clamp(sol_yuzde, 0, 100),
-                             std::memory_order_relaxed);
-    }
-    if (sag_yuzde >= 0) {
-        g_kol_hedef[1].store(std::clamp(sag_yuzde, 0, 100),
-                             std::memory_order_relaxed);
-    }
+    if (sol_yuzde >= 0) kol_hedef_yaz(0, sol_yuzde);
+    if (sag_yuzde >= 0) kol_hedef_yaz(1, sag_yuzde);
     g_kol_elle.fetch_add(1, std::memory_order_relaxed);
     uyandir();
 }
@@ -861,8 +874,8 @@ void beden_konusma_bildir(bool konusuyor)
             jest_no("selam") + JEST_KAYNAK_PATI * JEST_KAYNAK_CARPAN,
             std::memory_order_relaxed);
     } else if (!konusuyor && onceki) {
-        g_kol_hedef[0].store(0, std::memory_order_relaxed);
-        g_kol_hedef[1].store(0, std::memory_order_relaxed);
+        kol_hedef_yaz(0, 0);
+        kol_hedef_yaz(1, 0);
     }
     uyandir();
 }

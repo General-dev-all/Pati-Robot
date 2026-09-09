@@ -104,6 +104,27 @@ void ayar_soz_kesme_yaz(bool acik);
 void ayar_vad_yaz(int ms);
 void ayar_yuz_yaz(bool acik);
 void ayar_beden_hiz_yaz(int yuzde);
+// ---------------------------------------------------------------------------
+// 🔴 KOL ARALIKLARI — FABRIKA AYARLARINDAN KURTULUYOR
+// ---------------------------------------------------------------------------
+//
+// Kolun gidebilecegi yuzde araligi, her kol icin ayri. Mekanik bir
+// sinir: sol kol asagida tekerlege, yukarida ustteki kabloya carpiyor
+// (gerekce pati_beden_matematik.hpp).
+//
+// ⚠️ BU IKISI `ayar_sifirla()` ILE SILINMIYOR ve bu bilincli. Ayri bir
+// flash bolumunde duruyorlar (pati_anahtar.hpp · kalici_sayi_oku),
+// yani ne fabrika ayarlari ne de NVS bozulmasi onlari goturuyor.
+//
+// Kullanicinin gerekcesi (09.09.2026): "bir kere ayarlandiktan sonra
+// fabrika ayarlarini sifirla denilirse ve tekrar ayarlanmasi
+// unutulursa bir yerlere carpip servo bozulabilir."
+//
+// `taraf`: 0 sol, 1 sag.
+int ayar_kol_en_az(int taraf);
+int ayar_kol_en_cok(int taraf);
+void ayar_kol_araligi_yaz(int taraf, int en_az, int en_cok);
+
 void ayar_tekerlek_kip_yaz(int kip);
 void ayar_kol_kip_yaz(int kip);
 

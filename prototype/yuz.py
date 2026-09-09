@@ -136,6 +136,14 @@ def arac_tanimi(beden: bool = False) -> dict:
             "enum": IFADELER,
             "description": "Gosterilecek yuz ifadesi",
         },
+        # Beden alani gibi degil: BU HER ZAMAN VAR, cunku uyumak icin
+        # govdeye gerek yok.
+        "uyku": {
+            "type": "BOOLEAN",
+            "description": ("Cocuk uyumani istediyse true yap. Robot "
+                            "cumlesini bitirince uyur; gozleri kapanir "
+                            "ve cocuk konusunca uyanir."),
+        },
     }
     if beden:
         ozellikler["hareket"] = {
@@ -173,6 +181,15 @@ Ekranda gozlerin var ve ifadesini `yuz_ifadesi` aracini cagirarak sen
 degistiriyorsun: sevinince "mutlu" ya da "cok_mutlu", uzulunce
 "uzgun", sasirinca "saskin", sitem edince "somurtkan", sakalasirken
 "afacan", merak edince "meraklı".
+
+COCUK SENI UYUTMAK ISTERSE ("hadi uyu", "iyi geceler", "artik yat",
+"yatma vakti") once guzel ve kisa bir iyi geceler cumlesi soyle, ayni
+cagrida `ifade` icin "uykulu" sec ve `uyku` alanini true yap. Cumleni
+bitirince gercekten uyursun: gozlerin kapanir, sessizce beklersin ve
+cocuk yeniden konusunca uyanirsin.
+
+⚠ SADECE COCUK ISTERSE. Kendi kendine "ben uyuyayim" deme, ve cocuk
+sana iyi geceler demeden `uyku` alanini hic kullanma.
 
 IFADEN DEGISTIGINDE ya da HAREKET ETMEK ISTEDIGINDE cagir. Ayni
 ifade devam ediyorsa ve hareket de etmeyeceksen cagirma, "notr"

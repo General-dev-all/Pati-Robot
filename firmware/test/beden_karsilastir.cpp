@@ -375,6 +375,78 @@ void egri()
 }
 
 // ---------------------------------------------------------------------------
+// 5b) 🔴 KOLUN MEKANIK ARALIGI
+// ---------------------------------------------------------------------------
+//
+// Kollarin ucuna gercek kol takilinca sol kol asagida tekerlege,
+// yukarida ustteki kabloya carpiyor. Asilirsa kol dayaniyor, servo
+// donmeye calisip duruyor, isiniyor ve akim cekmeye devam ediyor —
+// sonu yanmis servo, belirtisi surekli bir vizilti.
+//
+// Aralik disina TEK BIR deger uretmek yetiyor. Bu yuzden burada tum
+// giris uzayi taraniyor: hicbir yuzde, hicbir aralik, hicbir tasma
+// sinirin disina cikmamali.
+void kol_araligi()
+{
+    std::printf("\n 5b) kolun mekanik araligi\n");
+
+    for (int az = -20; az <= 120; az += 5) {
+        for (int cok = -20; cok <= 120; cok += 5) {
+            const int a = std::clamp(az, 0, 100);
+            const int b = std::clamp(cok, 0, 100);
+            for (int y = -50; y <= 150; y += 5) {
+                const int c = kol_sinirla(y, az, cok);
+
+                // Her zaman gecerli bir yuzde.
+                kontrol(c >= 0 && c <= 100, "kirpma yuzde araligini asiyor");
+
+                if (a <= b) {
+                    kontrol(c >= a && c <= b, "kol sinirin DISINA cikti");
+                } else {
+                    // Ters aralik: tabana yaslaniyoruz. Kolun hic
+                    // oynamamasi, yanlis yere gitmesinden iyi.
+                    kontrol(c == a, "ters aralikta tabana yaslanmiyor");
+                }
+            }
+        }
+    }
+    std::printf("    taranan tum (yuzde x aralik) ciftleri sinir icinde\n");
+
+    // Varsayilanlar kullanicinin olcumu (09.09.2026).
+    kontrol(KOL_SOL_VARSAYILAN_AZ == 10 && KOL_SOL_VARSAYILAN_COK == 70,
+            "sol kol varsayilani degismis");
+    kontrol(KOL_SAG_VARSAYILAN_AZ == 0 && KOL_SAG_VARSAYILAN_COK == 100,
+            "sag kol varsayilani degismis");
+
+    // 🔴 JEST TABLOSU SINIRI ASAMIYOR. Tablo %95'e kadar deger
+    // tasiyor; sol kolda o deger kirpilmali, yoksa jest kolu kabloya
+    // carptirir.
+    int en_yuksek_sol = 0;
+    for (int j = 0; j < JEST_ADET; ++j) {
+        for (int k = 0; k < JESTLER[j].adet; ++k) {
+            const int sol = JESTLER[j].kare[k].sol;
+            if (sol < 0) continue;
+            const int c = kol_sinirla(sol, KOL_SOL_VARSAYILAN_AZ,
+                                      KOL_SOL_VARSAYILAN_COK);
+            kontrol(c <= KOL_SOL_VARSAYILAN_COK && c >= KOL_SOL_VARSAYILAN_AZ,
+                    "jest karesi sol kol sinirini asiyor");
+            if (c > en_yuksek_sol) en_yuksek_sol = c;
+        }
+    }
+    std::printf("    jestlerin sol kolda ulastigi en yuksek deger: %%%d "
+                "(sinir %%%d)\n", en_yuksek_sol, KOL_SOL_VARSAYILAN_COK);
+
+    // Servo darbesi sinirlanmis yuzdelerde de guvenli aralikta mi?
+    for (int y = KOL_SOL_VARSAYILAN_AZ; y <= KOL_SOL_VARSAYILAN_COK; ++y) {
+        for (int sag = 0; sag < 2; ++sag) {
+            const int us = kol_darbe_us(kol_derece10(y, sag == 1));
+            kontrol(us >= SERVO_US_EN_AZ && us <= SERVO_US_EN_COK,
+                    "sinirli yuzdede darbe araligin disinda");
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // 6) 🔴 OZERK DONUS — PATI YERINDEN GIDEBILIR MI?
 // ---------------------------------------------------------------------------
 //
@@ -598,6 +670,7 @@ int main()
     yumusak_kalkis();
     kalkis_darbesi();
     egri();
+    kol_araligi();
     ozerk_donus();
     jest_tablosu();
 

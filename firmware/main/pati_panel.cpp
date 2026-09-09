@@ -391,6 +391,15 @@ esp_err_t ayar_isle(httpd_req_t* r)
         ayar_tekerlek_kip_yaz(static_cast<int>(json_sayi(k, "deger", KIP_ACIK)));
     } else if (alan == "kol") {
         ayar_kol_kip_yaz(static_cast<int>(json_sayi(k, "deger", KIP_ACIK)));
+    } else if (alan == "kol_sol_araligi" || alan == "kol_sag_araligi") {
+        // Iki sayi TEK istekte: ayri ayri gonderilseydi arada
+        // `en_az > en_cok` olan bir an olusur ve o an kol yanlis yere
+        // gidebilirdi.
+        const int taraf = (alan == "kol_sag_araligi") ? 1 : 0;
+        ayar_kol_araligi_yaz(
+            taraf,
+            static_cast<int>(json_sayi(k, "en_az", 0)),
+            static_cast<int>(json_sayi(k, "en_cok", 100)));
     } else if (alan == "ad" || alan == "yas") {
         hafiza_cocugu_tanimla(json_dize(k, "ad"),
                               static_cast<int>(json_sayi(k, "yas", 0)));

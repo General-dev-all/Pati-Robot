@@ -603,6 +603,47 @@ function kumandaKur() {
     });
   });
 
+  // KOL ARALIKLARI — iki cubuk TEK istekte gidiyor.
+  //
+  // Ayri ayri gonderilseydi arada `en_az > en_cok` olan bir an olusur
+  // ve kol o an yanlis yere gidebilirdi. Firmware ters araligi zaten
+  // duzeltiyor ama dogru olani hic uretmemek.
+  [['sol', '#kKolSolAz', '#kKolSolCok', '#vKolSolAz', '#vKolSolCok'],
+   ['sag', '#kKolSagAz', '#kKolSagCok', '#vKolSagAz', '#vKolSagCok']]
+    .forEach(([taraf, sAz, sCok, vAz, vCok]) => {
+      const az = $(sAz);
+      const cok = $(sCok);
+      if (!az || !cok) return;
+
+      const yaz = () => {
+        const a = $(vAz);
+        const c = $(vCok);
+        if (a) a.textContent = `%${az.value}`;
+        if (c) c.textContent = `%${cok.value}`;
+      };
+      az.addEventListener('input', yaz);
+      cok.addEventListener('input', yaz);
+
+      const gonder = (hangi) => {
+        const en_az = parseInt(az.value, 10);
+        const en_cok = parseInt(cok.value, 10);
+        fetch('/api/ayar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ alan: `kol_${taraf}_araligi`, en_az, en_cok }),
+        }).then(() => {
+          // Kolu YENI SINIRA goturuyoruz ki ebeveyn carpip
+          // carpmadigini GORSUN. Sirasi onemli: once sinir kaydedildi,
+          // sonra hareket — tersi olsaydi eski sinir kirpardi.
+          const deger = (hangi === 'az') ? en_az : en_cok;
+          bedeneYolla(taraf === 'sol' ? { kol_sol: deger }
+                                      : { kol_sag: deger });
+        }).catch(() => {});
+      };
+      az.addEventListener('change', () => gonder('az'));
+      cok.addEventListener('change', () => gonder('cok'));
+    });
+
   // Ilk halin de tutarli olmasi icin bir kez cagiriliyor. Cihaz
   // cevabi gelmeden once secimler HTML'deki ilk secenekte (Acik)
   // duruyor; dugmeler de o hale uymali, yoksa sayfa acilir acilmaz
@@ -688,6 +729,19 @@ function bedenYaz(beden, kumanda) {
       h.value = g;
       hizYaz(g);
     }
+    [['#kKolSolAz', '#vKolSolAz', kumanda.kol_sol_az],
+     ['#kKolSolCok', '#vKolSolCok', kumanda.kol_sol_cok],
+     ['#kKolSagAz', '#vKolSagAz', kumanda.kol_sag_az],
+     ['#kKolSagCok', '#vKolSagCok', kumanda.kol_sag_cok]]
+      .forEach(([sec, etiket, deger]) => {
+        const e = $(sec);
+        if (!e || document.activeElement === e) return;
+        if (deger === undefined || deger === null) return;
+        e.value = deger;
+        const t = $(etiket);
+        if (t) t.textContent = `%${deger}`;
+      });
+
     let degisti = false;
     [['#kipTekerlek', kumanda.tekerlek], ['#kipKol', kumanda.kol]]
       .forEach(([sec, deger]) => {

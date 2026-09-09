@@ -6,10 +6,12 @@
 #include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <utility>
 
 #include <esp_log.h>
 #include <nvs.h>
 
+#include "pati_anahtar.hpp"
 #include "pati_ses.hpp"
 
 namespace pati {
@@ -62,6 +64,15 @@ int g_beden_hiz = 70;   // panelde %50
 // `sevinc` anahtari varsayilan KAPALIYDI ve o dogruydu: o zaman
 // tekerlegin Pati'ye acilmasi denenmemis bir seydi.
 int g_tekerlek_kip = KIP_ACIK;
+
+// Kol araliklari. RAM'de tutuluyor cunku beden gorevi her 20 ms'lik
+// tikte okuyor — kalici depo flash ve sicak dongude yeri yok.
+int g_kol_az[2]  = {KOL_SOL_VARSAYILAN_AZ,  KOL_SAG_VARSAYILAN_AZ};
+int g_kol_cok[2] = {KOL_SOL_VARSAYILAN_COK, KOL_SAG_VARSAYILAN_COK};
+
+// Kalici depodaki adlar. Kisa: NVS anahtari en fazla 15 karakter.
+const char* const KOL_AD_AZ[2]  = {"kol_sol_az",  "kol_sag_az"};
+const char* const KOL_AD_COK[2] = {"kol_sol_cok", "kol_sag_cok"};
 int g_kol_kip = KIP_ACIK;
 
 std::atomic<bool> g_yenileme{false};
@@ -163,6 +174,15 @@ esp_err_t ayar_baslat()
     if (nvs_get_i32(h, "kol", &v) == ESP_OK) {
         g_kol_kip = std::clamp(static_cast<int>(v), KIP_KAPALI, KIP_ACIK);
     }
+
+    // 🔴 KOL ARALIKLARI BASKA BOLUMDEN OKUNUYOR — bu handle'dan degil.
+    // Ayni yerde olsalardi ayar_sifirla() onlari da goturebilirdi.
+    for (int i = 0; i < 2; ++i) {
+        int t = 0;
+        if (kalici_sayi_oku(KOL_AD_AZ[i], t))  g_kol_az[i]  = std::clamp(t, 0, 100);
+        if (kalici_sayi_oku(KOL_AD_COK[i], t)) g_kol_cok[i] = std::clamp(t, 0, 100);
+        if (g_kol_az[i] > g_kol_cok[i]) std::swap(g_kol_az[i], g_kol_cok[i]);
+    }
     nvs_close(h);
 
     ESP_LOGI(ETIKET, "ses=%s hiz=%.2f uyku=%d dk soz_kesme=%d vad=%d yuz=%d "
@@ -185,6 +205,35 @@ bool ayar_yuz_araci() { return g_yuz; }
 // erisimi olurdu — CLAUDE.md'deki sicak dongu tuzaginin ta kendisi.
 int ayar_beden_hiz() { return g_beden_hiz; }
 int ayar_tekerlek_kip() { return g_tekerlek_kip; }
+
+int ayar_kol_en_az(int taraf)
+{
+    return g_kol_az[(taraf == 1) ? 1 : 0];
+}
+
+int ayar_kol_en_cok(int taraf)
+{
+    return g_kol_cok[(taraf == 1) ? 1 : 0];
+}
+
+void ayar_kol_araligi_yaz(int taraf, int en_az, int en_cok)
+{
+    const int i = (taraf == 1) ? 1 : 0;
+    int a = std::clamp(en_az, 0, 100);
+    int b = std::clamp(en_cok, 0, 100);
+    // Ters aralik gelirse duzeltiliyor, reddedilmiyor: panelde iki ayri
+    // cubuk var ve ebeveyn once tabani tavanin ustune itebilir. Istegi
+    // yok saymak, cubugun takildigini dusundururdu.
+    if (a > b) std::swap(a, b);
+    if (a == g_kol_az[i] && b == g_kol_cok[i]) return;
+    g_kol_az[i]  = a;
+    g_kol_cok[i] = b;
+    // KALICI DEPOYA — ayar_sifirla() buraya dokunmuyor.
+    kalici_sayi_yaz(KOL_AD_AZ[i], a);
+    kalici_sayi_yaz(KOL_AD_COK[i], b);
+    ESP_LOGI(ETIKET, "%s kol araligi: %%%d - %%%d (kalici)",
+             (i == 1) ? "sag" : "sol", a, b);
+}
 int ayar_kol_kip() { return g_kol_kip; }
 
 void ayar_ses_adi_yaz(const std::string& ad)
@@ -303,7 +352,10 @@ void ayar_sifirla()
         nvs_commit(h);
         nvs_close(h);
     }
-    ESP_LOGW(ETIKET, "ayarlar sifirlandi");
+    // ⚠️ KOL ARALIKLARI BILEREK SILINMIYOR. Baska bolumdeler ve oraya
+    // hic dokunmuyoruz: kaybolmalarinin bedeli servonun bir yere
+    // carpip bozulmasi (pati_ayar.hpp · ayar_kol_en_az).
+    ESP_LOGW(ETIKET, "ayarlar sifirlandi (kol araliklari korundu)");
 }
 
 bool ayar_yenileme_gerekli() { return g_yenileme.load(); }
@@ -324,12 +376,15 @@ std::string ayar_json()
                   "\"hiz\":%.2f,\"ses_adi\":\"%s\"},"
                   "\"uyku\":%d,"
                   "\"konusma\":{\"soz_kesme\":%s,\"vad\":%d,\"yuz\":%s},"
-                  "\"kumanda\":{\"hiz\":%d,\"tekerlek\":%d,\"kol\":%d}",
+                  "\"kumanda\":{\"hiz\":%d,\"tekerlek\":%d,\"kol\":%d,"
+                  "\"kol_sol_az\":%d,\"kol_sol_cok\":%d,"
+                  "\"kol_sag_az\":%d,\"kol_sag_cok\":%d}",
                   ses_seviyesi(), SES_SEVIYESI_EN_AZ, SES_SEVIYESI_EN_FAZLA,
                   g_hiz, g_ses_adi.c_str(), g_uyku_dk,
                   g_soz_kesme ? "true" : "false", g_vad_ms,
                   g_yuz ? "true" : "false",
-                  g_beden_hiz, g_tekerlek_kip, g_kol_kip);
+                  g_beden_hiz, g_tekerlek_kip, g_kol_kip,
+                  g_kol_az[0], g_kol_cok[0], g_kol_az[1], g_kol_cok[1]);
     return b;
 }
 

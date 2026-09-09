@@ -1,2 +1,2 @@
-3.4.1
-Kurulum sayfasının bazen kendiliğinden açılmaması düzeltildi. Aynı hata yüzünden ekrandaki kurulum yönlendirmesi de çıkmıyordu; artık Pati kendi ağını yayınlarken ekranda ağın adı, telefonunuz bağlanınca da kare kod görünüyor. Ayrıca bilgi ekranında "tekrar bas: kare kod
+3.5.0
+İki yenilik. Birincisi: her kolun gidebileceği aralık artık panelden ayarlanıyor. Sol kol tekerleğe ve üstteki kabloya çarpmasın diye dar geliyor (%10 ile %70 arası), sağ kol serbest. Çubuğu bırakınca kol oraya gidiyor, böylece çarpıp çarpmadığını görerek ayarlayabilirsiniz. Bu ayar "fabrika ayarlarına dön" dendiğinde SİLİNMEZ, çünkü unutulursa servo bozulabilir. İkincisi: Pati'ye "hadi uyu, iyi geceler" dediğinizde artık gerçekten uyuyor; konuştuğunuzda uyanıyor.

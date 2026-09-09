@@ -125,4 +125,31 @@ void anahtar_baglanti_hatasi();
 // Panelin gosterecegi hali (JSON parcasi, disi suslu parantez yok).
 std::string anahtar_json();
 
+// ---------------------------------------------------------------------------
+// FABRIKA AYARLARINDAN KURTULAN KUCUK SAYILAR
+// ---------------------------------------------------------------------------
+//
+// 🔴 NEDEN BURADA: "anahtar" bolumunu bu dosya aciyor ve o bolumun
+// varlik sebebi tam olarak bu (partitions.csv):
+//
+//     "FABRIKA AYARLARI. Panel 'fabrika ayarlarina don' dedigi zaman
+//      wifi, hafiza ve ayarlar siliniyor. Anahtar SILINMEMELI."
+//     "NVS BOZULMASI. ... app_main bozuk NVS'i silip yeniden kuruyor
+//      ... Anahtar baska bolumde oldugu icin o silmeden etkilenmiyor."
+//
+// Ayni iki gerekce KOL SINIRLARI icin de gecerli, ve orada bedeli daha
+// agir: sinir kaybolursa kol tekerlege ya da ustteki kabloya carpiyor
+// ve SERVO BOZULUYOR. Kullanicinin istegi acikti (09.09.2026):
+// "fabrika ayarlarina don tusuna basilsa bile degistirilen deger
+// sifirlanmasin, hep kalici olsun."
+//
+// ⚠️ BURAYA KEYFI AYAR KONMAZ. Yalnizca kaybolmasi DONANIMA zarar
+// veren sayilar. Normal ayarlar pati_ayar.cpp'de ve orasi bilerek
+// sifirlanabiliyor — sifirlamanin bir anlami kalmali.
+//
+// Bolum hazir degilse ikisi de false donuyor; cagiran varsayilanla
+// devam ediyor.
+bool kalici_sayi_oku(const char* ad, int& deger);
+bool kalici_sayi_yaz(const char* ad, int deger);
+
 }  // namespace pati

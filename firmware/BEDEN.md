@@ -432,6 +432,51 @@ seçme" derken `HAREKET_TEKERLEKLI`'yi sayıyor, cihaz ise jest
 tablosunun `teker_var` alanına bakıyor. Konak testi ikisini
 karşılaştırıyor (§7).
 
+#### 🔴 Kolun mekanik aralığı
+
+Kolların ucuna gerçek kol takılınca ikisi aynı yerlere gidemiyor
+(09.09.2026, kullanıcının ölçümü):
+
+| Kol | Aralık | Neden |
+|---|---|---|
+| **Sol** | %10 – %70 | aşağıda **tekerleğe**, yukarıda **üstteki kabloya** çarpıyor |
+| **Sağ** | %0 – %100 | önünde bir şey yok |
+
+Aşılırsa kol bir yere dayanır, servo dönmeye çalışıp durur, ısınır ve
+akım çekmeye devam eder. **Belirtisi sürekli bir vızıltıdır** ve kimse
+onu bir sınır hatası diye okumaz.
+
+Sınır **yüzdeye** uygulanıyor, açıya değil — jest tablosu da panel de
+yüzde konuşuyor (aynı gerekçe `KOL_SAG_AYNA`'da da var). Açıya
+uygulansaydı aynalanmış sağ kolda ters ucu kırpardı.
+
+**Kol hedefi tek bir yerden yazılıyor** (`kol_hedef_yaz`). Hedefi yazan
+beş ayrı yer var — panel düğmeleri, jest kareleri, konuşma sonu, beden
+takılması, kol kipinin kapatılması — ve kırpmayı her birine ayrı
+koymak birini unutmaya davetiye olurdu. Unutulan yer kolu bir kez fazla
+gönderip servoyu bitirebilir.
+
+⚠️ **Kırpma yazarken yapılıyor, okurken değil.** Jest ilerletme "kol
+hedefe vardı mı" diye aynı değeri okuyor; kırpma okuma tarafında
+olsaydı hedef ile gerçek konum hiçbir zaman eşitlenmez ve jest hiç
+ilerlemezdi.
+
+Jestler sınırı deliyor mu? Hayır — konak testi tabloyu tarayıp
+bakıyor. `iki_kol` %95 istiyor, sol kolda %70'e kırpılıyor: iki kol
+asimetrik kalkıyor ama hiçbir şeye çarpmıyor. `selam` zaten sağ kolla
+yapılıyor.
+
+🔴 **Bu dört sayı `ayar_sifirla()` ile SİLİNMİYOR.** Ayrı flash
+bölümünde (`anahtar`) duruyorlar — `partitions.csv` o bölümü tam bu iş
+için tanımlamış. Kullanıcının gerekçesi: *"tekrar ayarlanması
+unutulursa bir yerlere çarpıp servo bozulabilir."*
+
+Panelde dört çubuk var ve **çubuğu bırakınca kol oraya gidiyor**, yani
+ebeveyn çarpıp çarpmadığını görerek ayarlıyor. İki çubuk **tek
+istekte** gidiyor (`kol_sol_araligi` / `kol_sag_araligi`): ayrı ayrı
+gönderilseydi arada `en_az > en_cok` olan bir an oluşur ve kol o an
+yanlış yere giderdi.
+
 #### Tek kol jestleri
 
 `sag_kol` ve `sol_kol` doğrudan *"kolunu kaldır"* için var: kaldırıp

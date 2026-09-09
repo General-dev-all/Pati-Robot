@@ -1,6 +1,7 @@
 #include "pati_anahtar.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include <mutex>
 #include <vector>
@@ -27,6 +28,11 @@ constexpr const char* ETIKET = "anahtar";
 constexpr const char* BOLUM = "anahtar";
 constexpr const char* NVS_ALAN = "gizli";
 constexpr const char* NVS_ANAHTAR = "gemini";
+
+// Kalici sayilar ayri bir ad alaninda: anahtarin yaninda ama
+// karismadan. Ayni bolumde olduklari icin ikisi de fabrika
+// ayarlarindan ve NVS bozulmasindan kurtuluyor.
+constexpr const char* NVS_ALAN_SAYI = "kalici";
 
 // Bicim sinirlari. Google AI Studio anahtari bugun 39 karakter ve "AIza"
 // ile basliyor ama ikisi de BELGELENMIS bir soz degil — Google yarin
@@ -541,6 +547,43 @@ std::string anahtar_json()
     }
     j += "}";
     return j;
+}
+
+// ---------------------------------------------------------------------------
+// Kalici sayilar — gerekce baslikta
+// ---------------------------------------------------------------------------
+
+bool kalici_sayi_oku(const char* ad, int& deger)
+{
+    if (!g_bolum_hazir || ad == nullptr) return false;
+    nvs_handle_t h;
+    if (nvs_open_from_partition(BOLUM, NVS_ALAN_SAYI, NVS_READONLY, &h)
+        != ESP_OK) {
+        // Ad alani henuz hic yazilmamis: hata degil, "kayit yok".
+        return false;
+    }
+    std::int32_t v = 0;
+    const bool tamam = (nvs_get_i32(h, ad, &v) == ESP_OK);
+    nvs_close(h);
+    if (tamam) deger = static_cast<int>(v);
+    return tamam;
+}
+
+bool kalici_sayi_yaz(const char* ad, int deger)
+{
+    if (!g_bolum_hazir || ad == nullptr) return false;
+    nvs_handle_t h;
+    if (nvs_open_from_partition(BOLUM, NVS_ALAN_SAYI, NVS_READWRITE, &h)
+        != ESP_OK) {
+        ESP_LOGE(ETIKET, "kalici sayi alani acilamadi (%s)", ad);
+        return false;
+    }
+    const bool tamam = (nvs_set_i32(h, ad, static_cast<std::int32_t>(deger))
+                        == ESP_OK)
+                       && (nvs_commit(h) == ESP_OK);
+    nvs_close(h);
+    if (!tamam) ESP_LOGE(ETIKET, "kalici sayi yazilamadi (%s)", ad);
+    return tamam;
 }
 
 }  // namespace pati

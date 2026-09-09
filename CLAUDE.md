@@ -425,6 +425,40 @@ Alan ve bedeni anlatan prompt eki **yalnızca beden takılıyken**
 gönderiliyor; beden takılıp çıkarılınca beden katmanı oturum
 tazelemesi istiyor (`ayar_yenileme_iste`).
 
+🔴 **Kolun gidebileceği aralık MEKANİK bir sınır, tercih değil.**
+Kolların ucuna gerçek kol takılınca sol kol aşağıda **tekerleğe**,
+yukarıda **üstteki kabloya** çarpıyor (09.09.2026, kullanıcının
+ölçümü): sol %10–%70, sağ %0–%100. Aşılırsa kol dayanır, servo dönmeye
+çalışıp durur, ısınır ve yanar — belirtisi sürekli bir vızıltıdır ve
+kimse onu bir tam sayı taşması diye okumaz.
+
+Sınır **yüzdeye** uygulanıyor, açıya değil (aynalanmış sağ kolda ters
+ucu kırpardı), ve kol hedefi **tek bir yerden** yazılıyor
+(`pati_beden.cpp` · `kol_hedef_yaz`). Tek boğaz şart: hedefi yazan beş
+ayrı yer var (panel düğmeleri, jest kareleri, konuşma sonu, beden
+takılması, kol kipinin kapatılması) ve kırpmayı her birine ayrı koymak
+birini unutmaya davetiye olurdu. Kırpma **yazarken** yapılıyor,
+okurken değil — okurken olsaydı jestin "hedefe vardı mı" karşılaştırması
+hiç tutmaz ve jest ilerlemezdi.
+
+🔴 **Kol aralıkları `ayar_sifirla()` ile SİLİNMİYOR.** Ayrı flash
+bölümünde (`anahtar`) duruyorlar; `partitions.csv` o bölümü zaten tam
+bu iş için tanımlamış. Kullanıcının gerekçesi: *"tekrar ayarlanması
+unutulursa bir yerlere çarpıp servo bozulabilir."*
+**⚠️ Oraya keyfî ayar konmaz** — yalnızca kaybolması **donanıma zarar
+veren** sayılar. Normal ayarlar sıfırlanabiliyor ve sıfırlamanın bir
+anlamı kalmalı (`pati_anahtar.hpp` · `kalici_sayi_oku`).
+
+🔴 **"Hadi uyu, iyi geceler" ile gerçekten uyuyor.** Önce model sadece
+*ifadeyi* "uykulu" yapıp sonra geri alıyordu. Artık iki yol birden:
+araç alanı `uyku` (model paraphrase'i anlıyor) **ve** çocuğun
+dökümünde kalıp araması (`uyku_istegi_mi`). İkisi birden, çünkü modelin
+aracı çağırması garanti değil ve kullanıcının adıyla söylediği cümlenin
+modele bağlı kalması doğru olmaz. Yanlış pozitifin bedeli küçük — Pati
+uyur, çocuk konuşunca 617 ms'de uyanır; yanlış negatifin bedeli ise tam
+da şikâyetin kendisi. **Uyku hemen değil, cümle bitince** geliyor
+(boşta bekçisi honorluyor), yoksa "iyi geceler" yarıda kalırdı.
+
 🔴 **Motorlar anlık tam güce ASLA geçmiyor.** Kullanıcının açık isteği
 (06.09.2026): *"bir daha motorları anlık %100'de yapma, ne olursa olsun
 dikkatli gidelim."* Bir DC motorun en yüksek akımı kalkış anında oluyor

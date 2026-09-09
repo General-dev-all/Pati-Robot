@@ -199,6 +199,39 @@
         akım çekmiyor, hiç ses çıkarmıyor.
       </p>
 
+      <!-- KOL ARALIKLARI — mekanik sınır, süs değil. -->
+      <label class="kd">
+        <span class="kd-ust"><span>Sol kol en az</span><b id="vKolSolAz">—</b></span>
+        <input id="kKolSolAz" type="range" min="0" max="100" step="5">
+      </label>
+      <label class="kd">
+        <span class="kd-ust"><span>Sol kol en çok</span><b id="vKolSolCok">—</b></span>
+        <input id="kKolSolCok" type="range" min="0" max="100" step="5">
+      </label>
+      <label class="kd">
+        <span class="kd-ust"><span>Sağ kol en az</span><b id="vKolSagAz">—</b></span>
+        <input id="kKolSagAz" type="range" min="0" max="100" step="5">
+      </label>
+      <label class="kd">
+        <span class="kd-ust"><span>Sağ kol en çok</span><b id="vKolSagCok">—</b></span>
+        <input id="kKolSagCok" type="range" min="0" max="100" step="5">
+      </label>
+      <p class="ip">
+        Kolun gidebileceği aralık. <b>Çubuğu bırakınca kol oraya
+        gidiyor</b> — böylece bir yere çarpıp çarpmadığını görerek
+        ayarlayabilirsiniz.
+        <br><br>
+        Sol kol aşağıda <b>tekerleğe</b>, yukarıda <b>üstteki kabloya</b>
+        çarpabiliyor; o yüzden dar geliyor (%10–%70). Sağ kolun önünde
+        bir şey yok. Yanlış ayarlanırsa kol bir yere dayanır, servo
+        dönmeye çalışıp durur, ısınır ve <b>bozulur</b> — belirtisi
+        sürekli bir vızıltıdır.
+        <br><br>
+        🔴 <b>Bu dört ayar “fabrika ayarlarına dön” dendiğinde
+        silinmez.</b> Ayrı bir yerde saklanıyorlar: unutulup yeniden
+        ayarlanmazsa bedeli donanım oluyor.
+      </p>
+
       <p class="ip">
         <b>Pati yürüyemez ve yürümeyi denemez.</b> Kendiliğinden
         yaptığı her hareket <b>yerinde dönmek</b>: iki tekerlek ters
