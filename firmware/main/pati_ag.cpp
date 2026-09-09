@@ -443,6 +443,11 @@ AgDurumu ag_durumu() { return g_durum; }
 const char* ag_ip() { return g_ip; }
 const char* ag_adi() { return g_ad.c_str(); }
 
+bool ag_telefon_bagli()
+{
+    return g_kurulum_modu && g_telefon > 0;
+}
+
 int ag_gucu()
 {
     if (g_durum != AgDurumu::Bagli) return 0;

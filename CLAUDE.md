@@ -201,8 +201,13 @@ bir çocuğun tutturabileceği bir şey değil ve yan düğme sert.
 
 | | Kısa | Uzun (1,2 sn) |
 |---|---|---|
-| **Mavi tuş** (ekranın sağı) | bilgi sayfası: pil + wifi | derin uyku |
+| **Mavi tuş** (ekranın sağı) | **sayfayı ilerletir**: gözler → bilgi → panel QR → gözler | derin uyku |
 | **Yan güç düğmesi** | **tamamen kapat / aç** | — |
+
+İki sayfa **iki ayrı kişi için**: bilgi sayfası çocuk için (pil, wifi
+adı, sinyal), panel QR ebeveyn için (paneli açmanın yolu). Süreleri de
+farklı — bilgi 15 sn, QR 45 sn, çünkü QR ebeveynin telefonu çıkarıp
+kamerayı açmasını bekliyor.
 
 Bilgi sayfası 15 saniyede kendiliğinden kapanıyor; çocuk unutursa Pati
 yüzsüz kalmasın diye.
@@ -222,7 +227,40 @@ başka görevden çizmek ekranı bozar (`pati_perde.hpp`).
 | Düşük pil | %20 altı, dakikada bir | 3 saniye sonra |
 | Bilgi | mavi tuş | tuş, uyarı, ya da 15 sn |
 | **WiFi aranıyor** | ağ yokken (kurulum kipi hariç) | ağ gelince |
+| **Kurulum** | Pati kendi ağını yayınlarken | ağa bağlanınca |
+| **Panel QR** | mavi tuşun ikinci basışı | tuş, uyarı, ya da 45 sn |
 | **Güncelleme** | açılışta yeni sürüm varsa | tuş, ya da 20 sn |
+
+🔴 **Kurulum kipinde ekran artık gözler değil, yönlendirme gösteriyor.**
+Eskiden gözler duruyordu ve gerekçesi yazılıydı: *"o hâli gözler
+anlatıyor (uykulu) ve panel açık"*. Yanlıştı — **ebeveyn panelin açık
+olduğunu göremiyor.** Telefonu Pati'nin ağına bağlayınca yakalama
+sayfası bazen kendiliğinden açılmıyor ve o an cihazda hiçbir şey ne
+yapılacağını söylemiyor; ebeveynin `pati.local` diye bir adres olduğunu
+bilmesi beklenemez. Susan bir robot neden sustuğunu söylemeli — WiFi
+perdesini de aynı gerekçe doğurmuştu.
+
+Kurulum perdesi **iki adımlı** ve adımı *telefonun AP'ye bağlı olup
+olmadığı* belirliyor (`ag_telefon_bagli`, sayaç zaten vardı):
+
+| Adım | Ekranda |
+|---|---|
+| telefon yok | ağ adı büyük büyük (`Pati-9EFD`), **QR yok** |
+| telefon bağlı | QR (`http://192.168.4.1`) + adres yazısı |
+
+⚠️ **QR'ı önce göstermemek bilinçli.** `192.168.4.1` ancak telefon
+Pati'nin ağına girdikten *sonra* bir yere gidiyor. Önce okutulsa
+tarayıcı açılmaz ve ebeveyn bunu "QR bozuk" diye okurdu — adres,
+ancak çalışır hâle geldiği an ekrana geliyor. Aynı kural panel QR
+sayfasında da var: bağlıyken `pati.local`, kurulumda `192.168.4.1`,
+ikisi de değilse **QR hiç çizilmiyor**.
+
+🔴 **QR koyu-üstüne-açık olmalı.** Pati'nin ekranı siyah zemin +
+turkuaz yazı; QR'ı o düzende çizmek *ters QR* olurdu ve bazı telefonlar
+okumaz. Beyaz bir kartın üzerine siyah çiziliyor (`pati_perde.cpp` ·
+`qr_ciz`). Matrisler `qr_uret.py` ile üretiliyor ve o betik yazmadan
+önce çıkan pikselleri **bağımsız bir çözücüyle** (zxing-cpp) okuyup
+doğruluyor.
 
 **WiFi perdesi neden var:** wifi olmadan Pati konuşamıyor ve çocuk için
 sebebi görünmüyordu — gözler normal bakıyor, robot cevap vermiyor.

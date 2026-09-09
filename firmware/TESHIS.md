@@ -220,6 +220,36 @@ edileceğini yazıyor.
 ⚠️ İleri/geri de tersse bu **başka bir arıza**: iki motorun da
 kutupları ters bağlı demektir, dönüşle ilgisi yok.
 
+### Kurulum sayfası açılmıyor / ebeveyn panele giremiyor
+
+Telefon `Pati-XXXX` ağına bağlanınca yakalama sayfası **her zaman
+kendiliğinden açılmıyor** (telefon markasına ve Android sürümüne göre
+değişiyor). 3.4.0'dan itibaren cihaz bunu kendi anlatıyor:
+
+1. Pati'nin ekranında ağın adı yazıyor mu? Yazmıyorsa kurulum kipinde
+   değildir — `/api/durum` yoksa seri porttan `ag_durumu` bak.
+2. Telefonu o ağa bağla. **Bağlanır bağlanmaz ekranda QR çıkmalı**;
+   çıkmıyorsa telefon aslında bağlanmamıştır (Android "internet yok"
+   deyip sessizce başka ağa dönebiliyor).
+3. QR çıktıysa kamerayla okut. Okumuyorsa ekrandaki adresi elle yaz:
+   `192.168.4.1`.
+
+⚠️ **`pati.local` kurulum kipinde çalışmaz** ve QR da onu göstermez —
+o adres yalnızca Pati bir ağa bağlıyken var. Kurulum kipinde tek geçerli
+adres `192.168.4.1`.
+
+### QR ekranda çıkıyor ama telefon okumuyor
+
+Sırayla:
+
+1. Ekran parlaklığı düşükse (pil kipi) telefonu yaklaştır.
+2. **Ters QR değil** — beyaz kart üzerine siyah çiziliyor; öyle
+   görünmüyorsa `qr_ciz`'in renkleri değişmiş demektir.
+3. Matris bozulmuş olabilir: `firmware/qr_uret.py` yeniden koşturulup
+   `pati_qr_uretilmis.h` üretilmeli. Betik yazmadan önce çıktıyı
+   bağımsız bir çözücüyle okuyup doğruluyor, yani geçerse matris
+   sağlamdır. (Gereken paketler: `qrcode`, `pillow`, `zxing-cpp`.)
+
 ### Panelde joystick ya da düğmeler sönük
 
 Bozuk değil: o uzvun kipi **Kapalı**. Panel → Kumanda → Tekerlekler /

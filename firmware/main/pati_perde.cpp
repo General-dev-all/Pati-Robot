@@ -1,5 +1,7 @@
 #include "pati_perde.hpp"
 
+#include "pati_qr_uretilmis.h"
+
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
@@ -359,6 +361,42 @@ void metin_orta(int y, const char* s, int olcek, std::uint16_t renk)
 }
 
 // ---------------------------------------------------------------------------
+// QR cizimi
+// ---------------------------------------------------------------------------
+//
+// Matris 33x33 ve SESSIZ KENAR ICINDE (qr_uret.py `border=4`), yani
+// burada ayrica bosluk birakmak gerekmiyor — matrisin dis dort modulu
+// zaten bos.
+//
+// 🔴 QR KOYU-USTUNE-ACIK OLMALI, tersi degil.
+//
+// Pati'nin butun ekrani siyah zemin ve turkuaz yazi. QR'i o duzende
+// cizmek "ters QR" olurdu: standart koyu modul / acik zemin bekliyor.
+// Bazi telefonlar tersini de okuyor, bazilari okumuyor — ve okumadigi
+// telefonda ebeveyn bunu "QR bozuk" diye okur, sebebini bulamaz.
+//
+// O yuzden QR, sayfanin geri kalanina benzemeyen BEYAZ BIR KART
+// uzerine siyah ciziliyor. Cirkin degil, tersine: kart kendini
+// "okutulacak sey" diye gosteriyor.
+void qr_ciz(const std::uint8_t (*qr)[33], int x0, int y0, int px)
+{
+    const std::uint16_t acik = ekran_renk(255, 255, 255);
+    const std::uint16_t koyu = ekran_renk(0, 0, 0);
+
+    // Once kartin tamami beyaz, sonra yalnizca KOYU moduller. Her
+    // modul icin ayri ayri renk secmek iki kat cizim demekti; kutu()
+    // serit disini zaten eleyip donuyor.
+    kutu(x0, y0, 33 * px, 33 * px, acik);
+    for (int sy = 0; sy < 33; ++sy) {
+        for (int sx = 0; sx < 33; ++sx) {
+            if (qr[sy][sx] != 0) {
+                kutu(x0 + sx * px, y0 + sy * px, px, px, koyu);
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Yerlesim — 240 x 135
 // ---------------------------------------------------------------------------
 //
@@ -414,6 +452,22 @@ constexpr int B_AYIRAC_Y = 56;
 //   ad govdesi   : 66 .. 80   (olcek 2)
 //   cubuk tepeler: 116, 110, 104, 98
 //   aradaki bosluk: 18 piksel
+// ---- QR sayfalari ----
+//
+// Matris 33x33; 4 piksel/modul -> 132x132, yani ekranin 135 piksellik
+// yuksekligini neredeyse tam dolduruyor. Daha kucugu (3 px) de
+// okunuyor — qr_uret.py cikan pikselleri 3 px/modulde bagimsiz
+// cozucuyle dogruluyor — ama burada yer var ve buyuk QR uzaktan ve
+// titrek elde daha kolay okunuyor.
+//
+// Sola yaslaniyor; sagda 98 piksellik yazi sutunu kaliyor. Olcek 1'de
+// karakter 6 piksel, yani sutuna 16 karakter sigiyor.
+constexpr int Q_PX     = 4;
+constexpr int Q_BOYUT  = 33 * Q_PX;                    // 132
+constexpr int Q_X      = 2;
+constexpr int Q_Y      = (PATI_EKR_Y - Q_BOYUT) / 2;   // 1
+constexpr int Q_SUTUN  = Q_X + Q_BOYUT + 8;            // 142
+
 constexpr int B_AD_Y = 66;       // wifi adi — govdenin USTU
 constexpr int B_CUBUK_Y = 124;   // sinyal cubuklarinin TABANI
 constexpr int B_CUBUK_GEN = 12;
@@ -697,6 +751,138 @@ esp_err_t perde_guncelleme(const char* surum, int yuzde, const char* uyari)
         }
 
         const esp_err_t hata = serit_bas_ve_nefes(y, yuk);
+        if (hata != ESP_OK) return hata;
+    }
+
+    return ESP_OK;
+}
+
+// ---------------------------------------------------------------------------
+// Kurulum sayfasi
+// ---------------------------------------------------------------------------
+//
+// Gerekce ve iki adimin sebebi pati_perde.hpp'de.
+
+esp_err_t perde_kurulum()
+{
+    if (!ekran_hazir()) return ESP_ERR_INVALID_STATE;
+
+    const std::uint16_t zemin = ekran_renk(0, 0, 0);
+    const std::uint16_t vurgu = ekran_renk(GOZ_ACIK.r, GOZ_ACIK.g, GOZ_ACIK.b);
+    const std::uint16_t soluk = ekran_renk(GOZ_KOYU.r, GOZ_KOYU.g, GOZ_KOYU.b);
+
+    // Veri BIR KEZ okunuyor: alti seridin arasinda telefon baglanirsa
+    // sayfanin ust yarisi bir adimi, alt yarisi otekini cizerdi.
+    const bool telefon = ag_telefon_bagli();
+    const char* ad = ag_adi();
+
+    char ad_metni[40] = {};
+    std::snprintf(ad_metni, sizeof(ad_metni), "%s",
+                  (ad != nullptr && ad[0] != '\0') ? ad : "Pati");
+    int ad_olcek = 2;
+    if (metin_genislik(ad_metni, ad_olcek) > PATI_EKR_G - 8) ad_olcek = 1;
+
+    for (int sy = 0; sy < PATI_EKR_Y; sy += EKRAN_SERIT_YUKSEK) {
+        const int yuk = std::min(EKRAN_SERIT_YUKSEK, PATI_EKR_Y - sy);
+        g_serit = ekran_serit();
+        g_serit_y0 = sy;
+        g_serit_yuk = yuk;
+
+        for (int i = 0; i < PATI_EKR_G * yuk; ++i) g_serit[i] = zemin;
+
+        if (!telefon) {
+            // ADIM 1 — telefon henuz baglanmadi.
+            //
+            // QR YOK ve olmamali: gidecegi adres henuz calismiyor.
+            // Burada tek is, ebeveyne Wi-Fi listesinde ne arayacagini
+            // soylemek.
+            metin_orta(18, "Beni kurmak için", 1, soluk);
+            metin_orta(38, ad_metni, ad_olcek, vurgu);
+            metin_orta(74, "telefonundan bu", 1, vurgu);
+            metin_orta(90, "Wi-Fi ağına bağlan", 1, vurgu);
+            metin_orta(114, "şifre yok", 1, soluk);
+        } else {
+            // ADIM 2 — telefon bagli, artik adres bir yere gidiyor.
+            qr_ciz(QR_KURULUM, Q_X, Q_Y, Q_PX);
+            metin_yaz(Q_SUTUN, 20, "Bağlandın!", 1, vurgu);
+            metin_yaz(Q_SUTUN, 44, "Kameranı", 1, vurgu);
+            metin_yaz(Q_SUTUN, 58, "buna tut", 1, vurgu);
+            metin_yaz(Q_SUTUN, 84, "ya da yaz:", 1, soluk);
+            metin_yaz(Q_SUTUN, 100, "192.168.4.1", 1, soluk);
+        }
+
+        const esp_err_t hata = serit_bas_ve_nefes(sy, yuk);
+        if (hata != ESP_OK) return hata;
+    }
+
+    return ESP_OK;
+}
+
+// ---------------------------------------------------------------------------
+// Panel adresi sayfasi — mavi tusun ikinci basisi
+// ---------------------------------------------------------------------------
+
+esp_err_t perde_panel_qr()
+{
+    if (!ekran_hazir()) return ESP_ERR_INVALID_STATE;
+
+    const std::uint16_t zemin = ekran_renk(0, 0, 0);
+    const std::uint16_t vurgu = ekran_renk(GOZ_ACIK.r, GOZ_ACIK.g, GOZ_ACIK.b);
+    const std::uint16_t soluk = ekran_renk(GOZ_KOYU.r, GOZ_KOYU.g, GOZ_KOYU.b);
+
+    const AgDurumu durum = ag_durumu();
+    const bool bagli = (durum == AgDurumu::Bagli);
+    const bool kurulum = (durum == AgDurumu::Kurulum);
+
+    // 🔴 YALNIZCA CALISAN ADRES GOSTERILIYOR.
+    //
+    // `pati.local` Pati bir aga bagliyken, `192.168.4.1` ise yalnizca
+    // kendi agini yayinlarken calisiyor. Ucuncu bir hal daha var —
+    // ikisi de degil, yani kayitli aga baglanmaya calisiyor — ve orada
+    // hicbir adres calismiyor. O halde QR gostermek, calismayan bir
+    // seyi calisir gibi sunmak olurdu.
+    const std::uint8_t (*qr)[33] = bagli    ? QR_PANEL
+                                  : kurulum ? QR_KURULUM
+                                            : nullptr;
+
+    // Yedek olarak GERCEK IP de yaziliyor. Sebep: `pati.local` mDNS
+    // istiyor ve bazi Android tarayicilarda calismiyor. QR okunmazsa
+    // ya da adres acilmazsa ebeveynin elle yazabilecegi bir sey
+    // kalmali.
+    char adres[24] = {};
+    char yedek[24] = {};
+    if (bagli) {
+        std::snprintf(adres, sizeof(adres), "pati.local");
+        const char* ip = ag_ip();
+        if (ip != nullptr && ip[0] != '\0') {
+            std::snprintf(yedek, sizeof(yedek), "%s", ip);
+        }
+    } else if (kurulum) {
+        std::snprintf(adres, sizeof(adres), "192.168.4.1");
+    }
+
+    for (int sy = 0; sy < PATI_EKR_Y; sy += EKRAN_SERIT_YUKSEK) {
+        const int yuk = std::min(EKRAN_SERIT_YUKSEK, PATI_EKR_Y - sy);
+        g_serit = ekran_serit();
+        g_serit_y0 = sy;
+        g_serit_yuk = yuk;
+
+        for (int i = 0; i < PATI_EKR_G * yuk; ++i) g_serit[i] = zemin;
+
+        if (qr == nullptr) {
+            metin_orta(38, "Wi-Fi yok", 2, soluk);
+            metin_orta(76, "önce bir ağa bağlan", 1, vurgu);
+            metin_orta(96, "sonra buradan panel", 1, soluk);
+        } else {
+            qr_ciz(qr, Q_X, Q_Y, Q_PX);
+            metin_yaz(Q_SUTUN, 20, "Ayarlar", 1, soluk);
+            metin_yaz(Q_SUTUN, 44, "Kameranı", 1, vurgu);
+            metin_yaz(Q_SUTUN, 58, "buna tut", 1, vurgu);
+            metin_yaz(Q_SUTUN, 84, adres, 1, soluk);
+            if (yedek[0] != '\0') metin_yaz(Q_SUTUN, 100, yedek, 1, soluk);
+        }
+
+        const esp_err_t hata = serit_bas_ve_nefes(sy, yuk);
         if (hata != ESP_OK) return hata;
     }
 

@@ -120,15 +120,28 @@ void gozler_ses_bildir(int kalan_ms);
 // `yuzde` 0-100; negatifse yuzde satiri cizilmiyor.
 void gozler_pil_uyarisi(int yuzde);
 
-// Bilgi sayfasini acar/kapatir (tusa basildi).
+// Mavi tus: SAYFAYI ILERLETIR.
 //
-// Acikken gozlerin yerine pil ve wifi bilgisi ciziliyor. Kapanmasinin
-// UC yolu var: tekrar basmak, dusuk pil uyarisinin gelmesi, ve 15
-// saniyenin dolmasi. Sonuncusu sart — cocuk tusa basip unutursa Pati
-// sonsuza kadar yuzsuz kalmamali.
+//     gozler  ->  bilgi  ->  panel QR  ->  gozler
+//
+// Iki sayfa iki ayri kisi icin: BILGI cocuk icin (pil, wifi adi,
+// sinyal), PANEL QR ebeveyn icin (paneli acmanin yolu). Ikisini tek
+// sayfaya sigdirmak ikisini de okunmaz yapardi — bilgi sayfasinin
+// mevcut yerlesimi zaten dolu.
+//
+// Kapanmasinin UC yolu var: sayfayi devirmek, dusuk pil uyarisinin
+// gelmesi, ve surenin dolmasi. Sonuncusu sart — cocuk tusa basip
+// unutursa Pati sonsuza kadar yuzsuz kalmamali.
+//
+// ⚠️ IKI SAYFANIN SURESI FARKLI. Bilgi sayfasi bir bakista okunuyor
+// (15 sn); QR sayfasi ise ebeveynin telefonu acip kamerayi baslatmasini
+// bekliyor, o yuzden daha uzun. 15 saniye QR icin kisa ve ebeveyn
+// sayfayi kaybedip tusa yeniden basmak zorunda kalirdi.
 //
 // BLOKLAMIYOR: bayrak birakiyor, cizimi gorev yapiyor.
 void gozler_bilgi_degistir();
+
+// Herhangi bir tus sayfasi acik mi (bilgi ya da QR).
 bool gozler_bilgi_acik();
 
 // ---------------------------------------------------------------------------

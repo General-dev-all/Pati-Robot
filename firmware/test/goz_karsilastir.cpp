@@ -151,6 +151,8 @@ esp_err_t perde_pil_uyarisi(int) { return ESP_OK; }
 esp_err_t perde_bilgi() { return ESP_OK; }
 esp_err_t perde_wifi(int, const char*, const char*) { return ESP_OK; }
 esp_err_t perde_guncelleme(const char*, int, const char*) { return ESP_OK; }
+esp_err_t perde_kurulum() { return ESP_OK; }
+esp_err_t perde_panel_qr() { return ESP_OK; }
 
 // Goz gorevi artik guc, ag ve guncelleme durumuna bakiyor (hangi
 // perdenin cizilecegine karar vermek icin). Testte hicbiri cizilmiyor:

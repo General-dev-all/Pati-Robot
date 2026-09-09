@@ -159,10 +159,30 @@ constexpr int UYARI_MS = 3000;
 // Cocuk tusa basip birakabilir, unutabilir, cebine koyabilir. Geri
 // donusu kullanicinin hatirlamasina birakmak, bir gun unutulmasini
 // beklemek olurdu.
-std::atomic<bool> g_bilgi{false};
+// Mavi tusun sayfa sayaci: 0 kapali, 1 bilgi, 2 panel QR.
+//
+// Bool DEGIL cunku uc hal var ve ucu de tek tusla geziliyor. Iki ayri
+// bool tutmak, "ikisi birden acik" gibi olmayan bir hali temsil
+// edilebilir yapardi.
+constexpr int SAYFA_YOK   = 0;
+constexpr int SAYFA_BILGI = 1;
+constexpr int SAYFA_QR    = 2;
+constexpr int SAYFA_ADET  = 3;
+
+std::atomic<int> g_sayfa{SAYFA_YOK};
 std::atomic<std::int64_t> g_bilgi_us{0};
 
 constexpr std::int64_t BILGI_SURE_US = 15LL * 1000000LL;
+
+// 🔴 QR SAYFASI DAHA UZUN DURUYOR — 15 saniye yetmiyor.
+//
+// Bilgi sayfasi bir bakista okunuyor. QR ise ebeveynin telefonu
+// cikarmasini, kilidini acmasini ve kamerayi baslatmasini bekliyor;
+// o sirada sayfa kapanirsa ebeveyn tusa yeniden basmak zorunda kalir
+// ve bunu "ekran kayboldu" diye okur.
+//
+// 45 saniye, "yuzsuz kalmasin" kuralini bozmadan rahat bir pencere.
+constexpr std::int64_t QR_SURE_US = 45LL * 1000000LL;
 
 // Sayfa iki saniyede bir yeniden ciziliyor: pil yuzdesi ve wifi gucu
 // acikken degisebiliyor ve donmus bir sayfa yanlis bilgi olurdu.
@@ -190,6 +210,16 @@ constexpr int BILGI_TAZELE_MS = 2000;
 // serit_bas_ve_nefes). 333 ms'de bir cizmek goz cizicisinden COK daha
 // hafif: 65 KB x 3 = 195 KB/s, gozler 20 fps'te ~800 KB/s.
 constexpr int WIFI_TAZELE_MS = 333;
+
+// Kurulum sayfasinda animasyon YOK, yani sik cizmenin anlami da yok.
+// Tek degisen sey telefonun baglanip baglanmadigi ve o da saniyelik
+// bir olay. Tam ekran cizim tepe akim uretiyor (pati_perde.cpp,
+// serit_bas_ve_nefes); seyrek cizmek bedava kazanc.
+//
+// ⚠️ Kurulum sayfasi DAKIKALARCA acik kalabiliyor — ebeveyn telefonu
+// alip gelene kadar. Bu yuzden buradaki aralik oteki perdelerden daha
+// uzun.
+constexpr int KURULUM_TAZELE_MS = 1000;
 
 // ---------------------------------------------------------------------------
 // Guncelleme perdesi
@@ -1090,9 +1120,9 @@ void gozler_gorevi(void*)
     while (true) {
         // Dusuk pil uyarisi: gozlerin YERINE tam ekran ciziliyor.
         if (g_uyari_var.exchange(false, std::memory_order_relaxed)) {
-            // Bilgi sayfasi aciksa kapaniyor: pilin bitmek uzere olmasi
+            // Tus sayfasi aciksa kapaniyor: pilin bitmek uzere olmasi
             // daha onemli ve uyari zaten pil bilgisini tasiyor.
-            g_bilgi.store(false, std::memory_order_relaxed);
+            g_sayfa.store(SAYFA_YOK, std::memory_order_relaxed);
             perde_pil_uyarisi(g_uyari_yuzde.load(std::memory_order_relaxed));
             vTaskDelay(pdMS_TO_TICKS(UYARI_MS));
 
@@ -1120,7 +1150,8 @@ void gozler_gorevi(void*)
         //
         // "Acikti, artik degil" gecisini burada gormek hepsini
         // kapsiyor ve kimin kapattigi onemsiz hale geliyor.
-        const bool bilgi = g_bilgi.load(std::memory_order_relaxed);
+        const int sayfa = g_sayfa.load(std::memory_order_relaxed);
+        const bool bilgi = (sayfa != SAYFA_YOK);
 
         // ---- GUNCELLEME PERDESI --------------------------------------
         //
@@ -1138,18 +1169,36 @@ void gozler_gorevi(void*)
         }
         g_gunc_acik.store(gunc, std::memory_order_relaxed);
 
+        // ---- KURULUM PERDESI -----------------------------------------
+        //
+        // 🔴 BURASI ESKIDEN GOZLERI GOSTERIYORDU ve gerekcesi de
+        // yaziliydi: "o hali gozler anlatiyor (uykulu) ve panel acik".
+        // Yanlisti — ebeveyn panelin acik oldugunu GOREMIYOR. Telefonu
+        // Pati'nin agina baglayinca yakalama sayfasi bazen kendiliginden
+        // acilmiyor, ve o an cihazda hicbir sey ne yapilacagini
+        // soylemiyor. Ebeveynin `pati.local` diye bir adres oldugunu
+        // bilmesi beklenemez.
+        //
+        // Susan bir robot neden sustugunu soylemeli — WiFi perdesini de
+        // ayni gerekce dogurmustu.
+        //
+        // Kurulum kipi yalnizca ilk acilista degil, kayitli aga uzun
+        // sure baglanilamayinca da geliyor; yani bu sayfa "kurulum"
+        // kadar "ag gitti, gel beni yeniden bagla" da demek.
+        const bool kurulum = g_d_ag_kurulum.load(std::memory_order_relaxed);
+
         // ---- WIFI PERDESI --------------------------------------------
         //
-        // Kurulum kipi HARIC. Orada ag gercekten yok ama anlami bambaska:
-        // "beni ayarla". O hali gozler anlatiyor (uykulu) ve panel
-        // acik — "WiFi araniyor" yazmak yanlis yere baktirirdi.
+        // Kurulum kipi HARIC: orada da ag yok ama anlami bambaska
+        // ("beni ayarla") ve onu yukaridaki perde anlatiyor. "WiFi
+        // araniyor" yazmak yanlis yere baktirirdi.
         const bool wifi_yok = !g_d_ag_bagli.load(std::memory_order_relaxed)
-                              && !g_d_ag_kurulum.load(std::memory_order_relaxed);
+                              && !kurulum;
 
         // Perdeden gozlere donuste ekran TEK YERDE temizleniyor —
         // hangi perde oldugu onemsiz.
         const auto baglanti = gozler_baglanti_uyarisi();
-        const bool perde = bilgi || gunc || wifi_yok
+        const bool perde = bilgi || gunc || wifi_yok || kurulum
                            || baglanti != BaglantiUyarisi::Yok;
         if (onceki_bilgi && !perde) {
             g_onceki_kirli = Dikdortgen{0, 0, PATI_EKR_G, PATI_EKR_Y};
@@ -1181,14 +1230,20 @@ void gozler_gorevi(void*)
         }
 
         if (bilgi) {
+            const std::int64_t sure =
+                (sayfa == SAYFA_QR) ? QR_SURE_US : BILGI_SURE_US;
             if (esp_timer_get_time() - g_bilgi_us.load(std::memory_order_relaxed)
-                >= BILGI_SURE_US) {
+                >= sure) {
                 // Sure doldu. Temizligi yukaridaki gecis yapiyor, yani
-                // burada sadece bayragi indirip bir tur donuyoruz.
-                g_bilgi.store(false, std::memory_order_relaxed);
+                // burada sadece sayfayi kapatip bir tur donuyoruz.
+                g_sayfa.store(SAYFA_YOK, std::memory_order_relaxed);
                 continue;
             }
-            perde_bilgi();
+            if (sayfa == SAYFA_QR) {
+                perde_panel_qr();
+            } else {
+                perde_bilgi();
+            }
 
             // 🔴 UYKU PARCALI — tek bir uzun vTaskDelay DEGIL.
             //
@@ -1200,9 +1255,19 @@ void gozler_gorevi(void*)
             // 100 ms'lik parcalar hem tepkiyi bir tik seviyesine
             // indiriyor hem de uyanma sayisini makul tutuyor (20 kez).
             for (int kalan = BILGI_TAZELE_MS; kalan > 0; kalan -= 100) {
-                if (!g_bilgi.load(std::memory_order_relaxed)) break;
+                // Sayfa DEGISTIYSE de cikiliyor, sadece kapandiysa
+                // degil: tusa basip bir sonraki sayfaya gecmek de iki
+                // saniye beklemeyi hak etmiyor.
+                if (g_sayfa.load(std::memory_order_relaxed) != sayfa) break;
                 vTaskDelay(pdMS_TO_TICKS(100));
             }
+            son_uyanma = xTaskGetTickCount();
+            continue;
+        }
+
+        if (kurulum) {
+            perde_kurulum();
+            vTaskDelay(pdMS_TO_TICKS(KURULUM_TAZELE_MS));
             son_uyanma = xTaskGetTickCount();
             continue;
         }
@@ -1366,17 +1431,21 @@ void gozler_durum_bildir(int gunc_durum, int gunc_yuzde,
 
 void gozler_bilgi_degistir()
 {
-    const bool acik = g_bilgi.load(std::memory_order_relaxed);
-    if (acik) {
-        // Kapatiyoruz. Kirli alani BURADA tam ekran yapmiyoruz cunku bu
-        // fonksiyon tus gorevinden cagriliyor ve g_onceki_kirli goz
-        // gorevinin verisi — iki gorevden yazilmamali. Gorev kendi
-        // dongusunde bayragi gorup temizligi yapiyor.
-        g_bilgi.store(false, std::memory_order_relaxed);
-    } else {
+    // Sayfayi ILERLETIYOR: gozler -> bilgi -> panel QR -> gozler.
+    //
+    // Kirli alani BURADA tam ekran yapmiyoruz cunku bu fonksiyon tus
+    // gorevinden cagriliyor ve g_onceki_kirli goz gorevinin verisi —
+    // iki gorevden yazilmamali. Gorev kendi dongusunde gecisi gorup
+    // temizligi yapiyor.
+    const int yeni =
+        (g_sayfa.load(std::memory_order_relaxed) + 1) % SAYFA_ADET;
+
+    // Sure her sayfada BASTAN basliyor. Yoksa bilgi sayfasinda 14
+    // saniye gecirip QR'a gecen ebeveyn, QR'i bir saniye gorurdu.
+    if (yeni != SAYFA_YOK) {
         g_bilgi_us.store(esp_timer_get_time(), std::memory_order_relaxed);
-        g_bilgi.store(true, std::memory_order_relaxed);
     }
+    g_sayfa.store(yeni, std::memory_order_relaxed);
 }
 
 bool gozler_guncelleme_acik()
@@ -1386,7 +1455,7 @@ bool gozler_guncelleme_acik()
 
 bool gozler_bilgi_acik()
 {
-    return g_bilgi.load(std::memory_order_relaxed);
+    return g_sayfa.load(std::memory_order_relaxed) != SAYFA_YOK;
 }
 
 void gozler_pil_uyarisi(int yuzde)

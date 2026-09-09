@@ -1,2 +1,2 @@
-3.3.1
-Kumandanin sagi ve solu tersti: cubugu saga itince Pati sola donuyordu. Duzeltildi. Ileri ve geri zaten dogruydu, onlara dokunulmadi.
+3.4.0
+İlk kurulum artık ekranda anlatılıyor. Pati kendi Wi-Fi ağını yayınlarken ekranında o ağın adı yazıyor; telefonunuzu ağa bağlayınca ekranda bir kare kod çıkıyor ve kamerayla okutunca ayar sayfası açılıyor. Önceden sayfa kendiliğinden açılmazsa ne yapacağınızı bilmek gerekiyordu. Ayrıca mavi tuşa ikinci kez basınca panelin kare kodu çıkıyor: gözler, bilgi, kare kod, sonra yine gözler.

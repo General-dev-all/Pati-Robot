@@ -75,4 +75,48 @@ esp_err_t perde_wifi(int faz, const char* mesaj = "WiFi aranıyor",
 // "once sarja tak" demek icin.
 esp_err_t perde_guncelleme(const char* surum, int yuzde, const char* uyari);
 
+// ---------------------------------------------------------------------------
+// Kurulum sayfasi — Pati kendi agini yayinliyor
+// ---------------------------------------------------------------------------
+//
+// 🔴 BURASI EBEVEYNIN SIKISTIGI YER. Kurulum kipinde ekran eskiden
+// yalnizca uykulu gozler gosteriyordu; gerekce "panel zaten acik"
+// diye yaziliydi. Ama ebeveyn panelin acik oldugunu GOREMIYOR:
+// telefonu Pati'nin agina baglayinca yakalama sayfasi bazen
+// kendiliginden acilmiyor ve o an cihazda hicbir sey ne yapilacagini
+// soylemiyor. Ebeveynin `pati.local` diye bir adres oldugunu bilmesi
+// beklenemez.
+//
+// Susan bir robot neden sustugunu soylemeli — ayni gerekce WiFi
+// perdesini de dogurmustu.
+//
+// IKI ADIMLI, ve adimi TELEFONUN BAGLI OLUP OLMADIGI belirliyor:
+//
+//   telefon yok  -> ag adi buyuk buyuk, QR YOK
+//   telefon var  -> QR (http://192.168.4.1) + adres yazisi
+//
+// ⚠️ QR'i once GOSTERMEMEK bilincli. 192.168.4.1 ancak telefon Pati'nin
+// agina baglandiktan sonra bir yere gidiyor; once okutulsa tarayici
+// acilmaz ve ebeveyn bunu "QR bozuk" diye okurdu. Adres, ancak
+// calisir hale geldigi anda ekrana geliyor.
+//
+// Veriyi kendisi topluyor (ag_adi, ag_telefon_bagli) — perde_bilgi ile
+// ayni desen.
+esp_err_t perde_kurulum();
+
+// Panel adresi sayfasi — mavi tusun IKINCI basisinda.
+//
+// Gozler -> bilgi -> QR -> gozler. Bilgi sayfasi cocuk icin (pil,
+// wifi); bu sayfa EBEVEYN icin: paneli acmanin yolu.
+//
+// Gosterilen adres duruma gore degisiyor ve YALNIZCA CALISAN adres
+// gosteriliyor:
+//   bagli    -> http://pati.local
+//   kurulum  -> http://192.168.4.1
+//   ikisi de degil -> QR yok, "once Wi-Fi" yazisi
+//
+// Yanlis adresi QR olarak gostermek, calismayan bir seyi calisir gibi
+// sunmak olurdu.
+esp_err_t perde_panel_qr();
+
 }  // namespace pati

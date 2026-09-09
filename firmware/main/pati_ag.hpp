@@ -81,6 +81,17 @@ const char* ag_adi();
 
 // 1..4 cubuk. Bagli degilse 0.
 int ag_gucu();
+
+// Kurulum agina su an bir telefon bagli mi.
+//
+// Kurulum ekrani buna bakiyor ve iki adima ayriliyor: telefon
+// baglanmadan ONCE QR gostermek zararli olurdu — http://192.168.4.1
+// ancak telefon Pati'nin agina girdikten sonra anlamli. Once
+// gosterilseydi ebeveyn okutur, tarayici acilmaz ve "bozuk" diye
+// okurdu.
+//
+// Kurulum modunda degilsek her zaman false.
+bool ag_telefon_bagli();
 // Panel isteğinde okunur; RSSI alım gücü, TX ise sürücünün güç sınırıdır.
 struct AgRadyo { int rssi_dbm = 0; int tx_ceyrek_dbm = -1; int tasarruf = -1; };
 AgRadyo ag_radyo();
