@@ -1,2 +1,2 @@
 3.5.0
-İki yenilik. Birincisi: her kolun gidebileceği aralık artık panelden ayarlanıyor. Sol kol tekerleğe ve üstteki kabloya çarpmasın diye dar geliyor (%10 ile %70 arası), sağ kol serbest. Çubuğu bırakınca kol oraya gidiyor, böylece çarpıp çarpmadığını görerek ayarlayabilirsiniz. Bu ayar "fabrika ayarlarına dön" dendiğinde SİLİNMEZ, çünkü unutulursa servo bozulabilir. İkincisi: Pati'ye "hadi uyu, iyi geceler" dediğinizde artık gerçekten uyuyor; konuştuğunuzda uyanıyor.
+İki yenilik. Birincisi: her kolun gidebileceği aralık artık panelden ayarlanıyor. Sol kol tekerleğe ve üstteki kabloya çarpmasın diye dar geliyor (%10 ile %70 arası), sağ kol serbest. Çubuğu bırakınca kol oraya gidiyor, böylece çarpıp çarpmadığını görerek ayarlayabilirsiniz. 
