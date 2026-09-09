@@ -231,6 +231,30 @@ başka görevden çizmek ekranı bozar (`pati_perde.hpp`).
 | **Panel QR** | mavi tuşun ikinci basışı | tuş, uyarı, ya da 45 sn |
 | **Güncelleme** | açılışta yeni sürüm varsa | tuş, ya da 20 sn |
 
+🔴 **"AP'im açık mı" ile "durumum Kurulum mu" AYRI İKİ SORU.**
+09.09.2026'da gerçek cihazda öğrenildi. Kurulum kipinde çip **APSTA**'da:
+AP telefon için, STA tarama için — ve STA tarafı bir IP alırsa
+`IP_EVENT_STA_GOT_IP` gelip `g_durum` sessizce `Bagli` oluyor, **AP hâlâ
+ayaktayken.**
+
+Belirtisi yanıltıcıydı ve **üç yerde birden** çıktı:
+
+| Nerede | Ne oldu |
+|---|---|
+| Captive portal 302'si | telefon bağlanıyor, sayfa kendiliğinden açılmıyor — *"panel bazen çıkmıyor"* |
+| Kurulum perdesi | ekranda hiç görünmüyor |
+| Bilgi sayfası | **kendi AP adını** "bağlı olduğum ağ" diye yazıyor |
+
+Üçü de "AP açık mı" diye sorması gerekirken "durum ne" diye soruyordu.
+Doğru kaynak **`ag_kurulum_agi_acik()`** (`g_kurulum_modu`): yalnızca
+`ap_ac()` kaldırıyor, yalnızca iki çıkışta iniyor, STA olaylarından
+etkilenmiyor. **`AgDurumu` bir durum makinesi hâli; radyonun o an ne
+yaydığını anlatmıyor.**
+
+İlk kanıt ekrandı: bilgi sayfası ağ adını yalnızca bağlıyken yazıyor,
+ekranda "Pati-9EFD" yazıyordu. Belirtinin nerede olduğunu değil,
+**hangi soruyu yanlış sorduğumuzu** gösterdi.
+
 🔴 **Kurulum kipinde ekran artık gözler değil, yönlendirme gösteriyor.**
 Eskiden gözler duruyordu ve gerekçesi yazılıydı: *"o hâli gözler
 anlatıyor (uykulu) ve panel açık"*. Yanlıştı — **ebeveyn panelin açık

@@ -147,7 +147,15 @@ esp_err_t dosya_isle(httpd_req_t* r)
     // 302 kullaniliyor, 200 + HTML DEGIL: Android'in yoklamasi govdeye
     // bakmiyor, DURUM KODUNA bakiyor. 200 donsek "internet var" sanip
     // sayfayi hic acmaz.
-    if (ag_durumu() == AgDurumu::Kurulum) {
+    //
+    // 🔴 "AP ACIK MI" DIYE SORUYOR, "DURUM NE" DIYE DEGIL (09.09.2026).
+    //
+    // Eskiden `ag_durumu() == Kurulum` bakiliyordu. Kurulum kipinde cip
+    // APSTA'da ve STA tarafi bir IP alirsa durum sessizce `Bagli`
+    // oluyor — AP hala ayakta oldugu halde. O anda bu yonlendirme
+    // susuyordu ve telefon baglaninca sayfa kendiliginden acilmiyordu.
+    // Kullanicinin "panel bazen cikmiyor" sikayeti buydu.
+    if (ag_kurulum_agi_acik()) {
         httpd_resp_set_status(r, "302 Found");
         const std::string hedef = std::string("http://") + ag_ip() + "/";
         httpd_resp_set_hdr(r, "Location", hedef.c_str());
@@ -181,7 +189,9 @@ esp_err_t durum_isle(httpd_req_t* r)
     cJSON_AddNumberToObject(a, "tx_ceyrek_dbm", radyo.tx_ceyrek_dbm);
     cJSON_AddNumberToObject(a, "tasarruf", radyo.tasarruf);
     cJSON_AddBoolToObject(a, "bagli", d == AgDurumu::Bagli);
-    cJSON_AddBoolToObject(a, "kurulum", d == AgDurumu::Kurulum);
+    // AgDurumu DEGIL, AP'nin kendisi: ikisi ayrisabiliyor
+    // (pati_ag.hpp · ag_kurulum_agi_acik).
+    cJSON_AddBoolToObject(a, "kurulum", ag_kurulum_agi_acik());
     cJSON_AddStringToObject(a, "ip", ag_ip());
     cJSON_AddItemToObject(k, "ag", a);
 
@@ -847,8 +857,14 @@ void panel_dns_baslat()
     // agina bagalaniyor, sayfa kendiliginden acilmiyor ve ebeveynin
     // 192.168.4.1'i bilmesi gerekiyor — oysa tam da bilmemesi icin var.
     //
+    // ⚠️ 09.09.2026'DA AYNI KUSURUN IKINCI YUZU CIKTI. Kosul
+    // `ag_durumu() != Kurulum` idi ve kurulum kipinde STA bir IP alinca
+    // durum `Bagli` oluyor; DNS ya hic acilmiyor ya da acilmis olani
+    // kapatan yol tetikleniyordu. Dogru soru "AP acik mi"
+    // (pati_ag.hpp · ag_kurulum_agi_acik).
+    //
     // Cift cagriya karsi guvenli: exchange(true) ikinci cagriyi eliyor.
-    if (ag_durumu() != AgDurumu::Kurulum) return;
+    if (!ag_kurulum_agi_acik()) return;
     if (g_dns_calisiyor.exchange(true)) return;
 
     if (xTaskCreate(dns_gorevi, "dns", 3072, nullptr, 4, nullptr) != pdPASS) {

@@ -220,6 +220,26 @@ edileceğini yazıyor.
 ⚠️ İleri/geri de tersse bu **başka bir arıza**: iki motorun da
 kutupları ters bağlı demektir, dönüşle ilgisi yok.
 
+### 🔴 "Panel bazen çıkmıyor" — üç belirti, tek sebep
+
+**3.4.1'de düzeltildi.** Daha eskiyse güncelle; aşağısı sebebin kaydı.
+
+Kurulum kipinde çip APSTA'da: AP telefon için, STA tarama için. STA
+tarafı bir IP alırsa `g_durum` sessizce `Bagli` oluyor — **AP hâlâ
+ayaktayken.** `AgDurumu::Kurulum` diye soran her yer o anda kör kalıyordu:
+
+1. Captive portal'ın 302'si susuyor → telefon bağlanıyor, sayfa
+   kendiliğinden açılmıyor
+2. Kurulum perdesi ekranda hiç görünmüyor
+3. Bilgi sayfası kendi AP adını "bağlı olduğum ağ" diye yazıyor
+
+**Ayırt etme:** `/api/durum` → `ag.kurulum` artık AP'nin kendisini
+söylüyor (eskiden durum makinesini söylüyordu). `ag.kurulum` true ise
+AP ayakta ve `192.168.4.1` geçerli — `ag.durum` ne derse desin.
+
+⚠️ **Yeni kod "AP açık mı" diye soracaksa `ag_kurulum_agi_acik()`
+kullansın**, `ag_durumu()` değil.
+
 ### Kurulum sayfası açılmıyor / ebeveyn panele giremiyor
 
 Telefon `Pati-XXXX` ağına bağlanınca yakalama sayfası **her zaman

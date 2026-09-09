@@ -82,6 +82,34 @@ const char* ag_adi();
 // 1..4 cubuk. Bagli degilse 0.
 int ag_gucu();
 
+// ---------------------------------------------------------------------------
+// 🔴 "KURULUM AGIM ACIK MI" ILE "DURUMUM KURULUM MU" AYRI IKI SORU
+// ---------------------------------------------------------------------------
+//
+// `ag_durumu() == AgDurumu::Kurulum` bu sorunun cevabi DEGIL, ve bunu
+// 09.09.2026'da gercek cihazda ogrendik.
+//
+// Kurulum kipinde cip APSTA'da: AP telefon icin, STA ise TARAMA icin
+// (ve acilista STA_START olayi esp_wifi_connect'i tetikliyor). STA
+// tarafi bir sekilde IP alirsa `IP_EVENT_STA_GOT_IP` geliyor ve
+// `g_durum` sessizce `Bagli` oluyor — AP hala ayakta oldugu halde.
+//
+// BELIRTISI YANILTICIYDI ve uc yerde birden cikti:
+//   - captive portal yonlendirmesi susuyor (telefon baglaniyor, sayfa
+//     kendiliginden acilmiyor — "panel bazen cikmiyor" sikayeti)
+//   - kurulum perdesi ekranda hic gorunmuyor
+//   - bilgi sayfasi KENDI AP ADINI "bagli oldugum ag" diye yaziyor
+//     (ekranda "Pati-9EFD" gorundu; ilk kanit buydu)
+//
+// Ucu de "AP acik mi" diye sormasi gerekirken "durum ne" diye
+// soruyordu. Dogru kaynak `g_kurulum_modu`: yalnizca ap_ac() kaldiriyor
+// ve yalnizca iki cikista iniyor, STA olaylarindan etkilenmiyor.
+//
+// ⚠️ YENI KOD "AP ACIK MI" DIYE SORACAKSA BURAYI KULLANSIN.
+// AgDurumu bir DURUM MAKINESI HALI; radyonun o an ne yaydigini
+// anlatmiyor.
+bool ag_kurulum_agi_acik();
+
 // Kurulum agina su an bir telefon bagli mi.
 //
 // Kurulum ekrani buna bakiyor ve iki adima ayriliyor: telefon

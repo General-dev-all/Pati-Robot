@@ -1,2 +1,2 @@
-3.4.0
-İlk kurulum artık ekranda anlatılıyor. Pati kendi Wi-Fi ağını yayınlarken ekranında o ağın adı yazıyor; telefonunuzu ağa bağlayınca ekranda bir kare kod çıkıyor ve kamerayla okutunca ayar sayfası açılıyor. Önceden sayfa kendiliğinden açılmazsa ne yapacağınızı bilmek ge
+3.4.1
+Kurulum sayfasının bazen kendiliğinden açılmaması düzeltildi. Aynı hata yüzünden ekrandaki kurulum yönlendirmesi de çıkmıyordu; artık Pati kendi ağını yayınlarken ekranda ağın adı, telefonunuz bağlanınca da kare kod görünüyor. Ayrıca bilgi ekranında "tekrar bas: kare kod" yazıyor, yani panelin kare kodunun orada olduğunu bilmeniz gerekmiyor.

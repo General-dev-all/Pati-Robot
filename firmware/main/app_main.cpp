@@ -228,14 +228,33 @@ void guc_gozcusu(void*)
         // dogru yeri: bu gorev bekleyebilir, goz gorevi bekleyemez.
         {
             const pati::AgDurumu ag = pati::ag_durumu();
+
+            // 🔴 "KURULUM" = AP ACIK, durum makinesinin hali degil.
+            // Ikisi ayrisabiliyor (pati_ag.hpp · ag_kurulum_agi_acik)
+            // ve ayristigi anda kurulum perdesi ekranda hic
+            // gorunmuyordu.
+            //
+            // "Bagli" de AP acikken false: AP acikken Pati ev aginda
+            // sayilmaz, ve o hali kurulum perdesi anlatiyor.
+            const bool ap_acik = pati::ag_kurulum_agi_acik();
             pati::gozler_durum_bildir(
                 static_cast<int>(pati::guncelleme_durumu()),
                 pati::guncelleme_yuzde(),
                 pati::guncelleme_yeni_surum(),
-                ag == pati::AgDurumu::Bagli,
-                ag == pati::AgDurumu::Kurulum,
+                !ap_acik && ag == pati::AgDurumu::Bagli,
+                ap_acik,
                 pati::pil_yuzde(),
                 kaynak == pati::GucKaynagi::Usb, pati::ag_gucu());
+
+            // DNS ele gecirmenin omru AP'nin omrune bagli. Ikisi de
+            // fikirsiz (idempotent), yani her turda cagrilmasi guvenli
+            // — ve boylece AP ne zaman acilip kapanirsa kapansin
+            // captive portal onunla birlikte gelip gidiyor.
+            if (ap_acik) {
+                pati::panel_dns_baslat();
+            } else {
+                pati::panel_kurulum_bitti();
+            }
         }
         if (ilk || kaynak != onceki) {
             ilk = false;
@@ -715,7 +734,7 @@ extern "C" void app_main()
     // bagli degilken olculebilir olmali.
     int kurulum_tik = 0;
     while (pati::ag_durumu() != pati::AgDurumu::Bagli) {
-        if (pati::ag_durumu() == pati::AgDurumu::Kurulum) {
+        if (pati::ag_kurulum_agi_acik()) {
             // Captive portal DNS'i BURADA aciliyor.
             //
             // panel_baslat() sirasinda durum henuz "Ariyor" oluyor ve
@@ -749,7 +768,14 @@ extern "C" void app_main()
         }
         vTaskDelay(pdMS_TO_TICKS(200));
     }
-    pati::panel_kurulum_bitti();
+    // 🔴 AP HALA ACIKSA DNS KAPATILMIYOR (09.09.2026).
+    //
+    // Yukaridaki dongu `ag_durumu() == Bagli` gorunce cikiyor. Kurulum
+    // kipinde APSTA var ve STA tarafi bir IP alirsa durum `Bagli`
+    // oluyor — AP hala ayakta, ebeveynin telefonu hala ona bagli. Eski
+    // hali burada captive portal DNS'ini KAPATIYORDU, yani tam da
+    // ebeveyn kurulum yaparken sayfa acilmaz oluyordu.
+    if (!pati::ag_kurulum_agi_acik()) pati::panel_kurulum_bitti();
     pati::kullanim_saat_ayarla();
     ESP_LOGI(ETIKET, "ag hazir (%s)", pati::ag_ip());
 

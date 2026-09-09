@@ -469,7 +469,12 @@ constexpr int Q_Y      = (PATI_EKR_Y - Q_BOYUT) / 2;   // 1
 constexpr int Q_SUTUN  = Q_X + Q_BOYUT + 8;            // 142
 
 constexpr int B_AD_Y = 66;       // wifi adi — govdenin USTU
-constexpr int B_CUBUK_Y = 124;   // sinyal cubuklarinin TABANI
+constexpr int B_CUBUK_Y = 118;   // sinyal cubuklarinin TABANI
+
+// Ipucu satiri EN ALTA. Cubuklarin tabani 124'ten 118'e cekildi ki
+// altta bir satirlik yer kalsin; cubuklarin en yuksegi 26 piksel,
+// yani tepesi 92'de ve wifi adiyla (66..80) cakismiyor.
+constexpr int B_IPUCU_Y = 124;
 constexpr int B_CUBUK_GEN = 12;
 constexpr int B_CUBUK_ARA = 6;
 constexpr int B_CUBUK_SAYI = 4;
@@ -579,9 +584,18 @@ esp_err_t perde_bilgi()
     // yeniden sorulsa pil yuzdesi serit ortasinda degisip sayfayi
     // kendi icinde tutarsiz birakabilirdi.
     const int yuzde = pil_yuzde();
-    const bool bagli = (ag_durumu() == AgDurumu::Bagli);
+
+    // 🔴 KENDI AP'IMIZ "BAGLI OLDUGUM AG" DEGIL (09.09.2026).
+    //
+    // ag_adi() kurulum kipinde KENDI AP adimizi donduruyor. Durum
+    // makinesi o sirada `Bagli`ye kayabiliyor (pati_ag.hpp ·
+    // ag_kurulum_agi_acik) ve bu sayfa ekranda "Pati-9EFD" yazip dolu
+    // sinyal cubuklari cizdi — yani Pati kendi agina baglanmis gibi
+    // gorundu. Ilk kanit buydu; hatanin kendisi uc yerdeydi.
+    const bool ap_acik = ag_kurulum_agi_acik();
+    const bool bagli = !ap_acik && (ag_durumu() == AgDurumu::Bagli);
     const char* ad = ag_adi();
-    const int guc = ag_gucu();
+    const int guc = bagli ? ag_gucu() : 0;
 
     const int ic_gen = B_PIL_GEN - B_PIL_KAL * 2 - 4;
     const int y = (yuzde < 0) ? -1 : std::min(yuzde, 100);
@@ -594,8 +608,11 @@ esp_err_t perde_bilgi()
     // Wifi adi sigmiyorsa once olcek 1'e dusuyoruz, o da yetmezse
     // kirpiliyor. Kirpmak son care: cocuk adi evdeki agla
     // eslestirebilmeli, yarim ad bunun icin yeterli olmayabilir.
+    // AP acikken ad YINE yaziliyor ama sonuk: o ad gercekten var ve
+    // ebeveynin telefonunda arayacagi sey — ama Pati o aga "bagli"
+    // degil, onu YAYINLIYOR.
     char ad_metni[40] = {};
-    if (bagli && ad != nullptr && ad[0] != '\0') {
+    if ((bagli || ap_acik) && ad != nullptr && ad[0] != '\0') {
         std::snprintf(ad_metni, sizeof(ad_metni), "%s", ad);
     } else {
         std::snprintf(ad_metni, sizeof(ad_metni), "%s", "WiFi yok");
@@ -630,6 +647,15 @@ esp_err_t perde_bilgi()
 
         // ---- wifi ----
         metin_orta(B_AD_Y, ad_metni, ad_olcek, bagli ? vurgu : golge);
+
+        // 🔴 SONRAKI SAYFA GIZLI KALMASIN.
+        //
+        // Mavi tusun ikinci basisi panelin kare kodunu aciyor ve
+        // kullanicinin ilk tepkisi "gizli ozellik olarak kaldi,
+        // anneye soylemem lazim" oldu. Bir tusun varligi ekranda
+        // yaziyorsa kimseye soylemek gerekmiyor — ayni gerekce
+        // guncelleme perdesindeki "MAVI TUSA BAS" satirinda da var.
+        metin_orta(B_IPUCU_Y, "tekrar bas: kare kod", 1, soluk);
 
         // Sinyal cubuklari: soldan saga yukselen dort cubuk. Dolu
         // olanlar parlak, kalanlar sonuk — "3/4" gibi bir sayi yerine
@@ -830,9 +856,10 @@ esp_err_t perde_panel_qr()
     const std::uint16_t vurgu = ekran_renk(GOZ_ACIK.r, GOZ_ACIK.g, GOZ_ACIK.b);
     const std::uint16_t soluk = ekran_renk(GOZ_KOYU.r, GOZ_KOYU.g, GOZ_KOYU.b);
 
-    const AgDurumu durum = ag_durumu();
-    const bool bagli = (durum == AgDurumu::Bagli);
-    const bool kurulum = (durum == AgDurumu::Kurulum);
+    // AP acikken "bagli" sayilmiyoruz: o halde gecerli adres
+    // 192.168.4.1 ve `pati.local` bir yere gitmiyor.
+    const bool kurulum = ag_kurulum_agi_acik();
+    const bool bagli = !kurulum && (ag_durumu() == AgDurumu::Bagli);
 
     // 🔴 YALNIZCA CALISAN ADRES GOSTERILIYOR.
     //

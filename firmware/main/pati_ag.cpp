@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <atomic>
 #include <cstring>
 
 #include <esp_event.h>
@@ -112,7 +113,10 @@ int g_deneme = 0;
 // baglanmaya calisirken kanal degisiyor ve kurulum sayfasi kopuyor.
 int g_telefon = 0;
 int g_kopma = 0;
-bool g_kurulum_modu = false;
+// 🔴 ATOMIK: uc ayri gorevden okunuyor (HTTP, goz/app_main, ag).
+// Duz bool da pratikte tek yazmac erisimi ama bunu yazili bir varsayim
+// yapmak yerine tipe yaziyoruz — okuyan gorev sayisi artti.
+std::atomic<bool> g_kurulum_modu{false};
 
 std::string ap_adi()
 {
@@ -272,9 +276,9 @@ void ap_ac()
     // gereksiz. Ozellikle BANNER tekrar basilmamali: uc dakikada bir
     // "KURULUM MODU" yazmak gunlugu doldurur ve gercekten yeni bir olay
     // olmus gibi gorunur.
-    const bool ilk_giris = !g_kurulum_modu;
+    const bool ilk_giris = !g_kurulum_modu.load();
 
-    g_kurulum_modu = true;
+    g_kurulum_modu.store(true);
     g_durum = AgDurumu::Kurulum;
     g_ad = ap_adi();
     std::snprintf(g_ip, sizeof(g_ip), "192.168.4.1");
@@ -345,7 +349,7 @@ void ag_gorevi(void*)
         // tek yonlu bir kapiya donusuyordu: bitleri ancak ebeveyn
         // telefonla gelip sifre girerse birisi kaldirabiliyordu.
         // Gerekcesi ve olculen olay KURULUM_YOKLAMA_MS'in yaninda.
-        const TickType_t bekleme = g_kurulum_modu
+        const TickType_t bekleme = g_kurulum_modu.load()
                                        ? pdMS_TO_TICKS(KURULUM_YOKLAMA_MS)
                                        : portMAX_DELAY;
 
@@ -364,11 +368,11 @@ void ag_gorevi(void*)
         if (b & BAGLI_BIT) {
             // Yoklama tuttu: ag geri geldi. AP artik gereksiz.
             // (Panelden girilen sifrede ayni isi ag_baglan yapiyor.)
-            if (g_kurulum_modu) {
+            if (g_kurulum_modu.load()) {
                 ESP_LOGI(ETIKET, "kayitli ag geri geldi — kurulum agi "
                                  "kapatiliyor");
                 esp_wifi_set_mode(WIFI_MODE_STA);
-                g_kurulum_modu = false;
+                g_kurulum_modu.store(false);
             }
             continue;
         }
@@ -443,9 +447,11 @@ AgDurumu ag_durumu() { return g_durum; }
 const char* ag_ip() { return g_ip; }
 const char* ag_adi() { return g_ad.c_str(); }
 
+bool ag_kurulum_agi_acik() { return g_kurulum_modu.load(); }
+
 bool ag_telefon_bagli()
 {
-    return g_kurulum_modu && g_telefon > 0;
+    return g_kurulum_modu.load() && g_telefon > 0;
 }
 
 int ag_gucu()
@@ -502,7 +508,7 @@ std::vector<BulunanAg> ag_tara()
         if (ad[0] == '\0') continue;
         // Kendi AP'mizi listelemeyelim; ebeveyn ona baglanmayi denerse
         // kurulum sayfasi kopar.
-        if (g_kurulum_modu && g_ad == ad) continue;
+        if (g_kurulum_modu.load() && g_ad == ad) continue;
 
         // Ayni ag birden fazla kanalda gorunuyor (mesh/repeater):
         // en gucluyu tut.
@@ -560,10 +566,10 @@ esp_err_t ag_kaydet_ve_bagla(const std::string& ad, const std::string& sifre)
 
     if (b & BAGLI_BIT) {
         // Basarili: kurulum AP'sini kapat, pencere kapansin.
-        if (g_kurulum_modu) {
+        if (g_kurulum_modu.load()) {
             ESP_LOGI(ETIKET, "baglandi — kurulum agi kapatiliyor");
             esp_wifi_set_mode(WIFI_MODE_STA);
-            g_kurulum_modu = false;
+            g_kurulum_modu.store(false);
         }
         return ESP_OK;
     }
