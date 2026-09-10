@@ -8,6 +8,9 @@ source = (root / 'main/pati_sohbet.cpp').read_text(encoding='utf-8')
 begin = source.index('void kopmayi_toparla()')
 end = source.index('\n// ---------------------------------------------------------------------------', begin)
 function = source[begin:end]
+begin = source.index('void yenileme_gerekirse()')
+end = source.index('\n}', begin) + 2
+renew = source[begin:end]
 begin = source.index('        if (olay.state == ConversationState::Listening && g_deneme > 0')
 end = source.index('        // Gemini Speaking', begin)
 ready = source[begin:end]
@@ -29,11 +32,14 @@ std::int64_t g_son_deneme_us=0, now=0;
 constexpr int GERI_CEKILME_TABAN_MS=2000, GERI_CEKILME_EN_COK_MS=30000;
 int g_ayar=0, starts=0, successes=0;
 bool synchronous_failure=false, immediate_error=false;
+bool changed=false;
+bool ayar_yenileme_gerekli() { return changed; }
+void* acik_tur() { return nullptr; }
 std::int64_t esp_timer_get_time() { return now; }
 void tur_kapat() {} void beden_konusma_bildir(bool) {}
 void kullanim_duraklat() {} void prompt_kur() {}
 void anahtar_baglanti_hatasi() {} void gozler_durum(const char*) {}
-void ayar_yenileme_temizle() {} void anahtar_kod_bildir(int) { ++successes; }
+void ayar_yenileme_temizle() { changed=false; } void anahtar_kod_bildir(int) { ++successes; }
 void kullanim_devam() {} void bekci_sifirla() {} void gozler_dinliyor() {}
 struct Result { bool has_value() const { return !synchronous_failure; } };
 struct Client {
@@ -49,7 +55,7 @@ struct Client {
 } client, *g_istemci=&client;
 struct Event { ConversationState state; };
 '''
-cpp += function + '\nvoid ready_event(Event olay) {\n' + ready + '\n}\n'
+cpp += function + '\n' + renew + '\nvoid ready_event(Event olay) {\n' + ready + '\n}\n'
 cpp += r'''
 int main() {
     kopmayi_toparla(); assert(starts==1 && g_deneme==1 && successes==0);
@@ -77,6 +83,32 @@ int main() {
     now=g_son_deneme_us+2000000;
     kopmayi_toparla(); assert(g_koptu && g_deneme==2);
     puts("OK: asenkron hata, gercek hazirlik, geri cekilme, sayac sinirlari");
+
+    // Uyuyan robotta ayar beklemeli; oturumu gizlice açarsa normal
+    // uyanma, istemcinin zaten açık olması nedeniyle başarısız olur.
+    immediate_error=false; synchronous_failure=false;
+    g_koptu=false; g_deneme=0; g_uykuda=true; changed=true;
+    int before=starts;
+    yenileme_gerekirse();
+    if (starts!=before || !changed) { puts("HATA: uykuda ayar oturumu acti"); return 1; }
+    g_uykuda=false;
+    yenileme_gerekirse();
+    assert(starts==before+1 && !changed);
+
+    // Ayar yolundaki eşzamanlı hata da tek toparlama yoluna aktarılmalı.
+    changed=true; synchronous_failure=true; g_deneme=0; g_koptu=false;
+    before=starts;
+    yenileme_gerekirse();
+    assert(starts==before+1);
+    for(int i=0;i<10;++i) { now+=100000; kopmayi_toparla(); yenileme_gerekirse(); }
+    if(starts!=before+1) { puts("HATA: yenileme geri cekilmeyi atladi"); return 1; }
+    now=g_son_deneme_us+2000000;
+    kopmayi_toparla(); assert(starts==before+2 && g_deneme==2);
+    synchronous_failure=false; immediate_error=true; g_koptu=false;
+    changed=true;
+    yenileme_gerekirse();
+    assert(g_koptu && !g_yenileniyor);
+    puts("OK: uykuda yenileme ertelendi; ayar hatasi geri cekilmeye uydu");
 }
 '''
 (out / 'test.cpp').write_text(cpp, encoding='utf-8')

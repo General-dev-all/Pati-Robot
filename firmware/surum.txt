@@ -1,2 +1,2 @@
-3.5.2
-Şarjda gözler normalde 20, konuşurken 10 FPS. Göz parlaması tek kat, cam parlaması kapalı; ekran %35 ve ses tavanı 0.70. Pati'nin ses karakteri ve Wi-Fi gücü korunuyor. Resetlere etkisi izleniyor.
+3.5.3
+Pati uyurken değiştirilen ses ayarı artık uyanmasını engellemiyor. Başarısız ayar yenilemeleri, bağlantıyı peş peşe zorlamak yerine bekleyerek tekrar deneniyor. Şarj ve pil tasarrufu ayarları korunuyor.

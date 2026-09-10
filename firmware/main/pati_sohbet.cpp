@@ -484,7 +484,10 @@ void yenileme_gerekirse()
     // de setup mesajini yeniden gondermeyi gerektiriyor ve ikisi de
     // ayni yolu kullaniyor — olculen bosluk 568 ms, hafiza korunuyor.
     const bool ayar_degisti = ayar_yenileme_gerekli();
-    if ((!g_goaway && !ayar_degisti) || g_yenileniyor || !g_calisiyor) {
+    // Uykuda oturum açılırsa uyandir() zaten açık istemciye takılır.
+    // Kopma sürerken de bu yol toparlamanın beklemesini atlamamalı.
+    if ((!g_goaway && !ayar_degisti) || g_yenileniyor || !g_calisiyor ||
+        g_uykuda || g_koptu) {
         return;
     }
     // Tur ortasinda yenilemek Python'da cevabin kaybolmasina yol acmisti
@@ -505,13 +508,19 @@ void yenileme_gerekirse()
     // Hafiza bu tur icinde degismis olabilir (yeni bir sey ogrenildi,
     // ebeveyn not yazdi); prompt tazelensin.
     prompt_kur();
+    // Bilerek durdurma bitti; start() sırasında gelen hata artık
+    // bastırılmamalı. start() bağlantının kurulmasını beklemez.
+    g_yenileniyor = false;
     const auto sonuc = g_istemci->start(g_ayar);
 
-    g_yenileniyor = false;
-
     if (!sonuc.has_value()) {
-        // Bayragi BIRAKMIYORUZ: bir sonraki bosta tekrar denenecek.
-        ESP_LOGE(ETIKET, "yenileme basarisiz, tekrar denenecek");
+        // Kuyruk her boşaldığında start() çağırmak yerine, başarısız
+        // girişimi ortak geri çekilme yoluna ver. Ayar isteği korunur.
+        g_koptu = true;
+        if (g_deneme < UINT32_MAX) ++g_deneme;
+        g_son_deneme_us = esp_timer_get_time();
+        kullanim_duraklat();
+        ESP_LOGE(ETIKET, "yenileme basarisiz, bekleyerek toparlanacak");
         anahtar_baglanti_hatasi();
         return;
     }
@@ -519,7 +528,7 @@ void yenileme_gerekirse()
     g_goaway = false;
     ayar_yenileme_temizle();
     bekci_sifirla();
-    ESP_LOGI(ETIKET, "yenilendi (%lld ms boslukla, oturum anahtari korundu)",
+    ESP_LOGI(ETIKET, "yenileme girisimi baslatildi (%lld ms, sunucu bekleniyor)",
              (esp_timer_get_time() - t0) / 1000);
 }
 
