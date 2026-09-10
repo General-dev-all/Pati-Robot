@@ -258,9 +258,7 @@ esp_err_t durum_isle(httpd_req_t* r)
     cJSON_AddNumberToObject(g, "goz_fps", gozler_hedef_fps());
     // Fiilen uygulanan ses tavani — kullanicinin sectigi degil.
     cJSON_AddNumberToObject(g, "ses_tavani",
-                            kaynak == GucKaynagi::Usb
-                                ? ses_seviyesi()
-                                : std::min(ses_seviyesi(), SES_PIL_TAVANI));
+                            ses_etkin_seviye());
     // Brownout besleme düşmesini bildirir; tek başına hangi yükün
     // veya bileşenin sorumlu olduğunu kanıtlamaz.
     const esp_reset_reason_t sebep = esp_reset_reason();

@@ -107,6 +107,8 @@ constexpr int PIL_KARE_MS = 1000 / PIL_FPS;
 // geri alinir.
 constexpr int PIL_KONUSMA_FPS = 5;
 constexpr int PIL_KONUSMA_KARE_MS = 1000 / PIL_KONUSMA_FPS;
+// Şarjda yalnız ses çalarken çizim yükünü azaltır; sessizken akıcılık korunur.
+constexpr int SARJ_KONUSMA_KARE_MS = 1000 / 10;
 
 // Calisma aninda degisiyor: guc kaynagi degisince app_main ayarliyor.
 std::atomic<int> g_kare_ms{KARE_MS};
@@ -808,7 +810,7 @@ PATI_HIZLI void satiri_ciz(int sy, const Yerlesim y[2], float kirp)
 
         // --- parlama: ana seklin buyugu, dusuk alfa, birkac kat
         //
-        // 🔴 PILDE TEK KAT. Uretilmis dosyadaki not: "cizim maliyetinin
+        // Pilde ve şarjda tek kat. Önceki üç katlı çizimde "maliyetin
         // %81'i bu katmanlar" (gozler_test.mjs ile olculdu). Uc kattan
         // bire inmek cizim isinin yarisindan fazlasini kesiyor.
         //
@@ -820,8 +822,7 @@ PATI_HIZLI void satiri_ciz(int sy, const Yerlesim y[2], float kirp)
         //
         // ⚠️ Kazanci OLCULMEDI, cizim maliyetinin dagilimindan
         // hesaplandi. Olculecek olan yine cokme sikligi.
-        const int parlama_kat =
-            g_pilde.load(std::memory_order_relaxed) ? 1 : PATI_GOZ_PARLAMA_KAT;
+        const int parlama_kat = PATI_GOZ_PARLAMA_KAT;
         for (int k = parlama_kat; k >= 1; --k) {
             const float b = static_cast<float>(k) * PATI_GOZ_PARLAMA_KALINLIK;
             const Kapak dis{kapak.ust_a - b, kapak.ust_b,
@@ -1357,8 +1358,9 @@ int gozler_hedef_fps()
 {
     const bool ses = ses_penceresi_acik();
     const int aralik = g_kare_ms.load(std::memory_order_relaxed);
-    return 1000 / ((g_pilde.load(std::memory_order_relaxed) && ses)
-                       ? std::max(aralik, PIL_KONUSMA_KARE_MS) : aralik);
+    const int ses_araligi = g_pilde.load(std::memory_order_relaxed)
+                               ? PIL_KONUSMA_KARE_MS : SARJ_KONUSMA_KARE_MS;
+    return 1000 / (ses ? std::max(aralik, ses_araligi) : aralik);
 }
 
 void gozler_baglanti_bildir(BaglantiUyarisi durum)

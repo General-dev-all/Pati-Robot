@@ -480,21 +480,12 @@ esp_err_t hoparlor_hiz_ayarla(float carpan)
 //
 // Kullanicinin panelden sectigi deger `g_seviye`de dokunulmadan duruyor
 // ve `ses_seviyesi()` onu donduruyor — ebeveyn ayarini kaybetmesin,
-// USB takilinca sectigi seviye geri gelsin. Kisilan yalnizca burasi.
+// Seçim korunur; pilde ve şarjda aynı tavan uygulanır.
 //
 // Gerekcesi SES_PIL_TAVANI'nin yaninda: pilde 1.00 brownout yapiyor.
-float etkin_seviye()
+float ses_etkin_seviye()
 {
-    if (g_seviye <= SES_PIL_TAVANI) return g_seviye;
-
-    // Güç gözcüsünün son VIN örneği: ses yolunda I2C, bekleme veya
-    // ikinci bir önbellek yok. Aynı kaynak kararı panelde de kullanılır.
-    const GucKaynagi son = guc_kaynak();
-
-    // BILINMIYOR ISE KISIYORUZ. Yanlis tahminin bedeli iki yanda esit
-    // degil: bir yanda "ses biraz kisik", obur yanda "Pati cumlenin
-    // ortasinda kapaniyor".
-    return (son == GucKaynagi::Usb) ? g_seviye : SES_PIL_TAVANI;
+    return std::min(g_seviye, SES_PIL_TAVANI);
 }
 
 size_t hoparlor_yaz(std::span<const std::int16_t> kaynak, uint32_t timeout_ms)
@@ -521,7 +512,7 @@ size_t hoparlor_yaz(std::span<const std::int16_t> kaynak, uint32_t timeout_ms)
     std::array<std::int16_t, 512> cikti{};
 
     return g_ornek.isle(
-        kaynak, adim, etkin_seviye(), cikti,
+        kaynak, adim, ses_etkin_seviye(), cikti,
         [&](std::span<const std::int16_t> blok) -> bool {
             gozler_ses_bildir(g_dma_ms);
             size_t bayt = 0;

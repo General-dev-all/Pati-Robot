@@ -105,11 +105,10 @@ void guc_kipi_uygula(pati::GucKaynagi kaynak)
 {
     const bool pilde = (kaynak != pati::GucKaynagi::Usb);
 
-    // ---- ARKA ISIK: pilde kisik ----------------------------------------
+    // ---- ARKA IŞIK: pilde ve şarjda %35 --------------------------------
     //
-    // Sesi kismak yerine BURADAN tasarruf. Brownout'u hoparlorun anlik
-    // tepe akimi yapiyor, ama o tepe taban akimin uzerine biniyor:
-    // taban dusunce ray daha yuksekte durur ve tepe icin pay kalir.
+    // Sürekli ekran yükünü azaltarak konuşma anına güç payı bırakmak
+    // amaçlanıyor. Resetlerin kök nedeni ve bu ayarın etkisi ölçülecek.
     //
     // ⚠️ OLCULMUS DEGERLER DEGIL. 0.45 tek basina denendi ve cokmeyi
     // durdurmadi (bkz. PIL.md); yine de taban akimi dusurdugu icin
@@ -118,7 +117,7 @@ void guc_kipi_uygula(pati::GucKaynagi kaynak)
     //
     // 0.15 alt sinir ve orasi "kisik ekran" degil "kapali ekran" gibi
     // gorunuyor (pati_ekran.hpp). 0.35 hala rahat okunuyor.
-    pati::ekran_parlaklik_ayarla(pilde ? 0.35f : 1.00f);
+    pati::ekran_parlaklik_ayarla(0.35f);
 
     // ---- WIFI VERICI GUCU: DENENDI VE GERI ALINDI ------------------------
     //

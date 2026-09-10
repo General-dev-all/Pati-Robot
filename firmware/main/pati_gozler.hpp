@@ -85,7 +85,7 @@ std::uint32_t gozler_kare();
 std::uint32_t gozler_piksel();
 
 // Hedeflenen kare hizi. Butce hesabi iki yerde yazilmasin diye burada:
-// kaynak pati_gozler.cpp'deki HEDEF_FPS.
+// Şarjda normal 20, ses çalarken 10; pilde normal 10, ses çalarken 5.
 int gozler_hedef_fps();
 
 // Pil kipi: goz kare hizini dusurur (20 -> 10 fps), ve Pati KONUSURKEN

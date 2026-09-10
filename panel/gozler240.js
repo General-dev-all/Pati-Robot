@@ -124,11 +124,11 @@ export const AYAR = {
   // %11'i — gozun kendisinden calinan yer. Yan faydasi islemci:
   // harmanlanan piksel sayisi belirgin dusuyor ve o islemci ses
   // cozumune kaliyor.
-  parlamaKat: 3,
+  parlamaKat: 1, // pilde ve şarjda çizim yükünü azaltır
   parlamaKalinlik: 3,
   parlamaAlfa: 0.16,
 
-  camParlamasi: true, // gozun ust solundaki isik lekesi
+  camParlamasi: false, // pilde ve şarjda ek parlama çizilmez
   egimRenk: true,     // dikey renk gecisi (satir basina bir renk: bedava)
   kenarYumusatma: true,
   rgb565: true,       // ekranin gercek renk derinligi

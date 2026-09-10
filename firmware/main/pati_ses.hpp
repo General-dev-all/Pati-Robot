@@ -206,6 +206,8 @@ constexpr float SES_SEVIYESI_EN_FAZLA  = 2.00f;
 // M5Unified yüzdeyi karesel ölçekler, burası PCM genliğini doğrusal
 // çarpar: üreticinin %75 önerisiyle doğrudan eşitlenemez.
 constexpr float SES_PIL_TAVANI = 0.70f;
+// Aynı tavan şarjda da geçerli; panel ve ses sürücüsü aynı sonucu kullanır.
+float ses_etkin_seviye();
 constexpr float SES_SEVIYESI_EN_AZ     = 0.15f;
 constexpr float SES_SEVIYESI_ADIM      = 0.15f;
 

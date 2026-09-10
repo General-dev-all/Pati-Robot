@@ -1,2 +1,2 @@
-3.5.1
-İnternet kesintisinden sonra yeniden bağlanma düzeltildi: başarısız denemeler arasında giderek artan bekleme uygulanır, bağlantı kurulmadan başarılı sayılmaz. Konuşurken yeniden başlama sorununun incelemesi sürüyor.
+3.5.2
+Şarjda gözler normalde 20, konuşurken 10 FPS. Göz parlaması tek kat, cam parlaması kapalı; ekran %35 ve ses tavanı 0.70. Pati'nin ses karakteri ve Wi-Fi gücü korunuyor. Resetlere etkisi izleniyor.

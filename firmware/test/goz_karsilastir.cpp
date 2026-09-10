@@ -214,7 +214,14 @@ int main(int argc, char** argv)
     bak(pati::gozler_hedef_fps() == 10, "DMA suresi dolunca 10 fps");
     pati::gozler_ses_bildir(342);
     pati::gozler_pil_kipi(false);
-    bak(pati::gozler_hedef_fps() == 20, "USB ses sirasinda da 20 fps");
+    bak(pati::gozler_hedef_fps() == 10, "USB ses sirasinda 10 fps");
+    test_saat_us += 341000;
+    bak(pati::gozler_hedef_fps() == 10, "USB DMA bitmeden 10 fps surer");
+    test_saat_us += 1000;
+    bak(pati::gozler_hedef_fps() == 20, "USB ses bitince 20 fps geri gelir");
+    pati::gozler_ses_bildir(342);
+    pati::gozler_ses_bildir(0);
+    bak(pati::gozler_hedef_fps() == 20, "USB tampon temizlenince 20 fps");
     pati::gozler_pil_kipi(true);
     pati::gozler_ses_bildir(0);
     bak(pati::gozler_hedef_fps() == 10, "tampon temizlenince tasarruf biter");

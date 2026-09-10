@@ -518,3 +518,22 @@ doğrulandı. 00:35:02 panel doğrulaması: sürüm 3.5.1, amfi=4,
 ses=1.00, Puck 1.30×, göz=20 fps, sayaç=62, açılış=diger.
 Kayıt: `prototype/olcumler/usb-3.5.1-baglanti-duzeltme-yukleme.json`.
 Bu açılış kontrolü uzun süreli reset testinin yerine geçmez.
+
+00:48:13 kontrolünde 3.5.1, USB, amfi=4, ses=1.00, göz=20 fps;
+sayaç 67, son açılış brownout. 00:35:02'deki 62 başlangıcından
+yaklaşık 13 dakika 12 saniyede beş arızalı açılış birikmiş.
+Kullanıcı belirgin azalma bildirdi; bu aralıkta etkin konuşma süresi
+ve bağlantı yenileme sayısı ölçülmediği için önceki koşuyla kontrollü
+sıklık karşılaştırması yapılamaz. Bağlantı kusuru düzeltildi, fakat
+brownout sürüyor; ortak kök neden veya tetikleyici bağı kanıtlanmadı.
+
+## 3.5.2 — şarjda kullanıcı tarafından seçilen tasarruf
+
+Şarjda gözler sessizken 20, gerçek ses/DMA penceresi boyunca 10 FPS;
+pildeki 10/5 FPS korunuyor. İki kaynakta da parlama tek kat, cam
+parlaması kapalı, ekran %35 ve etkin ses tavanı 0.70. Daha düşük ses
+seçimi korunur. Panel tavanı doğrudan ses sürücüsünden alır. Puck 1.30×,
+Wi-Fi gücü ve uyku ayarı değişmedi. Flash zaten 40 MHz; yeni kazanç
+olarak sayılmaz. Kaynak ayrımı korunur; şarj göstergesi ve OTA pil
+korumaları aynı kalır. Kullanıcı güncellemeyi panelden yükleyecek.
+Bu profilin resetlere etkisi henüz kartta ölçülmedi.

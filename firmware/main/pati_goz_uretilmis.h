@@ -31,7 +31,7 @@
 // Parlama: gercek bulanik golge ESP32"de yok. Ana seklin biraz
 // buyugu, dusuk alfayla, birkac kat halinde ciziliyor. Olculdu:
 // cizim maliyetinin %81"i bu katmanlar (bkz. gozler_test.mjs).
-#define PATI_GOZ_PARLAMA_KAT       3
+#define PATI_GOZ_PARLAMA_KAT       1
 #define PATI_GOZ_PARLAMA_KALINLIK  3
 #define PATI_GOZ_PARLAMA_ALFA      0.16f
 
@@ -40,7 +40,7 @@
 // demek; bu boyutta egim 2 dereceyi gecmedigi icin fark okunmuyor.
 #define PATI_GOZ_KAFA_EGIMI     1.0f
 
-#define PATI_GOZ_CAM_PARLAMASI  1
+#define PATI_GOZ_CAM_PARLAMASI  0
 #define PATI_GOZ_EGIM_RENK      1
 #define PATI_GOZ_KENAR_YUMUSAT  1
 
