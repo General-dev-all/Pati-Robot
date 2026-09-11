@@ -412,8 +412,11 @@ Devreye alınan ayarlar (`sdkconfig.defaults`, gerekçeleri orada):
 yeniden açılıyor. `guc.acilis` = `brownout`, `guc.cokme` artıyor.
 Çocuğa görünüşü: Pati sözünü bitiremiyor.
 
-**Bu, aylarca açık kalan sorundu. 3.5.4'te durdu** — 8 dakikalık aktif
-konuşmada 0 çökme (öncesi: 113 saniyede 6).
+**Bu, aylarca açık kalan sorundu. 3.5.4'te ~15 kat seyreldi** — 21
+dakikada 4 çökme, öncesi 19 saniyede bir. **Sıfırlanmadı.**
+
+⚠️ İlk 8 dakikada 0 çökme görülüp "durdu" sanıldı. Değildi. Bu arıza
+aralıklı; tek bir temiz pencere onu elemiyor.
 
 Ne yapıldığı, hangisinin çözdüğünün neden **bilinmediği**, ve geri
 gelirse sırayla nelere bakılacağı: **`PIL.md` → son bölüm**

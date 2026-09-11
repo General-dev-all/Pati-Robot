@@ -86,8 +86,9 @@ alma sırası ve ölçülmesi bekleyen sayılar. Motora, servoya ya da
 kumandaya dokunmadan önce oku.
 
 **`firmware/PIL.md` — brownout işi.** Konuşmaya başlarken yeniden
-başlama aylarca açık kaldı ve **3.5.4'te durdu** (11.09.2026: 8 dakikalık
-aktif konuşmada 0 çökme; öncesi 113 saniyede 6).
+başlama aylarca açık kaldı ve **3.5.4'te ~15 kat seyreldi** (11.09.2026:
+21 dakikada 4 çökme; öncesi 19 saniyede bir). **Sıfırlanmadı** — iş hâlâ
+açık, sadece çok daha iyi.
 
 🔴 **Hangi değişikliğin çözdüğü BİLİNMİYOR** — üçü aynı sürümde gitti:
 konuşma başında 80 ms ses rampası, CPU 240 → 160 MHz, ve pil/şarj profil

@@ -782,13 +782,38 @@ ayrıştırma sonraya bırakılacak; çıkmazsa üçü de zaten elenmiş olur.
 
 ---
 
-# 🔴 11.09.2026 — ÇÖKMELER DURDU. Ne yaptıysak burada yazılı.
+# 🔴 11.09.2026 — ÇÖKMELER ~15 KAT SEYRELDİ (durmadı). Ne yaptıysak burada.
 
 **Bu bölüm gelecekte çökmeler geri gelirse okunacak yer.** Kullanıcının
 isteğiyle yazıldı: *"gelecekte çökmeler gelirse bizi ne kurtarmıştı
 bilelim."*
 
 ## Ölçülen sonuç
+
+### ⚠️ ÖNCE BİR DÜZELTME — bu bölüm ilk yazıldığında "durdu" diyordu
+
+İlk 8 dakikalık pencerede 0 çökme görüldü ve buraya *"çökmeler durdu"*
+diye yazıldı. **Yanlıştı.** Sayaç izlenmeye devam edilince:
+
+| Saat | Sayaç | |
+|---|---|---|
+| 23:38 | 8 | 3.5.4 yüklendi |
+| 23:46 | 8 | 8 dakikalık ölçüm, **0 çökme** |
+| 23:59 | **12** | sonraki 13 dakikada **4 çökme** |
+
+Gerçek oran: **21 dakikada 4 çökme** ≈ 5 dakikada bir. Öncesi
+**19 saniyede bir**di. Yani kabaca **15 kat seyrelme — ama sıfır değil.**
+
+🔴 **Ders, bu belgenin kendi kuralının tekrarı:** 8 dakikalık temiz bir
+pencere bu arızayı elemiyor. Daha önce de 2 dakikalık sessiz aralıklar
+görülmüştü (22:08–22:10). *Aralıklı bir arızada tek pencere sonuç
+değildir.*
+
+⚠️ 23:46 sonrasında konuşma yoğunluğu ölçülmedi, yani iki dönem
+**tam olarak** karşılaştırılabilir değil. Oran yine de büyüklük
+mertebesi olarak anlamlı.
+
+### İlk ölçüm penceresi (temsili değil, ama kayda geçsin)
 
 3.5.4 yüklendikten sonra, **USB'de (bilgisayar portu), gövde çıkarık**,
 kullanıcı aktif konuşurken:
