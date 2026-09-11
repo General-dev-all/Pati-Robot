@@ -779,3 +779,121 @@ risk düşük (çıkış örneği başına birkaç float işlemi, 48 kHz'de bir
 geldiği bilinemeyecek.** Kullanıcı üçünü birlikte istedi ve arıza
 aralıklı olduğu için tek tek ölçmek saatler alırdı. Kazanç çıkarsa
 ayrıştırma sonraya bırakılacak; çıkmazsa üçü de zaten elenmiş olur.
+
+---
+
+# 🔴 11.09.2026 — ÇÖKMELER DURDU. Ne yaptıysak burada yazılı.
+
+**Bu bölüm gelecekte çökmeler geri gelirse okunacak yer.** Kullanıcının
+isteğiyle yazıldı: *"gelecekte çökmeler gelirse bizi ne kurtarmıştı
+bilelim."*
+
+## Ölçülen sonuç
+
+3.5.4 yüklendikten sonra, **USB'de (bilgisayar portu), gövde çıkarık**,
+kullanıcı aktif konuşurken:
+
+| | Öncesi (3.5.3 ve altı) | **3.5.4** |
+|---|---|---|
+| Süre | 113 sn | **8 dakika** (23:38:57 → 23:46:56) |
+| Çökme | **6** | **0** |
+| Ulaşılamadı | sık | **0** |
+| Aktif konuşma | vardı | 95 örneğin 22'sinde |
+| RSSI | −70 … −86 (1-2 çubuk) | **ort. −59,5** (en iyi −51) |
+| `vin` en düşük | — | **4630 mV** (260 mV sarkma) ve yine çökmedi |
+
+Kullanıcının kendi ifadesi: *"epey bir fark etti, cihaz rahatladı,
+wifi artık tam çekiyor, hatırlarsan tek diş çekiyordu. Pati artık anında
+cevap veriyor, eskiden çoğu zaman geç cevap veriyordu bazen vermiyordu.
+Ses olarak da hiçbir sorun yok, fark etmedim bile."*
+
+## Aynı gün NE YAPILDI — sırayla
+
+Sıra önemli, çünkü ikisi arasında ölçüm var ve **hangisinin çözdüğünü
+ayırmaya yarıyor.**
+
+### 1. Tam flash silme + temiz yükleme (3.5.3) — ❌ ÇÖZMEDİ
+
+`erase_flash` + `fullclean build` + kabloyla yükleme. RF kalibrasyonu
+(`nvs.net80211` · `cal_data`) dahil her şey sıfırlandı.
+
+**Sonuç: RSSI hâlâ −73/−75, çökmeler sürdü** (23:06'da ölçüldü, dolu
+pille 4048 mV brownout). Yani bozuk kalibrasyon ya da bozuk NVS
+**değildi.**
+
+⚠️ Bu adım öncesinde tam 8 MB flash yedeği alındı. Gemini anahtarı ve
+wifi şifresi o yedekten kurtarıldı — `erase_flash` `anahtar` bölümünü de
+siliyor. **Bir daha silmeden önce yine yedek alın.**
+
+### 2. 3.5.4 — üç değişiklik birden — ✅ ÇÖZDÜ
+
+| # | Değişiklik | Nerede |
+|---|---|---|
+| a | **Konuşma başında 80 ms rampa** | `pati_ses.cpp` · `SES_RAMPA_MS`, `pati_ornekleyici.hpp` · `rampa_kur` |
+| b | **CPU 240 → 160 MHz** | `sdkconfig.defaults` |
+| c | Pil/şarj profil ayrımı kalktı: gözler her kaynakta 10/5 FPS | `pati_gozler.cpp` · `KARE_ARALIK_MS` |
+| d | Ekran parlaklığı 0.35 → 0.25 | `app_main.cpp` · `guc_kipi_uygula` |
+
+## 🔴 HANGİSİ ÇÖZDÜ — BİLİNMİYOR
+
+Üçü aynı sürümde gitti. Kullanıcı böyle istedi ve arıza aralıklı olduğu
+için tek tek ölçmek saatler alırdı. **Ayrıştırma yapılmadı.**
+
+Ama mantıkla bir kısmı elenebiliyor:
+
+| Düzelen şey | Rampa yapmış olabilir mi | Kalan şüpheli |
+|---|---|---|
+| Wifi 1 çubuk → 4 çubuk | **HAYIR** — rampa telsize dokunmuyor | CPU/ekran gürültüsü, ya da dış etken |
+| Cevapların hızlanması | **HAYIR** — o ağ gecikmesi | aynı |
+| Çökmelerin durması | evet | ikisi de |
+
+### İki hipotez, ikisi de açık
+
+**Kullanıcının hipotezi:** *"çöküşler kelime başında oluyordu, bir anda
+hoparlöre abanıp akımı fırlatıyordu."* Ölçümle uyumlu — üç çökmenin üçü
+de `ifade konusuyor` anındaydı.
+
+**Karşı gözlem:** kelime başı, her şeyin **aynı milisaniyede** tepe
+yaptığı an — telsiz veri alıp onaylıyor (zayıf sinyalde tekrar tekrar),
+yeniden örnekleyici çalışıyor, amfi tam güce geçiyor, (eskiden) gözler
+USB hızında çiziliyor. Yani "kelime başında çöküyor", hoparlörün tek
+suçlu olduğunu **kanıtlamıyor.**
+
+**Muhtemel doğru:** tek sebep yoktu, **toplam** vardı. Hangi bileşeni
+çıkarırsan tepe eşiğin altına iniyor. Üçü birden çıkarıldı.
+
+## 🔴 ÇÖKMELER GERİ GELİRSE — sırayla bunlara bak
+
+Özellikle **gövde geri takıldığında** beklenir: motorlar ve kablolar hem
+gürültü hem akım ekliyor.
+
+1. **Önce ölç, değiştirme.** `api/durum` → `guc.cokme`, `guc.acilis`,
+   `guc.pil_mv`, `guc.vin_mv`, `ag.rssi_dbm`, `ifade`. 5 saniyede bir,
+   en az 5 dakika. Tek ölçüm bu arızayı elemiyor — 2 dakikalık sessiz
+   aralıklar normal.
+2. **RSSI'ye bak.** −70'in altındaysa bağlantı zayıf demektir ve bu
+   tek başına bir etken: zayıf sinyalde telsiz tam güçte kalıp yeniden
+   gönderiyor, her gönderim ayrı bir akım darbesi (bu belgede satır 83:
+   telsiz gönderirken 250-350 mA).
+3. **Gövdeyi çıkarıp aynı ölçümü tekrarla.** Aynı yer, aynı besleme,
+   yalnızca gövde değişsin. 11.09'da bu test **konum da değiştiği için
+   bozuldu** — tekrarlanmadı.
+4. **CPU'yu 240'a alıp RSSI'ye bak.** Düşerse gürültü hipotezi
+   doğrulanır. `sdkconfig.defaults`'ta `_160` → `_240` **ve
+   `sdkconfig`'i sil** (dosya varken defaults okunmuyor).
+5. **Rampayı uzat.** `SES_RAMPA_MS` 80 → 120/150. Bedeli ilk hecenin
+   duyulur şekilde şişmesi; kullanıcının şartı kaliteyi bozmamak.
+6. **Besleme kaynağını ayır.** Duvar adaptörü ~4990 mV, bilgisayar
+   portu ~4880 ve konuşurken 4630'a sarkıyor. Adaptör her zaman daha
+   iyi.
+
+### ⚠️ Bunlar ELENDİ — tekrar denemeye değmez
+
+| Aday | Nasıl elendi |
+|---|---|
+| Düşük pil | USB'de **4048 mV** ile çöktü |
+| Şarj devresi arızası | kapalıyken 10 dakikada 3770 → 3938 mV, normal |
+| Bozuk NVS / ayar | tam silme sonrası yine çöktü |
+| Bozuk RF kalibrasyonu | tam silme sonrası RSSI değişmedi (−73/−75) |
+| Wifi verici gücünü kısmak | 02.09'da denendi, menzil çöktü, geri alındı |
+| `cokme_mv` ile gerilim-çökme ilişkisi kurmak | o değer **açılışta** okunuyor, çökme anında değil |

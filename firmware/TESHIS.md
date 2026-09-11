@@ -406,6 +406,33 @@ Devreye alınan ayarlar (`sdkconfig.defaults`, gerekçeleri orada):
 
 ---
 
+## 🔴 Konuşurken yeniden başlıyor (brownout) — 11.09.2026'da DURDU
+
+**Belirti:** Pati cümleye başlıyor, birkaç kelime sonra ekran sönüyor ve
+yeniden açılıyor. `guc.acilis` = `brownout`, `guc.cokme` artıyor.
+Çocuğa görünüşü: Pati sözünü bitiremiyor.
+
+**Bu, aylarca açık kalan sorundu. 3.5.4'te durdu** — 8 dakikalık aktif
+konuşmada 0 çökme (öncesi: 113 saniyede 6).
+
+Ne yapıldığı, hangisinin çözdüğünün neden **bilinmediği**, ve geri
+gelirse sırayla nelere bakılacağı: **`PIL.md` → son bölüm**
+("ÇÖKMELER DURDU. Ne yaptıysak burada yazılı").
+
+Kısaca üç değişiklik birden gitti: konuşma başında 80 ms ses rampası,
+CPU 240 → 160 MHz, ve pil/şarj profil ayrımının kaldırılması
+(gözler her kaynakta 10/5 FPS).
+
+⚠️ **Şunları tekrar denemeyin, elendiler:** düşük pil (USB'de 4048 mV
+ile çöktü), şarj devresi, bozuk NVS/ayar, bozuk RF kalibrasyonu
+(tam silme sonrası RSSI değişmedi), wifi verici gücünü kısmak
+(02.09'da menzili öldürdü).
+
+⚠️ **`guc.cokme_mv` ile "çökme şu gerilimde oluyor" cümlesi KURULAMAZ.**
+O değer yeniden açılışta, sistem boştayken okunuyor.
+
+---
+
 ## 🔴 02.09.2026 — sallayınca çökme: PSRAM 80 MHz
 
 Cihaz konuşurken elle sallanınca yeniden başlıyordu. Pilde daha kolay,

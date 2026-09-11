@@ -85,10 +85,16 @@ gözlem yöntemleri ve daha önce yapılmış yanlış teşhisler.
 alma sırası ve ölçülmesi bekleyen sayılar. Motora, servoya ya da
 kumandaya dokunmadan önce oku.
 
-**`firmware/PIL.md` — DEVAM EDEN İŞ.** Pati pilde hâlâ çöküyor
-(konuşmaya başlarken brownout, 20-60 sn'de bir). Amaç, kullanıcının
-feda etme sırası (ses 0.70'in altına İNMEZ), denenenler, denenmemiş
-adaylar ve A/B ölçüm yöntemi orada. Pil tarafına dokunmadan önce oku.
+**`firmware/PIL.md` — brownout işi.** Konuşmaya başlarken yeniden
+başlama aylarca açık kaldı ve **3.5.4'te durdu** (11.09.2026: 8 dakikalık
+aktif konuşmada 0 çökme; öncesi 113 saniyede 6).
+
+🔴 **Hangi değişikliğin çözdüğü BİLİNMİYOR** — üçü aynı sürümde gitti:
+konuşma başında 80 ms ses rampası, CPU 240 → 160 MHz, ve pil/şarj profil
+ayrımının kaldırılması. Belgenin son bölümü ("ÇÖKMELER DURDU") neyin
+elendiğini ve **çökme geri gelirse sırayla nelere bakılacağını** yazıyor.
+Özellikle gövde geri takılınca beklenir: motorlar hem gürültü hem akım
+ekliyor. Pil tarafına dokunmadan önce oku.
 
 Konak testleri (beşi de geçmeli):
 ```
@@ -315,7 +321,8 @@ söylemeli.
 
 ⚠️ **Güncelleme pilde %40 altında teklif edilmiyor.** İndirme, wifi
 alıcısı ile flash yazmayı aynı anda çalıştırıyor — Pati'nin en yüksek
-akım çektiği iş, ve pilde brownout henüz çözülmedi (`PIL.md`). Yarım
+akım çektiği iş, ve brownout yeni durmuş bir sorun (`PIL.md`) — koruma
+kalkmadan önce uzun süreli ölçüm ister. Yarım
 kalan OTA güvenli (önyükleyici eski sürüme döner) ama çocuk için
 "güncelliyorum" deyip kapanmak kötü. Ekranda "önce şarja tak" yazıyor
 ve tuş o sırada bir şey yapmıyor.
