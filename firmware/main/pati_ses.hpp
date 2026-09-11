@@ -240,6 +240,14 @@ static_assert(SES_SEVIYESI_BASLANGIC <= SES_SEVIYESI_EN_FAZLA &&
               "Baslangic seviyesi sinirlarin disinda.");
 constexpr float SES_SEVIYESI_ADIM      = 0.15f;
 
+// Hoparlorun kac kez kurudugu: iki yazma arasindaki bosluk DMA
+// tamponundan uzun kalmis demektir. "Sesi kesiliyor" sikayetini
+// olculebilir yapiyor. ⚠️ Cumleler arasi duraklama da sayiliyor —
+// anlamli olan konusma sirasinda ne kadar hizli arttigi.
+std::uint32_t ses_aclik_sayisi();
+std::uint32_t ses_en_uzun_bosluk_ms();
+int ses_tampon_ms();
+
 // Seviyeyi sinirlar icinde ayarlar, gercekte ne oldugunu dondurur.
 float ses_seviyesi_ayarla(float yeni);
 float ses_seviyesi_degistir(float adim);

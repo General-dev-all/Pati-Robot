@@ -1,2 +1,2 @@
-3.5.8
-Konusma bozulmasi duzeltildi. Onceki surumde Pati cumlenin ortasinda kelime baslarini yutabiliyordu: yumusak baslangic, cumle bittiginde degil parca calarken de tetikleniyordu. Wifi zayifsa daha sik oluyordu. Artik yalnizca gercek duraklamalarda devreye giriyor.
+3.5.9
+Sesin kesilmesini olcebilmek icin panele uc yeni bilgi eklendi: hoparlorun kac kez kurudugu, en uzun sessizlik ve tampon suresi. Gorunur bir degisiklik yok; amac "ses kesiliyor" sikayetinin gercekten ag kaynakli olup olmadigini tahminle degil olcumle anlamak.

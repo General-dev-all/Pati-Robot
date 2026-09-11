@@ -408,6 +408,44 @@ Devreye alınan ayarlar (`sdkconfig.defaults`, gerekçeleri orada):
 
 ---
 
+## Pati'nin sesi kesiliyor / kelimeler atlıyor
+
+Önce **hangi sesin** kesildiğini ayır: Pati'nin konuşması mı, yoksa Pati
+seni mi duymuyor? İkisi apayrı yerlere bakmayı gerektirir.
+
+**Pati'nin sesi kesiliyorsa**, panelde üç alan var (3.5.9'dan beri):
+
+| Alan | Anlamı |
+|---|---|
+| `guc.ses_aclik` | hoparlörün kaç kez kuruduğu — iki yazma arası boşluk tampondan uzun kalmış |
+| `guc.ses_en_uzun_bosluk_ms` | en uzun sessizlik |
+| `guc.ses_tampon_ms` | DMA tamponunun taşıdığı süre (şu an 341 ms) |
+
+⚠️ **Cümleler arası duraklama da sayılıyor.** Sayaç tek başına "kusur
+sayısı" değil; anlamlı olan **konuşma sırasında ne kadar hızlı arttığı**
+ve en uzun boşluğun ne olduğu. 10 saniyelik bir boşluk ağ takılmasıdır;
+600 ms'lik bir boşluk cümle arası olabilir.
+
+Sayaç hızlı artıyor ve `rssi_dbm` −70'in altındaysa sebep **ağ**:
+Gemini'nin sesi gerçek zamanlı akıyor ve tampon 341 ms'den uzun bir
+takılmayı kapatamıyor.
+
+`pati_ses.cpp` kendi notunda yazıyor: **"SES TAKILIRSA İLK YAPILACAK:
+`DMA_TANIM`'i 20'ye, sonra 24'e çıkar."** Her adım ~8 KB iç RAM yiyor.
+⚠️ Aynı yorumun uyarısı da orada: tampon büyürse arkasından gelen
+wifi/TLS bellek bulamayabilir ve **Pati hiç bağlanamaz** — sebebinin
+ses tamponu olduğu akla gelmez. Önce boş iç RAM'e bakılmalı.
+
+### Kelime BAŞLARI yutuluyorsa — 3.5.8'de düzeltilmiş bir kusur
+
+3.5.4–3.5.7 arasında yumuşak başlangıç cümlenin ortasında
+tetiklenebiliyordu: boşluk ölçümünün zaman damgası, bloke eden yazma
+çağrısının **öncesinde** alınıyordu, yani ölçülen şey sessizlik değil
+önceki parçanın çalma süresiydi. Zayıf wifi'de daha sık. Sürüm 3.5.8'den
+eskiyse önce güncelle.
+
+---
+
 ## 🔴 Konuşurken yeniden başlıyor (brownout) — 11.09.2026'da DURDU
 
 **Belirti:** Pati cümleye başlıyor, birkaç kelime sonra ekran sönüyor ve

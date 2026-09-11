@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cstdint>
 
 #include <driver/i2s_std.h>
@@ -158,6 +159,27 @@ constexpr float SES_RAMPA_ADIM =
 constexpr std::int64_t SES_RAMPA_BOSLUK_US = 400LL * 1000LL;
 
 std::int64_t g_son_yazma_us = 0;
+
+// ---------------------------------------------------------------------------
+// SES ACLIGI SAYACI — "sesi kesiliyor" olculebilir olsun
+// ---------------------------------------------------------------------------
+//
+// Kullanicinin gozlemi (12.09.2026): "sesi kesiliyor ama bence internet
+// baglantisi zayifladigi icin oluyor." Makul, ama kanitlanmamis —
+// ve bu depoda tam boyle cumleler birkac kez olcunce yanlis cikti.
+//
+// OLCUM YOLU, fazladan hicbir sey gerektirmiyor: iki yazma arasindaki
+// bosluk DMA tamponundan (g_dma_ms, 341 ms) uzunsa hoparlor KESIN
+// kurumustur — tampon o kadar ses tasiyor, fazlasi sessizlik demek.
+// Damga zaten yazmanin SONUNDA aliniyor (yukarida), yani bu sayi
+// calma suresini degil gercek sessizligi olcuyor.
+//
+// ⚠️ CUMLELER ARASI DURAKLAMA DA SAYILIYOR. Sayac tek basina "kusur
+// sayisi" degil; anlamli olan KONUSMA SIRASINDA ne kadar hizli
+// arttigi ve en uzun boslugun ne oldugu. 10 saniyelik bir bosluk ag
+// takilmasidir, 600 ms'lik bir bosluk cumle arasi olabilir.
+std::atomic<std::uint32_t> g_ses_aclik{0};
+std::atomic<std::uint32_t> g_ses_en_uzun_ms{0};
 
 // ---------------------------------------------------------------------------
 // PATLAMA YUMUSATICI — kullanicinin teshisi, 11.09.2026
@@ -559,6 +581,18 @@ esp_err_t hoparlor_hiz_ayarla(float carpan)
 // Seçim korunur; pilde ve şarjda aynı tavan uygulanır.
 //
 // Gerekcesi SES_PIL_TAVANI'nin yaninda: pilde 1.00 brownout yapiyor.
+std::uint32_t ses_aclik_sayisi()
+{
+    return g_ses_aclik.load(std::memory_order_relaxed);
+}
+
+std::uint32_t ses_en_uzun_bosluk_ms()
+{
+    return g_ses_en_uzun_ms.load(std::memory_order_relaxed);
+}
+
+int ses_tampon_ms() { return g_dma_ms; }
+
 float ses_etkin_seviye()
 {
     return std::min(g_seviye, SES_PIL_TAVANI);
@@ -604,10 +638,22 @@ size_t hoparlor_yaz(std::span<const std::int16_t> kaynak, uint32_t timeout_ms)
     //
     // Sonda alininca olculen sey gercekten sessizlik: surekli calarken
     // bosluk ~0, cumle sonunda gercek duraklama kadar.
-    if (esp_timer_get_time() - g_son_yazma_us > SES_RAMPA_BOSLUK_US) {
+    const std::int64_t bosluk_us = esp_timer_get_time() - g_son_yazma_us;
+    if (bosluk_us > SES_RAMPA_BOSLUK_US) {
         g_ornek.rampa_kur(SES_RAMPA_ADIM);
         // Zarf da basa doner: yeni cumle temiz bir sessizlikten basliyor.
         g_ornek.patlama_kur(SES_PATLAMA_ATAK, SES_PATLAMA_SALIM);
+    }
+
+    // Hoparlor kurudu mu? Bosluk tampondan uzunsa evet.
+    if (g_son_yazma_us != 0 && g_dma_ms > 0 &&
+        bosluk_us > static_cast<std::int64_t>(g_dma_ms) * 1000) {
+        g_ses_aclik.fetch_add(1, std::memory_order_relaxed);
+        const auto ms = static_cast<std::uint32_t>(bosluk_us / 1000);
+        auto en = g_ses_en_uzun_ms.load(std::memory_order_relaxed);
+        while (ms > en && !g_ses_en_uzun_ms.compare_exchange_weak(
+                              en, ms, std::memory_order_relaxed)) {
+        }
     }
 
     // Cikis bloklar halinde yaziliyor, tek seferde degil: bir parca
