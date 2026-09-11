@@ -1290,7 +1290,26 @@ $('#dene').addEventListener('click', async () => {
 
 function konusmaYaz() {
   $('#sozKesme').checked = D.sozKesme;
-  $('#vadSecim').value = D.vad;
+  // 🔴 CIHAZDAKI DEGER LISTEDE YOKSA KUTU BOS GORUNUR.
+  //
+  // select'e listede olmayan bir deger yazilinca tarayici hicbir sey
+  // secmiyor ve ebeveyn kendi ayarini goremiyor — daha kotusu, kutuya
+  // dokunursa farkinda olmadan degistirmis oluyor.
+  //
+  // 12.09.2026'da gercekten yasandi: firmware varsayilani 500 ms ama
+  // listede 500 yoktu. Secenek eklendi; burasi ise ileride BASKA bir
+  // degerin ayni tuzagi kurmasini engelliyor.
+  {
+    const k = $('#vadSecim');
+    const v = String(D.vad);
+    if (![...k.options].some((o) => o.value === v)) {
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = v ? `${(parseInt(v, 10) / 1000).toFixed(1).replace('.', ',')} sn` : 'Normal';
+      k.appendChild(o);
+    }
+    k.value = v;
+  }
   $('#yuzAcik').checked = D.yuz;
   // Tarayici tarafi: soz kesme KAPALIYSA yarim dupleks ACIK.
   tarayiciSes.yarimDubleks = !D.sozKesme;

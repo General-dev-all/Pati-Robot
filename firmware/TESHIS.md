@@ -408,6 +408,28 @@ Devreye alınan ayarlar (`sdkconfig.defaults`, gerekçeleri orada):
 
 ---
 
+## Panelde bir ayar kutusu BOŞ görünüyor
+
+🔴 **Cihazdaki değer listede yoksa `<select>` hiçbir şey seçmez.**
+Tarayıcı sessizce boş bırakır; hata çıkmaz.
+
+12.09.2026'da gerçekten yaşandı: "Cevap hızı" kutusu boştu. Firmware
+varsayılanı 500 ms (`PATI_VAD_SESSIZLIK_MS`) ama paneldeki listede
+`""`, 800, 600, 400, 300 vardı — **500 yoktu.**
+
+⚠️ Bedeli iki katmanlı: ebeveyn kendi ayarını göremiyor, **ve** kutuya
+dokunduğu an farkında olmadan değiştirmiş oluyor.
+
+Düzeltme iki parçalı (3.5.10): eksik seçenek eklendi, **ve** `pati.js`
+artık listede olmayan bir değer gelirse kendiliğinden seçenek üretiyor
+— yani ileride başka bir varsayılan aynı tuzağı kurmuyor.
+
+**Genel kural:** panelin gösterdiği her seçim kümesi, firmware'in
+üretebileceği her değeri kapsamalı. Kapsamıyorsa panel sessizce yalan
+söyler — bu depoda dördüncü kez.
+
+---
+
 ## Pati'nin sesi kesiliyor / kelimeler atlıyor
 
 Önce **hangi sesin** kesildiğini ayır: Pati'nin konuşması mı, yoksa Pati

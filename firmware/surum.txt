@@ -1,2 +1,2 @@
-3.5.9
-Sesin kesilmesini olcebilmek icin panele uc yeni bilgi eklendi: hoparlorun kac kez kurudugu, en uzun sessizlik ve tampon suresi. Gorunur bir degisiklik yok; amac "ses kesiliyor" sikayetinin gercekten ag kaynakli olup olmadigini tahminle degil olcumle anlamak.
+3.5.10
+Panelde "Cevap hizi" kutusu bos gorunuyordu. Sebebi, cihazdaki degerin (0,5 saniye) listede hic olmamasiydi; secenek eklendi ve artik cihazda hangi deger varsa kutuda o goruluyor. Ayarin kendisi degismedi, yalnizca gorunmeyen deger gorunur oldu.
