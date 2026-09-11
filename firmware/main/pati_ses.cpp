@@ -145,10 +145,17 @@ constexpr float SES_RAMPA_ADIM =
 
 // Bu kadar sessizlikten sonra gelen ses YENI bir cumle sayiliyor.
 //
-// Cumle ICINDE paketler bundan cok daha sik geliyor, yani rampa cumleyi
-// ortasindan bolmuyor. Yine de bolerse zarari yok: 80 ms'lik bir
-// yumusama duyulmuyor ve elektriksel olarak zaten istedigimiz sey.
-constexpr std::int64_t SES_RAMPA_BOSLUK_US = 250LL * 1000LL;
+// 250 ms'ti, 12.09.2026'da 400 ms'ye cikarildi. Iki hatanin ayni
+// yonde olmamasi icin: damga artik dogru yerden aliniyor (yukariya
+// bak) ama ag sarsintisina karsi da pay birakmak gerekiyor.
+//
+// ⚠️ IKI HATANIN BEDELI ESIT DEGIL, o yuzden esik BUYUK tarafa
+// yaniltiliyor:
+//   - ESIK KUCUK olursa rampa cumle ORTASINDA tetiklenir ve kelime
+//     baslari yutulur. Kullanici bunu duyuyor.
+//   - ESIK BUYUK olursa bazi cumle baslari yumusatilmadan gecer.
+//     Duyulmaz; yalnizca o cumlede elektriksel kazanc alinmaz.
+constexpr std::int64_t SES_RAMPA_BOSLUK_US = 400LL * 1000LL;
 
 std::int64_t g_son_yazma_us = 0;
 
@@ -579,20 +586,36 @@ size_t hoparlor_yaz(std::span<const std::int16_t> kaynak, uint32_t timeout_ms)
     //
     // Barge-in yolu ayri: hoparlor_temizle() zaten sifirla() cagiriyor ve
     // o da rampayi basa aliyor. Burasi normal cumle gecisleri icin.
-    const std::int64_t simdi_us = esp_timer_get_time();
-    if (simdi_us - g_son_yazma_us > SES_RAMPA_BOSLUK_US) {
+    //
+    // 🔴 DAMGA CAGRININ SONUNDA ALINIYOR, BASINDA DEGIL — ve bu fark
+    // kullanicinin duydugu bir kusurdu (12.09.2026: "kelimeleri atliyor
+    // gibi, ya da sesi kesiliyor").
+    //
+    // Asagidaki isle() cagrisi hoparlore yazarken BLOKE OLUYOR: parca
+    // ne kadar caliyorsa o kadar bekliyor. Damga cagrinin BASINDA
+    // alinirsa olculen sey "iki parca arasindaki sessizlik" degil,
+    // "onceki parcanin CALMA SURESI" oluyor.
+    //
+    // Sayilar: Gemini 200-280 ms'lik dilimler gonderiyor, 1.30x hizda
+    // cikista ~154-215 ms ediyor. Ag biraz gecikince esik asiliyor ve
+    // rampa CUMLENIN ORTASINDA yeniden tetikleniyordu — 80 ms sifirdan
+    // acilma + zarf sifirlamasi, yani yutulan kelime baslari. Zayif
+    // wifi'de daha sik.
+    //
+    // Sonda alininca olculen sey gercekten sessizlik: surekli calarken
+    // bosluk ~0, cumle sonunda gercek duraklama kadar.
+    if (esp_timer_get_time() - g_son_yazma_us > SES_RAMPA_BOSLUK_US) {
         g_ornek.rampa_kur(SES_RAMPA_ADIM);
         // Zarf da basa doner: yeni cumle temiz bir sessizlikten basliyor.
         g_ornek.patlama_kur(SES_PATLAMA_ATAK, SES_PATLAMA_SALIM);
     }
-    g_son_yazma_us = simdi_us;
 
     // Cikis bloklar halinde yaziliyor, tek seferde degil: bir parca
     // 2,5 kata kadar uzayabiliyor (en yavas hizda) ve 33 KB'lik bir
     // yigit tamponu kabul edilemez.
     std::array<std::int16_t, 512> cikti{};
 
-    return g_ornek.isle(
+    const size_t tuketilen = g_ornek.isle(
         kaynak, adim, ses_etkin_seviye(), cikti,
         [&](std::span<const std::int16_t> blok) -> bool {
             gozler_ses_bildir(g_dma_ms);
@@ -610,6 +633,10 @@ size_t hoparlor_yaz(std::span<const std::int16_t> kaynak, uint32_t timeout_ms)
             // artik SESSIZCE degil, donus degerinde gorunerek.
             return bayt == blok.size() * sizeof(std::int16_t);
         });
+
+    // Damga BURADA — yazma bittikten sonra. Gerekcesi yukarida.
+    g_son_yazma_us = esp_timer_get_time();
+    return tuketilen;
 }
 
 esp_err_t hoparlor_temizle()

@@ -1,2 +1,2 @@
-3.5.7
-Pati artik sesle uyutulmuyor. Onceden "hadi uyu" ya da "iyi geceler" gibi sozleri duyunca uyuyordu, ama bazen konusmanin ortasinda gecen bir kelimeyi de oyle anlayip cumlenin ortasinda uyuyordu. O ozellik tamamen kaldirildi. Pati artik yalnizca ortalik sessiz kalinca uyuyor; sureyi panelden ayarlaya
+3.5.8
+Konusma bozulmasi duzeltildi. Onceki surumde Pati cumlenin ortasinda kelime baslarini yutabiliyordu: yumusak baslangic, cumle bittiginde degil parca calarken de tetikleniyordu. Wifi zayifsa daha sik oluyordu. Artik yalnizca gercek duraklamalarda devreye giriyor.

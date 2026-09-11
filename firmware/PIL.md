@@ -982,3 +982,58 @@ yetiştiğinde kazanç tam 1.0 olur ve çarpma bloğuna hiç girilmez.
 
 ⚠️ **Çökmelere etkisi ÖLÇÜLMEDİ.** Kullanıcının teşhisi makul ve
 ölçülen belirtiyle (çökmeler konuşma anında) uyumlu, ama kanıt değil.
+
+## 3.5.8 — 3.5.6'nın yol açtığı konuşma bozulması
+
+Kullanıcı (12.09.2026): *"3.5.6 güncellemesi sanki biraz konuşmayı bozdu
+gibi geldi, böyle biraz kelimeleri atlıyor gibi."*
+
+### Kusur: boşluk ölçümü yanlış yerden alınıyordu
+
+```cpp
+const std::int64_t simdi_us = esp_timer_get_time();
+if (simdi_us - g_son_yazma_us > ESIK) { rampa_kur(); patlama_kur(); }
+g_son_yazma_us = simdi_us;        // ← çağrının BAŞINDA
+```
+
+Damga çağrının **başında** alınıyordu. Ama hemen ardından `isle()`
+hoparlöre yazarken **bloke oluyor** — parça ne kadar çalıyorsa o kadar.
+
+Yani ölçülen şey *"iki parça arasındaki sessizlik"* değil, **"önceki
+parçanın çalma süresi"**ydi.
+
+| | |
+|---|---|
+| Gemini dilimi | 200–280 ms |
+| 1.30× hızda çıkış | ~154–215 ms |
+| Eşik | 250 ms |
+
+Ağ biraz gecikince eşik aşılıyor ve rampa **cümlenin ortasında**
+tetikleniyordu: 80 ms sıfırdan açılma + zarf sıfırlaması. Duyulan şey
+yutulan kelime başları. **Zayıf wifi'de daha sık** — kullanıcının
+durumu tam da bu.
+
+### Düzeltme
+
+1. Damga artık yazma **bittikten sonra** alınıyor. Ölçülen şey gerçekten
+   sessizlik: sürekli çalarken boşluk ~0.
+2. Eşik 250 → **400 ms**, ağ sarsıntısına pay.
+
+⚠️ **İki hatanın bedeli eşit değil**, o yüzden eşik büyük tarafa
+yanıltılıyor:
+
+| Hata | Sonuç |
+|---|---|
+| Eşik küçük | rampa cümle ortasında tetiklenir, **kelime başları yutulur** — duyuluyor |
+| Eşik büyük | bazı cümle başları yumuşatılmadan geçer — duyulmuyor, sadece o cümlede elektriksel kazanç alınmaz |
+
+### 🔴 Ders
+
+Bu kusur 3.5.4'te (rampa) girdi, 3.5.6'da (zarf sıfırlaması) **daha
+kötü** oldu ve ikisinde de konak testinden geçti — çünkü test
+`YenidenOrnekleyici`'yi sınıyor, **zamanlamayı sınamıyor.** Zamanlama
+mantığı `pati_ses.cpp`'de ve orası konak testinin kapsamı dışında.
+
+⚠️ Bloke eden bir çağrının **öncesinde** alınan zaman damgası, o
+çağrının süresini ölçüme karıştırır. Damga her zaman ölçülmek istenen
+olayın **bittiği** yerde alınmalı.
