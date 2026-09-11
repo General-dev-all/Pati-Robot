@@ -1173,6 +1173,24 @@ function durumYaz() {
 // Ses
 // ---------------------------------------------------------------------------
 
+// Ses yuzdesi ARALIGA gore hesaplaniyor, ham degere gore degil.
+//
+// 🔴 Eskiden `seviye * 100` yaziyordu ve bu ebeveyne YANLIS soyluyordu:
+// cubuk %200'e kadar gidiyordu ama fiilen uygulanan tavan 0.70'ti
+// (pati_ses.cpp · ses_etkin_seviye). Yani %100'de bile cikan 0.70'ti ve
+// %100'un ustu hicbir sey yapmiyordu. Ebeveyn "sesi actim, degismedi"
+// diye okurdu.
+//
+// Artik cubugun sonu = Pati'nin gercekten cikarabildigi en yuksek ses.
+// Sinirlar firmware'den geliyor (ses_seviyesi mesaji · en_az/en_fazla),
+// yani tavan bir gun degisirse %100 kendiliginden onu gosterir.
+function seviyeYuzde(v) {
+  const az = D.seviyeEnAz;
+  const cok = D.seviyeEnFazla;
+  if (!(cok > az)) return 100;
+  return Math.round(((v - az) / (cok - az)) * 100);
+}
+
 {
   const k = $('#kSeviye');
   k.step = 0.05;
@@ -1184,7 +1202,7 @@ function durumYaz() {
 
   k.addEventListener('input', () => {
     D.seviye = parseFloat(k.value);
-    $('#vSeviye').textContent = Math.round(D.seviye * 100) + '%';
+    $('#vSeviye').textContent = seviyeYuzde(D.seviye) + '%';
     gonderSeviye();
   });
 }
@@ -1193,8 +1211,12 @@ function seviyeYaz() {
   const k = $('#kSeviye');
   k.min = D.seviyeEnAz;
   k.max = D.seviyeEnFazla;
+  // Firmware tavani indirirse eski (yuksek) deger cubugun disinda kalir
+  // ve tarayici onu sessizce kirpar — ama D.seviye kirpilmamis kalirdi
+  // ve yuzde %100'un ustunde gorunurdu. Once kirp, sonra yaz.
+  D.seviye = Math.min(Math.max(D.seviye, D.seviyeEnAz), D.seviyeEnFazla);
   k.value = D.seviye;
-  $('#vSeviye').textContent = Math.round(D.seviye * 100) + '%';
+  $('#vSeviye').textContent = seviyeYuzde(D.seviye) + '%';
 }
 
 {

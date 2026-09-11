@@ -149,11 +149,28 @@ esp_err_t hoparlor_temizle();
 //
 // Kullanicinin bu donanim icin soyledigi de buydu: "olduğu kadar,
 // artık ses düşük olsa bile çıksın yeter."
-constexpr float SES_SEVIYESI_BASLANGIC = 1.00f;
+// 11.09.2026: 1.00 -> 0.70. Degisen bir sey DUYULMUYOR, cunku etkin
+// seviye zaten `min(g_seviye, SES_PIL_TAVANI)` = 0.70'ti. Degisen,
+// panelin DOGRU SOYLEMESI: eskiden "%100" yaziyordu ama cikan 0.70'ti.
+constexpr float SES_SEVIYESI_BASLANGIC = 0.70f;
 
 // Tavan 2.50'den 2.00'ye indirildi, ayni gerekceyle. Sinir HASAR degil
 // (amfi kendi rayinda doyuma gidiyor), YENIDEN BASLAMA.
-constexpr float SES_SEVIYESI_EN_FAZLA  = 2.00f;
+//
+// 🔴 11.09.2026: 2.00 -> 0.70, kullanicinin istegi. GERCEKTE BIR SEY
+// KISILMADI — etkin seviye 3.5.2'den beri zaten `min(seviye, 0.70)`'ti.
+// Kisilan sey PANELIN YALANIYDI: cubuk %200'e kadar gidiyor, ebeveyn
+// %100 goruyor, cikan 0.70 oluyordu. Yani panel var olmayan bir sey
+// vaat ediyordu ve "sesi actim ama degismedi" diye okunurdu.
+//
+// Deger SES_PIL_TAVANI ile AYNI olmak zorunda; asagidaki static_assert
+// ayrismalarini engelliyor. Tavan bir gun yukselirse ikisi birlikte
+// yukselir ve panelin %100'u kendiliginden onu gosterir.
+//
+// ⚠️ Yumusak sinirlayici (yumusak_sinirla) YERINDE DURUYOR. Artik
+// panelden 1.0 ustu istenemiyor ama sinirlayicinin ikinci bir isi var:
+// yeniden ornekleme ara deger uretirken tepeyi asabiliyor.
+constexpr float SES_SEVIYESI_EN_FAZLA  = 0.70f;
 
 // ---------------------------------------------------------------------------
 // 🔴 PILDE UST SINIR — 0.70, ve bu sayi iki kez olculdu
@@ -206,9 +223,21 @@ constexpr float SES_SEVIYESI_EN_FAZLA  = 2.00f;
 // M5Unified yüzdeyi karesel ölçekler, burası PCM genliğini doğrusal
 // çarpar: üreticinin %75 önerisiyle doğrudan eşitlenemez.
 constexpr float SES_PIL_TAVANI = 0.70f;
+
+// 🔴 TEK GERCEK: panelin gosterebildigi en yuksek deger ile fiilen
+// uygulanan tavan AYNI olmali. Ayrisirlarsa panel yine var olmayan bir
+// sey vaat eder — 3.5.2 ile 3.5.4 arasinda tam olarak bu oldu ve
+// kimse fark etmedi. Artik derleme duruyor.
+static_assert(SES_SEVIYESI_EN_FAZLA == SES_PIL_TAVANI,
+              "Panelin tavani ile fiili tavan ayristi: ebeveyn ulasamayacagi "
+              "bir seviyeyi secebiliyor demektir.");
 // Aynı tavan şarjda da geçerli; panel ve ses sürücüsü aynı sonucu kullanır.
 float ses_etkin_seviye();
 constexpr float SES_SEVIYESI_EN_AZ     = 0.15f;
+
+static_assert(SES_SEVIYESI_BASLANGIC <= SES_SEVIYESI_EN_FAZLA &&
+                  SES_SEVIYESI_BASLANGIC >= SES_SEVIYESI_EN_AZ,
+              "Baslangic seviyesi sinirlarin disinda.");
 constexpr float SES_SEVIYESI_ADIM      = 0.15f;
 
 // Seviyeyi sinirlar icinde ayarlar, gercekte ne oldugunu dondurur.

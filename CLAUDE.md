@@ -176,6 +176,18 @@ performans kararı ona bağlı değil.
 "pil" artık "yalnızca pilde" demek değil, o sayıların **nereden geldiğini**
 anlatıyor: 02.09.2026'daki pil ölçümü.
 
+🔴 **Panel, olmayan bir şeyi vaat etmemeli — 3.5.5'te düzeltildi.**
+`SES_SEVIYESI_EN_FAZLA` 2.00'ken fiilî tavan 0.70'ti: çubuk %200'e kadar
+gidiyordu, ebeveyn %100 görüyordu, çıkan 0.70'ti. Yani *"sesi açtım,
+değişmedi"* diye okunacak bir yalan. Artık `EN_FAZLA == SES_PIL_TAVANI`
+ve iki `static_assert` ayrışmalarını **derlemede** durduruyor. Panel
+yüzdeyi ham değerden değil **aralıktan** hesaplıyor
+(`panel/pati.js` · `seviyeYuzde`), yani tavan değişirse %100
+kendiliğinden onu gösterir.
+
+Ders genel: **bir sınırı iki yerde tutuyorsan, ayrıştıklarında kimse
+fark etmez.** Bu ikili 3.5.2'den 3.5.4'e kadar ayrık kaldı.
+
 **`CONFIG_MBEDTLS_DYNAMIC_BUFFER` "PSRAM'den al" demek DEĞİL.** Tamponu
 serbest bırakıyor, nereden alındığını değiştirmiyor. PSRAM için
 `MBEDTLS_EXTERNAL_MEM_ALLOC` gerekiyor. Yorum yıllarca "PSRAM'den

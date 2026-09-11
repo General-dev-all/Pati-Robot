@@ -1,2 +1,2 @@
-3.5.4
-Bu surum tamamen guc tasarrufu icin. Pati artik sarjdayken de pildeki gibi dikkatli calisiyor; onceden kablo takiliyken gozlerini daha hizli ciziyordu, o fark kaldirildi. Konusmaya baslarken sesi bir anda degil, gozle gorulmeyecek kadar kisa bir sure icinde aciliyor. Ekran biraz daha kisik ve islemc
+3.5.5
+Panelde ses cubugu artik dogru soyluyor. Eskiden cubuk yuzde 200'e kadar gidiyordu ama Pati zaten yuzde 70'in ustune cikmiyordu; yani yuzde 100 yazarken de, daha yukari cekerken de cikan ses aynıydı. Artik cubugun sonu Pati'nin gercekten cikarabildigi en yuksek ses ve orasi yuzde 100 gorunuyor. Sesin kendisi DEGISMEDI, sadece gosterge duzeldi.
