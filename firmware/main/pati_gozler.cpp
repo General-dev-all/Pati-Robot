@@ -107,15 +107,34 @@ constexpr int PIL_KARE_MS = 1000 / PIL_FPS;
 // geri alinir.
 constexpr int PIL_KONUSMA_FPS = 5;
 constexpr int PIL_KONUSMA_KARE_MS = 1000 / PIL_KONUSMA_FPS;
-// Şarjda yalnız ses çalarken çizim yükünü azaltır; sessizken akıcılık korunur.
-constexpr int SARJ_KONUSMA_KARE_MS = 1000 / 10;
 
-// Calisma aninda degisiyor: guc kaynagi degisince app_main ayarliyor.
-std::atomic<int> g_kare_ms{KARE_MS};
-
-// Pilde miyiz — konusma kademesi yalnizca pilde devreye giriyor.
-// USB'de akim bol, gozleri yavaslatmanin karsiligi yok.
-std::atomic<bool> g_pilde{false};
+// ---------------------------------------------------------------------------
+// 🔴 PIL / SARJ AYRIMI KALDIRILDI — 11.09.2026, kullanicinin karari
+// ---------------------------------------------------------------------------
+//
+// Eskiden iki profil vardi: USB'de 20 fps (konusurken 10), pilde 10 fps
+// (konusurken 5). Gerekcesi "USB'de akim bol"du.
+//
+// O gerekce OLCUMLE COKTU. 11.09.2026'da ayni kartta sirayla goruldu:
+//
+//   USB, pil 4048 mV (neredeyse dolu)  -> yine brownout, konusurken
+//   PIL, pil 3950 mV, govde cikarik    -> yine brownout, konusurken
+//   tam silme + temiz yukleme sonrasi  -> yine brownout, konusurken
+//
+// Yani "USB'de akim bol" varsayimi bu kartta DOGRU DEGIL: USB daha
+// fazla pay vermiyor, yalnizca yazilim sinirlarini kaldiriyordu.
+// Kaynaga gore fazladan yuk vermenin karsiligi kalmadi.
+//
+// Artik tek profil var ve muhafazakar olani: sessizken 10 fps,
+// konusurken 5. Ses tavani (0.70) zaten 3.5.2'de iki kaynakta da
+// esitlenmisti; bu, ayni birlestirmenin gozlerdeki karsiligi.
+//
+// ⚠️ Sabit adlari PIL_ onekiyle KALIYOR. Adlarindaki "pil" artik
+// "yalnizca pilde" demek degil, bu degerlerin NEREDEN geldigini
+// anlatiyor: 02.09.2026'daki pil olcumu. Yanlarindaki olcum kaydi
+// silinirse bu sayilarin gerekcesi de kaybolur.
+constexpr int KARE_ARALIK_MS = PIL_KARE_MS;
+constexpr int KONUSMA_ARALIK_MS = PIL_KONUSMA_KARE_MS;
 
 // Sunucunun "üretim bitti" olayı, DMA'daki sesin bittiği an değildir.
 // Süreyi ses sürücüsü uzatır; göz görevi yalnızca kilitsiz 32 bit okur.
@@ -842,11 +861,14 @@ PATI_HIZLI void satiri_ciz(int sy, const Yerlesim y[2], float kirp)
 
         // --- cam parlamasi
 #if PATI_GOZ_CAM_PARLAMASI
-        // Pilde cam parlamasi da kapali: kucuk ama bedava bir tasarruf.
-        // Gozun sol ustundeki minik beyaz leke — yoklugu ancak yan yana
-        // konursa fark ediliyor.
-        if (!g_pilde.load(std::memory_order_relaxed)
-            && kirp < 0.5f && v.yuk > 14.0f) {
+        // Cam parlamasi: gozun sol ustundeki minik beyaz leke. Yoklugu
+        // ancak iki goz yan yana konursa fark ediliyor.
+        //
+        // ⚠️ Bu blok ZATEN DERLEME DISI (PATI_GOZ_CAM_PARLAMASI = 0) ve
+        // eskiden ayrica "pilde kapali" diye de kosullanmisti. O kosul
+        // 11.09.2026'da kalkti, cunku pil/sarj ayrimi kalkti. Bayragi
+        // acan kisi bu maliyeti HER KAYNAKTA ustlenmis olur.
+        if (kirp < 0.5f && v.yuk > 14.0f) {
             const float px = v.sol + v.gen * (0.14f - v.bakis_x * 0.04f);
             satira_yuvarlak(sy, px, v.ust + v.yuk * 0.10f,
                             v.gen * 0.26f, std::max(v.yuk * 0.20f, 3.0f),
@@ -1356,11 +1378,10 @@ std::uint32_t gozler_kare() { return g_kare.load(std::memory_order_relaxed); }
 std::uint32_t gozler_piksel() { return g_piksel.load(std::memory_order_relaxed); }
 int gozler_hedef_fps()
 {
+    // Tek profil: guc kaynagina BAKILMIYOR. Karar yalnizca ses
+    // suruculerinin DMA calma penceresine bagli.
     const bool ses = ses_penceresi_acik();
-    const int aralik = g_kare_ms.load(std::memory_order_relaxed);
-    const int ses_araligi = g_pilde.load(std::memory_order_relaxed)
-                               ? PIL_KONUSMA_KARE_MS : SARJ_KONUSMA_KARE_MS;
-    return 1000 / (ses ? std::max(aralik, ses_araligi) : aralik);
+    return 1000 / (ses ? KONUSMA_ARALIK_MS : KARE_ARALIK_MS);
 }
 
 void gozler_baglanti_bildir(BaglantiUyarisi durum)
@@ -1404,12 +1425,6 @@ void gozler_ses_bildir(int kalan_ms)
     const auto simdi = static_cast<std::uint32_t>(esp_timer_get_time() / 1000);
     const auto bitis = simdi + static_cast<std::uint32_t>(kalan_ms);
     g_ses_bitis_ms.store(bitis == 0 ? 1 : bitis, std::memory_order_relaxed);
-}
-
-void gozler_pil_kipi(bool pilde)
-{
-    g_kare_ms.store(pilde ? PIL_KARE_MS : KARE_MS, std::memory_order_relaxed);
-    g_pilde.store(pilde, std::memory_order_relaxed);
 }
 
 void gozler_durum_bildir(int gunc_durum, int gunc_yuzde,
@@ -1537,8 +1552,10 @@ esp_err_t gozler_baslat()
         return ESP_FAIL;
     }
 
-    ESP_LOGI(ETIKET, "gozler basladi: %d ifade, %d fps hedefi",
-             GOZ_DURUM_SAYISI, HEDEF_FPS);
+    ESP_LOGI(ETIKET, "gozler basladi: %d ifade, %d fps (konusurken %d) "
+                     "— tek profil, guc kaynagindan bagimsiz",
+             GOZ_DURUM_SAYISI, 1000 / KARE_ARALIK_MS,
+             1000 / KONUSMA_ARALIK_MS);
     return ESP_OK;
 }
 

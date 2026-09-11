@@ -100,8 +100,11 @@ int gozler_hedef_fps();
 // Yani goz yuku gercek bir etken. Konusma kademesi bunun hedefli hali:
 // cokmelerin HEPSI Pati konusurken oldu.
 //
-// Gerekcesi ve olculecek sey pati_gozler.cpp'de PIL_FPS'in yaninda.
-void gozler_pil_kipi(bool pilde);
+// 🔴 gozler_pil_kipi() KALDIRILDI (11.09.2026). Kare hizi artik guc
+// kaynagina bakmiyor: her zaman muhafazakar profil calisiyor (sessizken
+// 10 fps, konusurken 5). Gerekcesi pati_gozler.cpp'de KARE_ARALIK_MS'in
+// yaninda — ozeti: "USB'de akim bol" varsayimi olcumle coktu, USB'de de
+// dolu pille de brownout oluyor.
 
 // Ses sürücüsü DMA'ya yazmadan önce ve sonra kalan en uzun çalma
 // süresini bildirir. Yüz ifadesi değişse de pildeki tasarruf sürmeli.

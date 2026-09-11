@@ -182,28 +182,32 @@ CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
 CONFIG_COMPILER_OPTIMIZATION_PERF=y
 
 # ---------------------------------------------------------------------------
-# CPU 240 MHz — IDF'in varsayilani 160
+# CPU 160 MHz — 240'a cikarilmisti, 11.09.2026'da geri indirildi
 # ---------------------------------------------------------------------------
 #
-# 🔴 GERCEK KARTTA OLCULDU (01.09.2026), tahmin degil.
+# 🔴 240'IN GEREKCESI DUSTU. Gerekce soyleydi ve gercek kartta olculmustu
+# (01.09.2026): goz cizici kare basina 45-49 ms harciyordu ve BUTCE
+# 50 ms'ti (20 fps). Bes saniyede ~90 kare atlaniyordu.
 #
-# Kart ilk kez calisirken goz cizici kare basina 45-49 ms harciyordu ve
-# butce 50 ms (20 fps). Bes saniyede ~90 kare atlaniyordu. Cizim
-# suresinin %85'i sekil rasterlemesi.
+# O butce artik 50 ms degil, 100 ms — 3.5.4'te pil/sarj profil ayrimi
+# kalkti ve gozler her kaynakta 10 fps'e indi (konusurken 5).
+# 45-49 ms, 100 ms'lik butceye rahat siginiyor.
 #
-# Sebep goz cizicinin agirligi degildi: yonga 160 MHz'de kosuyordu,
-# cunku CONFIG_ESP_DEFAULT_CPU_FREQ IDF'te varsayilan olarak 160.
-# ESP32-S3 240 MHz destekliyor.
+# Ustelik cizim o gunden beri ucuzladi: 11.09.2026 acilis kaydinda
+# 240 MHz'de kare 13,5 ms (butce 50 ms, atlanan 0). 160 MHz'de
+# kabaca 20 ms eder ve 100 ms'lik butcenin besde biri.
 #
-# 240 MHz her seyi hizlandiriyor — sekil rasterlemesi, ses yeniden
-# ornekleme, TLS, websocket — ve hicbir gorsel taviz istemiyor.
+# ⚠️ 240 baska seyleri de hizlandiriyordu: ses yeniden ornekleme, TLS,
+# websocket. Yeniden ornekleyici icin risk yok — cikis basina birkac
+# float islemi, 48 kHz'de bir cekirdegin binde birkacu. TLS ve
+# websocket yavaslar; ESP32-S3'un IDF varsayilani zaten 160 ve bu
+# yaygin bir calisma noktasi.
 #
-# BEDELI PIL. Ama bu kartta asil akimi CPU degil telsiz cekiyor:
-# ses kesintilerini onlemek icin wifi guc tasarrufu KAPALI
-# (WIFI_PS_NONE, pati_ag.cpp). Kullanicinin tek pazarlıksız sarti
-# sesin kesilmemesi; pil ikinci sirada ve sarj kablosu her zaman
-# yaninda.
-CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+# 🔴 SESTE BOZULMA OLURSA ILK SUPHELI BURASI. Pati'nin sesi
+# kullanicinin tek pazarliksiz sarti (CLAUDE.md). Geri almak icin bu
+# satiri _240 yapip sdkconfig'i SILMEK yeterli — dosya varken
+# defaults okunmuyor.
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_160=y
 
 
 # ---------------------------------------------------------------------------

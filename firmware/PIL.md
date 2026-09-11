@@ -537,3 +537,245 @@ Wi-Fi gücü ve uyku ayarı değişmedi. Flash zaten 40 MHz; yeni kazanç
 olarak sayılmaz. Kaynak ayrımı korunur; şarj göstergesi ve OTA pil
 korumaları aynı kalır. Kullanıcı güncellemeyi panelden yükleyecek.
 Bu profilin resetlere etkisi henüz kartta ölçülmedi.
+
+## 11.09.2026 — 3,7 dakikalık kesintisiz kayıt (USB, konuşurken)
+
+3.5.3 yüklü, USB takılı, kullanıcı konuşurken panelden 10 saniyede bir
+`api/durum` çekildi. Ham kayıt: `usb-izleme.jsonl` (23 başarılı örnek,
+22:06:44 → 22:10:28; ardından cihaz kapatıldığı için ulaşılamadı).
+
+| Saat | pil_mv | vin_mv | çökme | cokme_mv | °C | RSSI |
+|---|---|---|---|---|---|---|
+| 22:06:44 | 3740 | 5002 | 19 | 3736 | 53,5 | **−70** |
+| 22:07:04 | 3714 | 4932 | 19 | 3736 | 52,5 | **−69** |
+| 22:07:14 | 3744 | 4992 | 19 | 3736 | 53,5 | **−71** |
+| 22:07:24 | 3744 | 4988 | 20 | 3742 | 53,5 | **−49** |
+| 22:07:44 | 3746 | 4984 | 21 | 3746 | 54,5 | −57 |
+| 22:07:55 | 3752 | 4992 | 22 | 3750 | 54,5 | −54 |
+| 22:08:07 | 3750 | 4996 | 23 | 3750 | 53,5 | −60 |
+| 22:08:27 | 3752 | 4986 | 24 | 3750 | 54,5 | −53 |
+| 22:08:37 | 3754 | 4990 | **25** | 3754 | 54,5 | −51 |
+| 22:09:27 | 3758 | 4992 | 25 | 3754 | 54,5 | −52 |
+| 22:10:28 | 3770 | 4992 | **25** | 3754 | 54,5 | −52 |
+
+### ⚠️ Geri çekilen okuma: "gerilim düz, hiç şarj olmuyor"
+
+İlk dört örneğe (3740 → 3714 mV) bakılıp *"pil bir dakikada hiç
+yükselmedi, USB çalışırken hiç şarj etmiyor"* denmişti. **Yanlıştı.**
+Tam pencerede gerilim 3740 → 3770 mV yükseliyor: yaklaşık 8 mV/dakika.
+Yani çalışırken şarj **oluyor**, sadece yük karşısında çok yavaş. İlk
+dakikadaki düşüş bir eğilim değil, anlık örneğin yükle salınmasıydı.
+
+Ders eskisiyle aynı: **aralıklı bir sistemde bir dakikalık pencere bir
+eğilim göstermez.**
+
+### ⚠️ `pil_mv` ile `pil_yuzde` aynı büyüklük değil
+
+Panelin iki alanı farklı şeyler veriyor ve bu koşuda karıştırıldı:
+
+| Alan | Ne | Kaynak |
+|---|---|---|
+| `guc.pil_mv` | **anlık** son örnek, ham | `g_pil_mv` (`pati_guc.cpp` · `pil_mv()`) |
+| `guc.pil_yuzde` | son 30 saniyenin **TEPE** değeri, eğriden çevrilmiş | `g_pencere[15]` · `pil_yuzde()` |
+
+Kayıttaki iki tuhaflığı tam olarak bu açıklıyor:
+
+- **22:08:07'de `pil_yuzde` = −1.** Bu bir hata değil, belgeli nöbetçi
+  değer: `if (tepe <= 0) return -1` — pencere boş. Pencere kaynak
+  değişince sıfırlanıyor ve o örnekte çökme sayacı 22 → 23 oldu, yani
+  cihaz yeni açılmıştı.
+- **22:09:27'de `pil_mv` 3758 iken `pil_yuzde` %46.** Eğriden 3758 mV
+  doğrudan %32 verir; %46 için tepenin ~3825 mV olması gerekir. Yani
+  pencerede, anlık örneklerin 67 mV üstünde bir şarj devresi okuması
+  kalmıştı.
+
+🔴 **Sonuç: tablodaki `pil_mv` sütunu tepe değil, 10 saniyede bir
+alınmış anlık örnektir.** Konuşma sırasındaki gerçek milisaniyelik
+çöküntüler bu örnekleme aralığıyla **hiç görülemez**. Brownout'un
+gerçekleştiği gerilim bu sütunda yazmıyor ve `cokme_mv` de onu
+vermiyor — o da aynı anlık okumadan geliyor.
+
+Bu belge (§"Elenen iddialar", 05.09) ve `TESHIS.md` bunu zaten doğru
+yazıyordu. **Geride kalan tek yanlış yer kaynak koddu:** `pati_guc.cpp`
+içinde `cokme_mv` yazılırken duran yorum hâlâ *"düşük pil hipotezinin
+sınandığı yer burası"* diyordu. 11.09'da düzeltildi — `app_main.cpp`
+ile `pati_ses.hpp` arasında çıkan çelişkinin aynısı: belge geri
+çekiliyor, kaynaktaki kopya kalıyor.
+
+### 🔴 Asıl bulgu: çökmeler durdu ve sinyalle örtüşüyor
+
+- 22:06:44 → 22:08:37 arası **113 saniyede 6 çökme** (19 → 25), yani
+  ortalama 19 saniyede bir.
+- 22:08:37 → 22:10:28 arası **111 saniyede 0 çökme.** Sayaç 25'te kaldı.
+- Aynı anda RSSI **−70/−71'den −49/−52'ye** çıktı (22:07:24'te sıçradı).
+  `cubuk()`'a göre bu 2 çubuktan 4 çubuğa geçiş.
+
+Pil gerilimi iki yarı arasında neredeyse aynı (3754 → 3770 mV, 16 mV).
+Sıcaklık aynı (53,5–54,5 °C ikisinde de). vin aynı (~4990 mV, tek
+istisna 4932'lik bir örnek). **Değişen tek ölçülen büyüklük sinyal.**
+
+Bu, bu belgenin kendi tablosuyla tutarlı: satır 83'te wifi vericisi
+20 → 15 dBm denemesi *menzil çöktüğü için* geri alınmış ("modemin
+dibinde bile zor çekiyor") ve aynı satırda telsizin gönderirken
+250–350 mA çektiği yazılı. Yani Pati zaten menzilinin sınırında
+çalışıyor; zayıf sinyalde verici tam güçte kalıp yeniden gönderim
+yapıyor ve bu darbeler yarı boş bir hücrenin üstüne biniyor.
+`WIFI_PS_NONE` (radyo hiç uyumuyor) bu tabloyu ağırlaştırıyor —
+`pati_ag.cpp` yorumu bedelini zaten "~30 mA fazla ortalama" diye
+yazmış, ama tepe akımı ayrı bir şey.
+
+### Bu KANIT DEĞİL — neyin karıştığı
+
+1. **Kullanıcının konuşmaya devam edip etmediği bilinmiyor.** Sessiz
+   geçen iki dakika, çökmelerin durmasını tek başına açıklar.
+2. RSSI 22:07:24'te düzeldi ama çökmeler **73 saniye daha sürdü.**
+   Sebep-sonuç olsaydı daha keskin bir kesme beklenirdi (ya da
+   yeniden bağlanma/kota sarmalının ataleti sayılmalı).
+3. n = 1. Tek geçiş, tek pencere.
+4. Hücre %30'da; bu koşulda alınan hiçbir ölçüm temiz değil.
+
+### Sıradaki ayrım — pil dolduktan sonra
+
+Şarj bitince iki soru **ayrı ayrı** ölçülecek, ikisi de kod
+değişikliği gerektirmiyor:
+
+1. **Dolu pille çökme sıklığı.** Hücre ~4,1 V iken aynı konuşma.
+   Çökme kalmazsa gerilim payı; sürerse gerilim ana sebep değil.
+2. **Sinyal A/B.** Aynı pil seviyesinde, önce modemin yanında sonra
+   uzağında birer koşu. Ölçülen: dakikada çökme ve RSSI.
+
+⚠️ İzleme betiği bundan sonra `ag.tx_ceyrek_dbm` ve `ag.tasarruf`
+alanlarını da kaydetmeli; paneldeki JSON'da ikisi de zaten var
+(`pati_panel.cpp`) ve bu koşuda kaydedilmedikleri için verici
+gücünün gerçekten tavanda olup olmadığı söylenemiyor.
+
+⚠️ **Önce ölçüm, sonra kod.** Wifi tarafında akla gelen iki kol
+(verici gücünü kısmak, `WIFI_PS_MIN_MODEM`'e dönmek) ikisi de daha
+önce bilinçli olarak reddedilmişti: birincisi menzili öldürdü,
+ikincisi sesin ortasında boşluk yapıyor. Ölçüm olmadan ikisi de
+açılmaz.
+
+## 3.5.4 — pil/şarj profil ayrımı kaldırıldı
+
+Kullanıcının kararı (11.09.2026): *"pil modu şarj modu ayrımını
+kaldıralım, mod olmasın, her şey pildeki gibi çalışsın, ister şarjda
+olsun ister pilde."*
+
+### Ayrımın dayandığı varsayım ölçümle çöktü
+
+Gerekçe *"USB'de akım bol, sınırları gevşetebiliriz"* idi. 11.09.2026
+akşamı aynı kartta sırayla ölçüldü — **üçünde de konuşurken brownout**:
+
+| Koşul | Pil | Sonuç |
+|---|---|---|
+| USB (bilgisayar portu) | **4048 mV** (neredeyse dolu) | çöktü, `cokme_mv` 4048 |
+| Pil, gövde çıkarık | 3950 mV | çöktü, 23:09:28'de canlı yakalandı |
+| Tam silme + temiz yükleme sonrası | 3950 mV | yine çöktü |
+
+🔴 **Dolu pille çökme, "hücre düşük olduğu için" açıklamasını bitiriyor.**
+USB fazladan pay vermiyor; yalnızca yazılım sınırlarını kaldırıyordu.
+
+### Ne değişti
+
+Tek gerçek fark göz kare hızıydı — ses tavanı 3.5.2'de zaten iki
+kaynakta da 0.70'e eşitlenmişti.
+
+| | Eskiden şarjda | Eskiden pilde | **3.5.4** |
+|---|---|---|---|
+| Sessizken | 20 FPS | 10 FPS | **10 FPS** |
+| Konuşurken | 10 FPS | 5 FPS | **5 FPS** |
+
+`gozler_pil_kipi(bool)` **kaldırıldı** — bir profil seçicisi bırakmak,
+ileride birinin "şarjda hızlandıralım" diye geri açmasına davetiye
+olurdu. Kare hızının artık güç kaynağı diye bir girdisi yok.
+
+Konak testi bunu koruyor: 200 adımlık tarama, ses penceresi açık ya da
+kapalı, saat nerede olursa olsun çıkan değerin **yalnızca 10 ya da 5**
+olabildiğini doğruluyor. Eskiden USB'de 20 çıkıyordu; o sayının bir daha
+görünmemesi gerekiyor.
+
+### Yan bulgu: log kodun yaptığını değil eski hâlini anlatıyordu
+
+`app_main.cpp`'deki güç kaynağı logu ses tavanını
+`pilde ? min(seviye, TAVAN) : seviye` diye **kendisi hesaplıyordu** ve
+3.5.2'den beri yanlıştı: tavan o sürümde iki kaynakta da geçerli oldu
+ama log USB'de hâlâ sınırsız seviye basıyordu. Artık fiilen uygulanan
+değeri kaynağından okuyor (`ses_etkin_seviye()`).
+
+⚠️ Teşhiste en pahalı yanlış türü bu: log doğru görünüyor ama ölçtüğü
+şey kodun yaptığı şey değil.
+
+### ⚠️ Bu değişikliğin bu akşamki çökmeleri durdurması BEKLENMİYOR
+
+Kullanıcı ölçüm sırasında **pildeydi**, yani 10/5 profili zaten
+çalışıyordu. Bu sürüm yalnızca **şarjdaki** yükü pildekine indiriyor.
+Kazanç varsa USB'de görünür ve henüz ölçülmedi.
+
+Değişikliğin gerekçesi "çökmeyi çözer" değil: **kaynağa göre fazladan
+yük vermenin dayanağı kalmadı.**
+
+### 3.5.4'ün ikinci yarısı — konuşma başı rampası, parlaklık, CPU
+
+Kullanıcının isteği: *"kaliteyi bozmamaya çalış, bir de ekran
+parlaklığından da tasarruf edebiliriz, CPU'dan tasarrufun yanında."*
+
+#### 🔴 Konuşma başında yumuşak başlangıç
+
+Amfi açılışta bir kez açılıyor ve açık kalıyor; değişen tek şey çıkış
+genliği ve o genlik **sessizlikten tam seviyeye bir anda** atlıyordu.
+Ölçülen bütün brownout'lar tam o anda oldu.
+
+Bu, kullanıcının motorlar için koyduğu kuralın aynısı — *"bir daha
+motorları anlık %100'de yapma"* — ve gerekçesi de aynı fizik. Hoparlöre
+hiç uygulanmamıştı.
+
+| | Değer | Neden |
+|---|---|---|
+| Rampa süresi | **80 ms** | elektriksel taraf için fazlasıyla yeterli; bir hece 150–250 ms olduğu için duyulmuyor |
+| Yeni cümle eşiği | 250 ms sessizlik | cümle içi paketler çok daha sık geliyor |
+
+⚠️ **Rampa çıkış örneği başına ilerliyor, çağrı başına değil.** Çağrı
+başına olsaydı aynı ses farklı dilim boyutlarında farklı çıkardı
+(bu dosyanın 23.08.2026 dersi) ve blok sınırlarında kazanç sıçrayıp
+**tık sesi** yapardı.
+
+Konak testi yedi şeyi birden koruyor: rampasız yolun **birebir**
+korunduğunu, sıfırdan başladığını, 80 ms boyunca bastırıldığını,
+sonrasında **tam seviyeye döndüğünü** (3842 örnek sonrası birebir aynı),
+`sifirla()`'nın rampayı başa aldığını, ve 🔴 **dilim boyutundan
+bağımsızlığın rampayla da durduğunu.**
+
+⚠️ **Bu bir tahmin ve henüz ölçülmedi.** Basamak değil de sürekli akım
+çökertiyorsa rampa hiçbir şey yapmaz.
+
+#### Ekran parlaklığı 0.35 → 0.25
+
+Kademeli gidiliyor: 0.45 → 0.35 → 0.25, taban 0.15 (orası "kısık ekran"
+değil "kapalı ekran" gibi görünüyor). Sürekli bir yük, yani taban akımı
+düşürüyor; **tepe akımı düşürdüğü iddia edilmiyor.**
+
+#### CPU 240 → 160 MHz
+
+240'ın gerekçesi ölçülmüştü (01.09.2026): kare 45–49 ms, **bütçe 50 ms**,
+5 saniyede ~90 kare atlanıyor. O bütçe artık **100 ms** — profil ayrımı
+kalkınca gözler her kaynakta 10 FPS'e indi. 45–49 ms oraya rahat sığıyor.
+
+Üstelik çizim o günden beri ucuzladı: 11.09.2026 açılış kaydında 240
+MHz'de kare **13,5 ms** (bütçe 50 ms, atlanan 0). 160 MHz'de kabaca
+20 ms eder.
+
+`sdkconfig` silinip `sdkconfig.defaults`'tan yeniden üretildi ve eskisiyle
+karşılaştırıldı: **yalnızca CPU satırları farklı**, başka hiçbir ayar
+kaymamış.
+
+🔴 **Seste bozulma olursa ilk şüpheli budur.** Yeniden örnekleyici için
+risk düşük (çıkış örneği başına birkaç float işlemi, 48 kHz'de bir
+çekirdeğin binde birkaçı) ama TLS ve websocket yavaşlar. Geri alma:
+`sdkconfig.defaults`'ta `_160` → `_240` ve `sdkconfig`'i **sil**.
+
+#### ⚠️ Üçü aynı sürümde — ayrıştırma bedeli
+
+Üç değişiklik tek sürümde gidiyor, yani kazanç görülürse **hangisinden
+geldiği bilinemeyecek.** Kullanıcı üçünü birlikte istedi ve arıza
+aralıklı olduğu için tek tek ölçmek saatler alırdı. Kazanç çıkarsa
+ayrıştırma sonraya bırakılacak; çıkmazsa üçü de zaten elenmiş olur.

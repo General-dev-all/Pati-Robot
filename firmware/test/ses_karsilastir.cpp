@@ -279,6 +279,104 @@ int main(int argc, char** argv)
                            tek.size(), parcali.size(), ilk_fark));
     }
 
+    // -- 4b. KONUSMA BASI RAMPASI -------------------------------------------
+    //
+    // Rampa 11.09.2026'da eklendi: cikis sessizlikten tam seviyeye bir
+    // anda atliyordu ve olculen butun brownout'lar tam o anda oluyordu.
+    // Gerekce pati_ses.cpp'de SES_RAMPA_MS'in yaninda.
+    //
+    // 🔴 BURASI PATI'NIN SESI. Rampanin iki sekilde zarar verme ihtimali
+    // var ve ikisi de burada siniriyor:
+    //   1. Rampasiz yolu bozmak (varsayilan yol — her zamanki ses)
+    //   2. Dilim boyutundan bagimsizligi delmek (bu dosyanin en pahali
+    //      dersi, bkz. 4. sinama) — delinirse her dilim sinirinda TIK
+    {
+        // pati_ses.cpp ile AYNI formul: 1 / (cikis_hz * rampa_saniye)
+        constexpr int RAMPA_MS = 80;
+        const float rampa_adim =
+            1.0f / (static_cast<float>(SES_HZ) *
+                    (static_cast<float>(RAMPA_MS) / 1000.0f));
+        const auto rampa_ornek =
+            static_cast<std::size_t>(SES_HZ * RAMPA_MS / 1000);
+
+        const auto kaynak = sinus(700, GEMINI_CIKIS_HZ, 40000, 12000.0);
+
+        pati::YenidenOrnekleyici duz_o;
+        const auto duz = calistir(duz_o, kaynak, adim, 1.0f);
+
+        // --- rampa_kur(0) rampayi ACMAZ: varsayilan yol degismemeli
+        pati::YenidenOrnekleyici kapali_o;
+        kapali_o.rampa_kur(0.0f);
+        const auto kapali = calistir(kapali_o, kaynak, adim, 1.0f);
+        sina("rampa_kur(0) ciktiyi degistirmiyor",
+             kapali.size() == duz.size() &&
+                 std::equal(kapali.begin(), kapali.end(), duz.begin()),
+             "rampasiz yol birebir korunuyor");
+
+        // --- rampali
+        pati::YenidenOrnekleyici rampa_o;
+        rampa_o.rampa_kur(rampa_adim);
+        const auto rampali = calistir(rampa_o, kaynak, adim, 1.0f);
+
+        sina("rampa cikti uzunlugunu degistirmiyor",
+             rampali.size() == duz.size(),
+             biciml("duz %zu, rampali %zu", duz.size(), rampali.size()));
+
+        sina("rampa sifirdan basliyor", rampali[0] == 0,
+             biciml("ilk ornek %d", static_cast<int>(rampali[0])));
+
+        // Rampa boyunca genlik duz halden KUCUK olmali (isaret ayni).
+        bool hep_kucuk = true;
+        for (std::size_t i = 1; i < rampa_ornek && i < rampali.size(); ++i) {
+            if (std::abs(rampali[i]) > std::abs(duz[i])) { hep_kucuk = false; break; }
+        }
+        sina("rampa boyunca genlik bastirilmis", hep_kucuk,
+             biciml("ilk %zu ornek (%d ms)", rampa_ornek, RAMPA_MS));
+
+        // Rampa bitince cikis duz halin AYNISI olmali — yoksa rampa
+        // kaliciymis demektir ve Pati surekli kisik konusur.
+        std::size_t fark = 0;
+        for (std::size_t i = rampa_ornek + 2; i < rampali.size(); ++i) {
+            if (rampali[i] != duz[i]) ++fark;
+        }
+        sina("rampa bitince ses tam seviyede", fark == 0,
+             fark == 0 ? biciml("%zu ornek sonrasi birebir ayni",
+                                rampa_ornek + 2)
+                       : biciml("RAMPA BITMIYOR: %zu ornek hala farkli", fark));
+
+        // --- 🔴 DILIM BOYUTUNDAN BAGIMSIZLIK, RAMPA ACIKKEN
+        pati::YenidenOrnekleyici parca_o;
+        parca_o.rampa_kur(rampa_adim);
+        const std::size_t dilimler[] = {4800, 6720, 5000, 6100, 4800,
+                                        6720, 5880, 6000};
+        std::vector<std::int16_t> parcali;
+        std::size_t konum = 0, k = 0;
+        while (konum < kaynak.size()) {
+            const std::size_t n =
+                std::min(dilimler[k++ % 8], kaynak.size() - konum);
+            const auto b = calistir(
+                parca_o,
+                std::span<const std::int16_t>(kaynak.data() + konum, n),
+                adim, 1.0f);
+            parcali.insert(parcali.end(), b.begin(), b.end());
+            konum += n;
+        }
+        sina("rampa dilim boyutundan bagimsiz",
+             parcali.size() == rampali.size() &&
+                 std::equal(parcali.begin(), parcali.end(), rampali.begin()),
+             parcali.size() == rampali.size() &&
+                     std::equal(parcali.begin(), parcali.end(), rampali.begin())
+                 ? "tek parca ile 8 duzensiz dilim BIREBIR ayni"
+                 : "AYRISIYOR — her dilim sinirinda TIK sesi demek");
+
+        // --- sifirla() rampayi basa aliyor (barge-in sonrasi yeni cumle)
+        rampa_o.sifirla();
+        const auto ikinci = calistir(rampa_o, kaynak, adim, 1.0f);
+        sina("sifirla() rampayi basa aliyor", ikinci[0] == 0,
+             biciml("barge-in sonrasi ilk ornek %d",
+                    static_cast<int>(ikinci[0])));
+    }
+
     // -- 5. FAZ KAYMASI -----------------------------------------------------
     //
     // faz her dilimde `t - N` ile yeniden hesaplaniyor ve t bir float.

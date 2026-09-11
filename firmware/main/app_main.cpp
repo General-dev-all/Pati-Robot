@@ -101,11 +101,21 @@ constexpr int GOZCU_ARALIK_MS = 2000;
 constexpr std::int64_t UYARI_ARALIK_US = 60LL * 1000000LL;
 
 // Guc kipini uygular. Kaynak degisince ve acilista bir kez cagriliyor.
+// 🔴 ARTIK PROFIL SECMIYOR — 11.09.2026, kullanicinin karari.
+//
+// Adi "guc kipi uygula" ama iki kip kalmadi: TEK kip var ve kaynaktan
+// bagimsiz. Islev yine de duruyor, cunku iki isi var: acilista ve kaynak
+// degisince ayarlari yeniden basmak, ve kaynak degisimini LOGA yazmak.
+// Log teshis icin degerli — hangi an neye gecildigi gorunuyor.
+//
+// Neden ayrim kalkti: "USB'de akim bol, sinirlari gevsetebiliriz"
+// varsayimi olcumle coktu. 11.09.2026'da ayni kartta, ayni aksam:
+// USB'de dolu pille (4048 mV) brownout, pilde (3950 mV) brownout, tam
+// silme ve temiz yuklemeden sonra yine brownout — hepsi konusurken.
+// Kaynaga gore fazladan yuk vermenin bir karsiligi kalmadi.
 void guc_kipi_uygula(pati::GucKaynagi kaynak)
 {
-    const bool pilde = (kaynak != pati::GucKaynagi::Usb);
-
-    // ---- ARKA IŞIK: pilde ve şarjda %35 --------------------------------
+    // ---- ARKA IŞIK: her kaynakta %35 -----------------------------------
     //
     // Sürekli ekran yükünü azaltarak konuşma anına güç payı bırakmak
     // amaçlanıyor. Resetlerin kök nedeni ve bu ayarın etkisi ölçülecek.
@@ -116,8 +126,20 @@ void guc_kipi_uygula(pati::GucKaynagi kaynak)
     // "sorun barizse guc, biraz daha kisalim."
     //
     // 0.15 alt sinir ve orasi "kisik ekran" degil "kapali ekran" gibi
-    // gorunuyor (pati_ekran.hpp). 0.35 hala rahat okunuyor.
-    pati::ekran_parlaklik_ayarla(0.35f);
+    // gorunuyor (pati_ekran.hpp).
+    //
+    // 11.09.2026: kullanicinin istegiyle 0.35 -> 0.25. Gerekce yine
+    // "sorun barizse guc, biraz daha kisalim" — 02.09'da 0.45'ten
+    // 0.35'e inerken de ayni gerekce vardi.
+    //
+    // ⚠️ KADEMELI GIDILIYOR, uca atlanmiyor: 0.45 -> 0.35 -> 0.25 ve
+    // taban 0.15. Kullanicinin donanim kurali bu. Karanlik gelirse
+    // geri alinacak yer burasi — tek satir.
+    //
+    // ⚠️ Bu da olculmus bir kazanc DEGIL. Arka isik surekli bir yuk,
+    // yani taban akimi dusuruyor; brownout'u yapan TEPE akimi
+    // dusurdugu iddia edilmiyor.
+    pati::ekran_parlaklik_ayarla(0.25f);
 
     // ---- WIFI VERICI GUCU: DENENDI VE GERI ALINDI ------------------------
     //
@@ -144,17 +166,29 @@ void guc_kipi_uygula(pati::GucKaynagi kaynak)
     //
     // 02.09.2026 olcumu: 20 -> 10 fps, cokme arasini ~40 saniyeden
     // ~4,5 dakikaya cikardi. Gerekce ve sayilar pati_gozler.cpp'de.
-    pati::gozler_pil_kipi(pilde);
+    //
+    // 🔴 BURADA ARTIK BIR CAGRI YOK. Kare hizi kaynaktan bagimsiz hale
+    // geldi ve karari gozler kendi iciyor (pati_gozler.cpp ·
+    // gozler_hedef_fps). Bir profil secicisi birakmak, ileride birinin
+    // "USB'de hizlandiralim" diye geri acmasina davetiye olurdu.
 
+    // ⚠️ LOGDAKI SES TAVANI HESAPLANMIYOR, SORULUYOR.
+    //
+    // Eskiden burada `pilde ? min(seviye, TAVAN) : seviye` yaziyordu ve
+    // 3.5.2'den beri YANLISTI: tavan o surumde iki kaynakta da gecerli
+    // oldu (pati_ses.cpp · ses_etkin_seviye), ama bu satir USB'de hala
+    // sinirsiz seviye basiyordu. Yani log, kodun yaptigini degil eski
+    // halini anlatiyordu — teshiste en pahali yanlis turu.
+    //
+    // Artik fiilen uygulanan degeri kaynagindan okuyoruz.
     ESP_LOGW(ETIKET, "GUC KAYNAGI: %s · pil %d mV (%%%d) · VIN %d mV · "
-                     "ses tavani %.2f",
+                     "ses tavani %.2f · gozler %d fps (tek profil)",
              kaynak == pati::GucKaynagi::Usb   ? "USB/5VIN"
              : kaynak == pati::GucKaynagi::Pil ? "PIL"
                                                : "BILINMIYOR",
              pati::pil_mv(), pati::pil_yuzde(), pati::vin_mv(),
-             static_cast<double>(
-                 pilde ? std::min(pati::ses_seviyesi(), pati::SES_PIL_TAVANI)
-                       : pati::ses_seviyesi()));
+             static_cast<double>(pati::ses_etkin_seviye()),
+             pati::gozler_hedef_fps());
 }
 
 // Tusa basildi.

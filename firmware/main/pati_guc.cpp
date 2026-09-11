@@ -494,8 +494,24 @@ void cokme_say()
     std::uint32_t n = 0;
     nvs_get_u32(h, "cokme", &n);
     nvs_set_u32(h, "cokme", n + 1);
-    // Son cokme aninda pil ne kadardi — dusuk pil hipotezinin sinandigi
-    // yer burasi.
+    // 🔴 BU DEGER COKME ANINDAKI GERILIM DEGIL — adi oyle okunuyor ama
+    // degil. Burasi ACILIS yolu: cokme_say() guc_baslat() icinden,
+    // pil_ornekle()'den hemen sonra cagriliyor. Yani yazilan sey
+    // cihazin YENIDEN ACILDIKTAN SONRAKI, neredeyse BOSTAKI gerilimi:
+    // wifi henuz baglanmadi, ses yok, hoparlor sessiz.
+    //
+    // Eski yorum burada "dusuk pil hipotezinin sinandigi yer" diyordu.
+    // Yanlisti ve 11.09.2026'da geri cekildi (PIL.md): brownout'u
+    // yapan cokuntu milisaniyelik, ornekleme araligi ise 2 saniye —
+    // o dip bu yoldan HIC gorulemez. Uzerine, dip aninda cip zaten
+    // resetleniyor; okuyacak kod calismiyor.
+    //
+    // Bu yuzden cokme_mv ile pil_mv'nin birbirini tutmasi bir bulgu
+    // degil: ikisi de ayni boştaki gerilim. "Cokmeler su gerilimde
+    // oluyor" cumlesi BU SAYIYLA KURULAMAZ.
+    //
+    // Yine de duruyor, cunku tek basina bir sey soyluyor: cokmenin
+    // oldugu saatteki hucre seviyesi. Kaba bir baglam, kanit degil.
     nvs_set_u32(h, "cokme_mv", static_cast<std::uint32_t>(pil_mv()));
     nvs_commit(h);
     nvs_close(h);

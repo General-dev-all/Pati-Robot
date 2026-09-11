@@ -97,6 +97,37 @@ public:
     {
         faz_ = 0.0f;
         onceki_ = 0;
+        // Rampa kuruluysa o da basa doner: sifirla() barge-in'de
+        // cagriliyor, yani ardindan gelen sey YENI bir cumle.
+        if (kazanc_adim_ > 0.0f) kazanc_ = 0.0f;
+    }
+
+    // -----------------------------------------------------------------
+    // 🔴 KONUSMA BASINDA YUMUSAK BASLANGIC
+    // -----------------------------------------------------------------
+    //
+    // Cikis sessizlikten tam seviyeye BIR ANDA atliyordu ve olculen
+    // butun brownout'lar tam o anda oldu (11.09.2026: uc cokme, ucu de
+    // `ifade konusuyor` iken; USB'de dolu pille de, pilde de).
+    //
+    // Bu, kullanicinin motorlar icin koydugu kuralin aynisi:
+    // "bir daha motorlari anlik %100'de yapma". Gerekcesi de ayni —
+    // kalkis anindaki tepe akim besleme hattini cokertiyor. Hoparlore
+    // o kural hic uygulanmamisti.
+    //
+    // ⚠️ RAMPA CIKIS ORNEGI BASINA ILERLIYOR, cagri basina degil.
+    // Cagri basina olsaydi ayni ses farkli dilim boyutlarinda farkli
+    // cikardi ve bu dosyanin en pahali dersini (asagida, 23.08.2026)
+    // delerdi. Ustelik blok sinirlarinda kazanc sicrar, yani TIK sesi
+    // duyulurdu — tam da kaliteyi bozmamak icin boyle.
+    //
+    // adim_basina = 1 / (cikis_hz * rampa_saniye). 0 verilirse rampa
+    // kapali ve kazanc sabit 1.0 — konak testleri bu yoldan geciyor,
+    // yani Pati'nin sesi olculen haliyle sinaniyor.
+    void rampa_kur(float adim_basina)
+    {
+        kazanc_adim_ = adim_basina > 0.0f ? adim_basina : 0.0f;
+        kazanc_ = kazanc_adim_ > 0.0f ? 0.0f : 1.0f;
     }
 
     // kaynak'i yeniden ornekler, seviye ile olcekler, sinirlayicidan
@@ -159,7 +190,15 @@ public:
                                      : static_cast<float>(kaynak[i - 1]);
             const float b = static_cast<float>(kaynak[i]);
 
-            tampon[n++] = yumusak_sinirla((a + (b - a) * f) * seviye);
+            tampon[n++] =
+                yumusak_sinirla((a + (b - a) * f) * seviye * kazanc_);
+
+            // Rampa kapaliyken kazanc_ sabit 1.0 ve bu dal hicbir sey
+            // yapmiyor — yani rampasiz yol bit bit eskisiyle ayni.
+            if (kazanc_ < 1.0f) {
+                kazanc_ += kazanc_adim_;
+                if (kazanc_ > 1.0f) kazanc_ = 1.0f;
+            }
 
             if (n == tampon.size()) {
                 if (!yaz(std::span<const std::int16_t>(tampon.data(), n))) {
@@ -204,6 +243,10 @@ public:
 
 private:
     float faz_ = 0.0f;
+    // Konusma basi rampasi. adim_ = 0 iken kazanc_ sabit 1.0 kalir
+    // ve cikis rampasiz haliyle bit bit ayni olur.
+    float kazanc_ = 1.0f;
+    float kazanc_adim_ = 0.0f;
     std::int16_t onceki_ = 0;
 };
 

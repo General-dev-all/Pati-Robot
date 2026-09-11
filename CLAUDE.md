@@ -149,10 +149,26 @@ sıfırlıyor — yığın izi basılamıyor çünkü CPU kod çalıştırmıyor
 40 MHz'de bitti (`TESHIS.md`). Flash hâlâ 80 MHz; aynı sınıftan belirti
 çıkarsa sıradaki yer orası.
 
-**Pilde ses seviyesi.** M5Stack yazıyor: yüksek seviyede çekilen akım
-cihazı yeniden başlatıyor. Varsayılan 1.00 ve bilinçli düşük. Pilde
-`SES_PIL_TAVANI` (0.70) devreye giriyor; karar VIN gerilimine bakılarak
-veriliyor, "kablo takılı mı"ya değil (`pati_guc.cpp`, `guc_kaynak`).
+🔴 **Pil kipi / şarj kipi diye bir ayrım YOK (3.5.4'ten beri).**
+Tek profil var ve muhafazakâr olanı: ses tavanı `SES_PIL_TAVANI` (0.70),
+gözler sessizken 10 FPS, konuşurken 5 FPS — **güç kaynağına
+bakılmaksızın.**
+
+Ayrım kalktı çünkü dayandığı varsayım ölçümle çöktü. 11.09.2026'da aynı
+kartta sırayla: USB'de **dolu pille** (4048 mV) brownout, pilde (3950 mV)
+brownout, tam silme + temiz yüklemeden sonra yine brownout — hepsi
+konuşurken. "USB'de akım bol, sınırları gevşetebiliriz" bu kartta doğru
+değil; USB fazladan pay vermiyor, yalnızca yazılım sınırlarını
+kaldırıyordu.
+
+`guc_kaynak()` **duruyor** ama artık yalnızca üç iş için: panelde kaynağı
+göstermek, düşük pil uyarısını USB'de susturmak, ve yüzde penceresini
+kaynak değişince sıfırlamak (ölçüm doğruluğu — `pati_guc.cpp`). Hiçbir
+performans kararı ona bağlı değil.
+
+⚠️ Sabitler hâlâ `PIL_` önekli (`PIL_FPS`, `SES_PIL_TAVANI`). Addaki
+"pil" artık "yalnızca pilde" demek değil, o sayıların **nereden geldiğini**
+anlatıyor: 02.09.2026'daki pil ölçümü.
 
 **`CONFIG_MBEDTLS_DYNAMIC_BUFFER` "PSRAM'den al" demek DEĞİL.** Tamponu
 serbest bırakıyor, nereden alındığını değiştirmiyor. PSRAM için
@@ -343,6 +359,11 @@ sınandı ve çalışıyor. Sohbet turları dönüyor.
 3. **CPU 160 MHz'deydi** (IDF varsayılanı). Kare süresi 45–49 ms,
    bütçe 50 ms, 5 saniyede ~90 kare atlanıyordu. 240 MHz'de aynı kare
    29–31 ms ve atlama duruyor.
+   ⚠️ **3.5.4'te 160 MHz'e geri indirildi.** Yukarıdaki gerekçe bütçe
+   50 ms (20 FPS) olduğu için geçerliydi; profil ayrımı kalkınca bütçe
+   100 ms oldu ve 45–49 ms oraya rahat sığıyor. Sebep ve geri alma yolu
+   `sdkconfig.defaults`'ta yazılı. **Seste bozulma olursa ilk şüpheli
+   burasıdır.**
 
 Kalan bilinmeyen yok denecek kadar az; `firmware/ILK-ACILIS.md` neyin
 doğrulandığını ve neyin hâlâ ayarlanabilir olduğunu tutuyor.
@@ -503,9 +524,13 @@ uçlarına takmak.
 **Sıradaki adım bedenin Pati'yi de beslemesi.** `PIL.md`'deki brownout
 hâlâ açık ve bedende 4 AA pil var. Hat2-Bus'ın EXT_5V pini varsayılan
 olarak giriş kipinde; 6 V → 5 V küçük bir çevirici Stick'i besleyebilir.
-O zaman `guc_kaynak()` "USB" görür ve ses tavanı ile göz hızı
-kendiliğinden yükselir — kod zaten öyle yazılmış. Ama o kablo yukarıdaki
-kuralı deler, yani ayrı bir aşama ve ayrı bir karar.
+⚠️ **Bunun bir zamanlar yazılı olan gerekçesi artık geçersiz.** Eskiden
+burada *"o zaman `guc_kaynak()` USB görür ve ses tavanı ile göz hızı
+kendiliğinden yükselir"* yazıyordu. 3.5.4'te profil ayrımı kalktı: USB
+görmek artık hiçbir sınırı gevşetmiyor. Yani bedenin beslemesi Pati'yi
+**daha hızlı ya da daha sesli yapmaz**, yalnızca hücreyi korur. Kablonun
+gerekçesi buna göre yeniden kurulmalı — ve o kablo yukarıdaki kuralı
+deler, yani ayrı bir aşama ve ayrı bir karar.
 
 ---
 

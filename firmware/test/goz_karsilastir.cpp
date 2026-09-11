@@ -201,8 +201,11 @@ int main(int argc, char** argv)
 
     // Yüz ifadesi ve sunucunun üretim sonu, DMA'daki sesin sonu değildir.
     test_saat_us = 1000000;
-    pati::gozler_pil_kipi(true);
-    bak(pati::gozler_hedef_fps() == 10, "pilde sessizken 10 fps");
+    // 🔴 TEK PROFIL — 11.09.2026. Eskiden burada gozler_pil_kipi() ile
+    // pil/sarj gecisi yapiliyor ve USB'de 20 fps bekleniyordu. O ayrim
+    // kaldirildi: kare hizinin guc kaynagi diye bir GIRDISI kalmadi.
+    // Gerekcesi pati_gozler.cpp'de KARE_ARALIK_MS'in yaninda.
+    bak(pati::gozler_hedef_fps() == 10, "sessizken 10 fps");
     pati::gozler_ses_bildir(342);
     for (int i = 0; i < pati::GOZ_DURUM_SAYISI; ++i) {
         pati::hedefe_otur(&pati::GOZ_DURUMLARI[i]);
@@ -213,16 +216,12 @@ int main(int argc, char** argv)
     test_saat_us += 1000;
     bak(pati::gozler_hedef_fps() == 10, "DMA suresi dolunca 10 fps");
     pati::gozler_ses_bildir(342);
-    pati::gozler_pil_kipi(false);
-    bak(pati::gozler_hedef_fps() == 10, "USB ses sirasinda 10 fps");
+    bak(pati::gozler_hedef_fps() == 5, "ses penceresi yeniden acilinca 5 fps");
     test_saat_us += 341000;
-    bak(pati::gozler_hedef_fps() == 10, "USB DMA bitmeden 10 fps surer");
+    bak(pati::gozler_hedef_fps() == 5, "DMA bitmeden 5 fps surer");
     test_saat_us += 1000;
-    bak(pati::gozler_hedef_fps() == 20, "USB ses bitince 20 fps geri gelir");
+    bak(pati::gozler_hedef_fps() == 10, "ses bitince 10 fps");
     pati::gozler_ses_bildir(342);
-    pati::gozler_ses_bildir(0);
-    bak(pati::gozler_hedef_fps() == 20, "USB tampon temizlenince 20 fps");
-    pati::gozler_pil_kipi(true);
     pati::gozler_ses_bildir(0);
     bak(pati::gozler_hedef_fps() == 10, "tampon temizlenince tasarruf biter");
     test_saat_us = (static_cast<std::int64_t>(UINT32_MAX) - 100) * 1000;
@@ -231,7 +230,23 @@ int main(int argc, char** argv)
     bak(pati::gozler_hedef_fps() == 5, "32 bit saat tasmasinda ses surer");
     test_saat_us += 142000;
     bak(pati::gozler_hedef_fps() == 10, "saat tasmasindan sonra sure dolar");
-    pati::gozler_pil_kipi(false);
+
+    // 🔴 20 FPS'E GIDEN HICBIR YOL KALMAMALI.
+    //
+    // Kullanicinin karari "her sey pildeki gibi calissin"di. Bir profil
+    // secicisi geri gelirse bu tarama onu yakalar: ses penceresi acik ya
+    // da kapali, saat nerede olursa olsun, cikan deger yalnizca 10 ya da
+    // 5 olabilir. Eskiden USB'de 20 cikiyordu — o sayinin bir daha
+    // gorunmemesi lazim.
+    test_saat_us = 0;
+    for (int adim = 0; adim < 200; ++adim) {
+        if (adim % 3 == 0) pati::gozler_ses_bildir(0);
+        if (adim % 3 == 1) pati::gozler_ses_bildir(150);
+        const int f = pati::gozler_hedef_fps();
+        bak(f == 10 || f == 5, "kare hizi tek profilin disina cikti");
+        test_saat_us += 50000;
+    }
+    pati::gozler_ses_bildir(0);
     test_saat_us = 0;
 
     using U = pati::BaglantiUyarisi;

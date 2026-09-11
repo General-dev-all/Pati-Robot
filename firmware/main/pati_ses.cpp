@@ -107,6 +107,51 @@ constexpr int DMA_TANIM = 16;
 constexpr int DMA_CERCEVE = 1024;
 int g_dma_ms = 0;
 
+// ---------------------------------------------------------------------------
+// 🔴 KONUSMA BASINDA YUMUSAK BASLANGIC — akim basamagini duzlestirmek
+// ---------------------------------------------------------------------------
+//
+// Olculen belirti: butun brownout'lar Pati KONUSMAYA BASLARKEN oluyor.
+// 11.09.2026'da uc ayri kosulda ucu de `ifade konusuyor` iken coktu —
+// USB'de dolu pille (4048 mV), pilde (3950 mV), ve tam silme + temiz
+// yuklemeden sonra. Yani tetikleyen sey kaynak ya da hucre seviyesi
+// degil, o ANDA olan bir sey.
+//
+// Amfi acilista bir kez aciliyor ve acik kaliyor; degisen tek sey
+// cikis genligi. O genlik sessizlikten tam seviyeye BIR ANDA atliyordu.
+//
+// Ayni kural motorlarda zaten var ve kullanicinin acik istegi:
+// "bir daha motorlari anlik %100'de yapma, ne olursa olsun dikkatli
+// gidelim." Gerekcesi de ayni fizik. Hoparlore uygulanmamisti.
+//
+// ⚠️ BU BIR TAHMIN VE HENUZ OLCULMEDI. Basamak degil de SUREKLI akim
+// cokertiyorsa rampa hicbir sey yapmaz. Olculecek olan, her zamanki
+// gibi, cokme sikligi.
+//
+// SURE NEDEN 80 ms:
+//   - Elektriksel taraf icin fazlasiyla yeterli. Regulatorun gordugu
+//     gecici olay mikrosaniye-milisaniye olcekli; 80 ms o basamagi
+//     binlerce anahtarlama cevrimine yayiyor.
+//   - Duyulmamasi icin de kisa. Bir hecenin kendisi 150-250 ms;
+//     daha uzun bir rampa ilk hecede duyulur bir "sisme" yapardi.
+//     Kullanicinin sarti buydu: kaliteyi bozma.
+constexpr int SES_RAMPA_MS = 80;
+
+// Rampa cikis ornegi basina ilerliyor (cagri basina DEGIL — gerekcesi
+// pati_ornekleyici.hpp'de rampa_kur'un yaninda).
+constexpr float SES_RAMPA_ADIM =
+    1.0f / (static_cast<float>(PATI_SES_HZ) *
+            (static_cast<float>(SES_RAMPA_MS) / 1000.0f));
+
+// Bu kadar sessizlikten sonra gelen ses YENI bir cumle sayiliyor.
+//
+// Cumle ICINDE paketler bundan cok daha sik geliyor, yani rampa cumleyi
+// ortasindan bolmuyor. Yine de bolerse zarari yok: 80 ms'lik bir
+// yumusama duyulmuyor ve elektriksel olarak zaten istedigimiz sey.
+constexpr std::int64_t SES_RAMPA_BOSLUK_US = 250LL * 1000LL;
+
+std::int64_t g_son_yazma_us = 0;
+
 esp_err_t i2s_kur(int tanim, int cerceve)
 {
     i2s_chan_config_t kanal =
@@ -505,6 +550,16 @@ size_t hoparlor_yaz(std::span<const std::int16_t> kaynak, uint32_t timeout_ms)
     // seyreltme yapardik ve Pati'nin sesi cizirdardi.
     const float adim = g_hiz * static_cast<float>(PATI_GEMINI_CIKIS_HZ) /
                        static_cast<float>(PATI_SES_HZ);
+
+    // ---- YENI CUMLE MI: rampayi basa al --------------------------------
+    //
+    // Barge-in yolu ayri: hoparlor_temizle() zaten sifirla() cagiriyor ve
+    // o da rampayi basa aliyor. Burasi normal cumle gecisleri icin.
+    const std::int64_t simdi_us = esp_timer_get_time();
+    if (simdi_us - g_son_yazma_us > SES_RAMPA_BOSLUK_US) {
+        g_ornek.rampa_kur(SES_RAMPA_ADIM);
+    }
+    g_son_yazma_us = simdi_us;
 
     // Cikis bloklar halinde yaziliyor, tek seferde degil: bir parca
     // 2,5 kata kadar uzayabiliyor (en yavas hizda) ve 33 KB'lik bir
