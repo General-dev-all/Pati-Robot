@@ -1,2 +1,2 @@
 3.5.6
-Sesteki ani patlamalar yumusatildi. Pati bir anda yukselen seslerde (p, t, k gibi sert harfler, gulme, vurgu) cok kisa bir sure icinde aciliyor; amac o anlarda cekilen akim sicramasini dusurup yeniden baslamalari azaltmak. Surekli konusmada ses hic degismiyor, sadece ani sicramalar yumusuyor. Onceki surumdeki ses cubugu duzeltmesi de bunda.
+Sesteki ani patlamalar yumusatildi. Pati bir anda yukselen seslerde (p, t, k gibi sert harfler, gulme, vurgu) cok kisa bir sure icinde aciliyor; amac o anlarda cekilen akim sicramasini dusurup yeniden baslamalari azaltmak. Surekli konusmada ses hic degismiyor, sadece ani sicramalar yumusuyor. Onceki
