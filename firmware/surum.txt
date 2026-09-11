@@ -1,2 +1,2 @@
 3.5.4
-Bu surum tamamen guc tasarrufu icin. Pati artik sarjdayken de pildeki gibi dikkatli calisiyor; onceden kablo takiliyken gozlerini daha hizli ciziyordu, o fark kaldirildi. Konusmaya baslarken sesi bir anda degil, gozle gorulmeyecek kadar kisa bir sure icinde aciliyor. Ekran biraz daha kisik ve islemci daha dusuk hizda calisiyor. Ses seviyesi ve Pati'nin sesi degismedi. Amac konusurken yasanan yeniden baslamalari azaltmak.
+Bu surum tamamen guc tasarrufu icin. Pati artik sarjdayken de pildeki gibi dikkatli calisiyor; onceden kablo takiliyken gozlerini daha hizli ciziyordu, o fark kaldirildi. Konusmaya baslarken sesi bir anda degil, gozle gorulmeyecek kadar kisa bir sure icinde aciliyor. Ekran biraz daha kisik ve islemc
