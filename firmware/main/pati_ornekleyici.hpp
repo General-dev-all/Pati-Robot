@@ -72,6 +72,51 @@ inline std::int16_t yumusak_sinirla(float v)
 }
 
 // ---------------------------------------------------------------------------
+// 🔴 YUKARIDAKI SINIRLAYICI SES 0.70'TE HIC CALISMIYOR — 11.09.2026
+// ---------------------------------------------------------------------------
+//
+// Aritmetik, tahmin degil:
+//
+//     Gemini ornegi en fazla 32767
+//     32767 x 0.70 (SES_PIL_TAVANI) = 22937
+//     22937 < SINIR_ESIK (28000)
+//
+// Yani esige HIC ULASILMIYOR. Sinirlayici 1.0 ustu seviyeler icin
+// yazilmisti; tavan 0.70'e inince sessizce olu koda dondu ve butun
+// tepeler hic yuvarlanmadan geciyor.
+//
+// ⚠️ Bu, "koruma var" diye bakildiginda gorunmeyen turden bir kusur:
+// kod duruyor, dogru calisiyor, ama girdisi hicbir zaman esigi
+// gecmiyor. Sabit bir esigi degisken bir seviyeyle carpilmis sinyale
+// uygulamak her zaman bu riski tasir.
+//
+// ---------------------------------------------------------------------------
+// PATLAMA YUMUSATICI — ani genlik sicramalarina HIZ siniri
+// ---------------------------------------------------------------------------
+//
+// Kullanicinin teshisi (11.09.2026): "cokmelerin sebebi seslerdeki ani
+// patlamalar." Sinirlayici tepenin NE KADAR yuksek oldugunu sinirlar;
+// bu ise NE KADAR HIZLI yukseldigini sinirliyor. Ikisi farkli sey ve
+// bir regulatoru bozan genellikle ikincisi (di/dt).
+//
+// Calisma bicimi klasik zarf takipcisi:
+//   - izin verilen genlik her ornekte en fazla ATAK_ADIM kadar YUKSELIR
+//   - sinyal altindayken izin USTEL olarak geri iner (salim)
+//
+// ⚠️ SALIM SESIN EN DUSUK PERIYODUNDAN UZUN OLMALI. Aksi halde zarf tek
+// tek dalga cevrimlerini takip eder ve sinus dalgasini kirpar — yani
+// catirti. 70 ms yari-omur, 100 Hz'lik bir sesin periyodundan (10 ms)
+// yedi kat uzun.
+//
+// ATAK 2 ms: tam olcege sifirdan cikis en az 2 ms suruyor. Kulak bu
+// olcekte bir gecisi "yumusama" diye duymuyor; plosifler (p, t, k)
+// tokluk kazanmiyor cunku onlarin enerjisi 2 ms'den uzun surede
+// birikiyor. Elektriksel tarafta ise 2 ms, binlerce anahtarlama
+// cevrimi demek.
+constexpr float PATLAMA_ATAK_MS = 2.0f;
+constexpr float PATLAMA_SALIM_YARI_MS = 70.0f;
+
+// ---------------------------------------------------------------------------
 // YENIDEN ORNEKLEYICI
 // ---------------------------------------------------------------------------
 //
@@ -100,6 +145,8 @@ public:
         // Rampa kuruluysa o da basa doner: sifirla() barge-in'de
         // cagriliyor, yani ardindan gelen sey YENI bir cumle.
         if (kazanc_adim_ > 0.0f) kazanc_ = 0.0f;
+        izin_ = 0.0f;
+        zarf_ = 0.0f;
     }
 
     // -----------------------------------------------------------------
@@ -128,6 +175,19 @@ public:
     {
         kazanc_adim_ = adim_basina > 0.0f ? adim_basina : 0.0f;
         kazanc_ = kazanc_adim_ > 0.0f ? 0.0f : 1.0f;
+    }
+
+    // Patlama yumusatici. atak_adim = 0 verilirse KAPALI ve cikis bit
+    // bit eskisiyle ayni olur — konak testleri bu yoldan da geciyor.
+    //
+    // atak_adim : ornek basina izin verilen en buyuk genlik artisi
+    // salim     : sinyal altindayken izne uygulanan ustel carpan (<1)
+    void patlama_kur(float atak_adim, float salim)
+    {
+        atak_adim_ = atak_adim > 0.0f ? atak_adim : 0.0f;
+        salim_ = (salim > 0.0f && salim < 1.0f) ? salim : 1.0f;
+        izin_ = 0.0f;
+        zarf_ = 0.0f;
     }
 
     // kaynak'i yeniden ornekler, seviye ile olcekler, sinirlayicidan
@@ -190,8 +250,42 @@ public:
                                      : static_cast<float>(kaynak[i - 1]);
             const float b = static_cast<float>(kaynak[i]);
 
-            tampon[n++] =
-                yumusak_sinirla((a + (b - a) * f) * seviye * kazanc_);
+            float ham = (a + (b - a) * f) * seviye * kazanc_;
+
+            // Patlama yumusatici. Kapaliyken (atak_adim_ == 0) bu blok
+            // hicbir sey yapmiyor ve cikis eskisiyle bit bit ayni.
+            //
+            // 🔴 SINIRLAMA ANLIK ORNEGE DEGIL, ZARFA UYGULANIYOR — ve
+            // aradaki fark sesin bozulup bozulmamasi.
+            //
+            // Ilk yazilisinda anlik ornek kirpiliyordu. Yanlisti:
+            // 12 kHz'lik bir bileseninin ornek basina degisimi tam
+            // olcegi asiyor, yani hiz siniri dalganin KENDISINI keser
+            // ve catirti yapar. Sinirlanmasi gereken sey dalga degil,
+            // GENLIK ZARFI.
+            //
+            // Dogrusu: zarf tepeyi takip ediyor, izin verilen tavan
+            // yavas yukseliyor, ve sinyale bir KAZANC uygulaniyor.
+            // Kazanc yavas degistigi icin dalga bicimi bozulmuyor —
+            // yalnizca yuksekligi degisiyor.
+            if (atak_adim_ > 0.0f) {
+                const float m = ham < 0.0f ? -ham : ham;
+
+                // Zarf: ani yukselir, yavas iner.
+                zarf_ *= salim_;
+                if (m > zarf_) zarf_ = m;
+
+                // Izin verilen tavan yalnizca HIZ SINIRLI yukselir.
+                izin_ += atak_adim_;
+                if (izin_ > zarf_) izin_ = zarf_;
+
+                // Zarf izni asiyorsa aradaki oran kadar kisiliyor.
+                if (zarf_ > 0.0f && izin_ < zarf_) {
+                    ham *= izin_ / zarf_;
+                }
+            }
+
+            tampon[n++] = yumusak_sinirla(ham);
 
             // Rampa kapaliyken kazanc_ sabit 1.0 ve bu dal hicbir sey
             // yapmiyor — yani rampasiz yol bit bit eskisiyle ayni.
@@ -247,6 +341,11 @@ private:
     // ve cikis rampasiz haliyle bit bit ayni olur.
     float kazanc_ = 1.0f;
     float kazanc_adim_ = 0.0f;
+    // Patlama yumusatici zarfi. atak_adim_ = 0 iken tamamen kapali.
+    float zarf_ = 0.0f;   // sinyalin tepe zarfi
+    float izin_ = 0.0f;   // zarfa izin verilen tavan (hiz sinirli)
+    float atak_adim_ = 0.0f;
+    float salim_ = 1.0f;
     std::int16_t onceki_ = 0;
 };
 

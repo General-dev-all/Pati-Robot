@@ -922,3 +922,63 @@ gürültü hem akım ekliyor.
 | Bozuk RF kalibrasyonu | tam silme sonrası RSSI değişmedi (−73/−75) |
 | Wifi verici gücünü kısmak | 02.09'da denendi, menzil çöktü, geri alındı |
 | `cokme_mv` ile gerilim-çökme ilişkisi kurmak | o değer **açılışta** okunuyor, çökme anında değil |
+
+## 3.5.6 — ani patlamalar yumuşatıldı
+
+Kullanıcının teşhisi (11.09.2026): *"bence çökmelerin sebebi seslerdeki
+ani patlamalar, biraz daha yumuşatabilir miyiz?"*
+
+### 🔴 Önce bulunan şey: var olan koruma çalışmıyormuş
+
+`yumusak_sinirla`'nın eşiği sabit **28000**. Ama ses tavanı 0,70:
+
+```
+32767 × 0.70 = 22937  <  28000
+```
+
+**Eşiğe hiç ulaşılmıyor.** Sınırlayıcı 1.0 üstü seviyeler için
+yazılmıştı; tavan 0,70'e inince sessizce ölü koda döndü ve bütün
+tepeler hiç yuvarlanmadan geçiyordu.
+
+⚠️ Bu, "koruma var" diye bakıldığında **görünmeyen** türden bir kusur:
+kod duruyor, doğru çalışıyor, ama girdisi hiçbir zaman eşiği geçmiyor.
+Sabit bir eşiği, değişken bir seviyeyle çarpılmış sinyale uygulamak her
+zaman bu riski taşır.
+
+### Eklenen: zarf tabanlı patlama yumuşatıcı
+
+Sınırlayıcı tepenin **ne kadar yüksek** olduğunu sınırlar; bu **ne kadar
+hızlı yükseldiğini** sınırlıyor. Bir regülatörü bozan genellikle
+ikincisi (di/dt).
+
+| | Değer |
+|---|---|
+| Atak | **2 ms** (sıfırdan tam ölçeğe en az bu sürede) |
+| Salım | 70 ms yarı-ömür |
+
+### 🔴 Yol üstünde yapılan ve yakalanan hata
+
+İlk yazılışta sınırlama **anlık örneğe** uygulanmıştı. Yanlıştı:
+12 kHz'lik bir bileşenin örnek başına değişimi tam ölçeği aşıyor, yani
+hız sınırı dalganın **kendisini** keser — çatırtı. Sınırlanması gereken
+şey dalga değil, **genlik zarfı.**
+
+Doğrusu: zarf tepeyi takip ediyor, izin verilen tavan yavaş yükseliyor,
+sinyale bir **kazanç** uygulanıyor. Kazanç yavaş değiştiği için dalga
+biçimi bozulmuyor.
+
+### Ölçülen sonuç (konak testi)
+
+| Sınama | Sonuç |
+|---|---|
+| 200 / 700 / 3000 / 9000 Hz sürekli ses | **BİREBİR aynı** (35964 örnek, yerleşme sonrası) |
+| Ani patlama, ilk 1 ms | tepe **15070** (yerleşik 30174) — yarı yarıya |
+| Patlama sonrası tam seviye | 30174 (kaynak 32000) ✓ |
+| Dilim boyutundan bağımsızlık | korunuyor |
+| Yumuşatıcı kapalıyken | çıktı birebir eski |
+
+Yerleşme sonrası **birebir aynı** olması tesadüf değil: izin zarfa
+yetiştiğinde kazanç tam 1.0 olur ve çarpma bloğuna hiç girilmez.
+
+⚠️ **Çökmelere etkisi ÖLÇÜLMEDİ.** Kullanıcının teşhisi makul ve
+ölçülen belirtiyle (çökmeler konuşma anında) uyumlu, ama kanıt değil.

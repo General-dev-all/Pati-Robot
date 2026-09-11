@@ -152,6 +152,30 @@ constexpr std::int64_t SES_RAMPA_BOSLUK_US = 250LL * 1000LL;
 
 std::int64_t g_son_yazma_us = 0;
 
+// ---------------------------------------------------------------------------
+// PATLAMA YUMUSATICI — kullanicinin teshisi, 11.09.2026
+// ---------------------------------------------------------------------------
+//
+// "Cokmelerin sebebi seslerdeki ani patlamalar." Rampa yalnizca CUMLE
+// BASINI yumusatiyordu; bu, cumlenin ORTASINDAKI sicramalari da
+// yumusatiyor (plosifler, gulme, vurgu).
+//
+// 🔴 BUNUN ZATEN VAR OLAN KORUMASI CALISMIYORDU. yumusak_sinirla'nin
+// esigi sabit 28000 ama ses 0.70'te tavan 32767 x 0.70 = 22937 — esige
+// hic ulasilmiyor. Ayrinti pati_ornekleyici.hpp'de.
+//
+// Zarf her ornekte en fazla "tam olcek / 2 ms" kadar yukselebiliyor.
+// Inis ustel, 70 ms yari-omurle — sesin en dusuk periyodundan uzun
+// olmali, yoksa zarf dalga cevrimlerini takip edip catirti yapar.
+const float SES_PATLAMA_ATAK =
+    32767.0f / (static_cast<float>(PATI_SES_HZ) *
+                (PATLAMA_ATAK_MS / 1000.0f));
+
+// 0.5^(1 / ornek_sayisi) — yari-omur PATLAMA_SALIM_YARI_MS.
+const float SES_PATLAMA_SALIM =
+    std::pow(0.5f, 1.0f / (static_cast<float>(PATI_SES_HZ) *
+                           (PATLAMA_SALIM_YARI_MS / 1000.0f)));
+
 esp_err_t i2s_kur(int tanim, int cerceve)
 {
     i2s_chan_config_t kanal =
@@ -558,6 +582,8 @@ size_t hoparlor_yaz(std::span<const std::int16_t> kaynak, uint32_t timeout_ms)
     const std::int64_t simdi_us = esp_timer_get_time();
     if (simdi_us - g_son_yazma_us > SES_RAMPA_BOSLUK_US) {
         g_ornek.rampa_kur(SES_RAMPA_ADIM);
+        // Zarf da basa doner: yeni cumle temiz bir sessizlikten basliyor.
+        g_ornek.patlama_kur(SES_PATLAMA_ATAK, SES_PATLAMA_SALIM);
     }
     g_son_yazma_us = simdi_us;
 

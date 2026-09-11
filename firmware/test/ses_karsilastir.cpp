@@ -377,6 +377,129 @@ int main(int argc, char** argv)
                     static_cast<int>(ikinci[0])));
     }
 
+    // -- 4c. PATLAMA YUMUSATICI ---------------------------------------------
+    //
+    // Kullanicinin teshisi (11.09.2026): "cokmelerin sebebi seslerdeki
+    // ani patlamalar." Zarf tabanli sinirlayici tam bunu hedefliyor.
+    //
+    // 🔴 EN ONEMLI SINAMA BURADA 3 NUMARA: SUREKLI SES BOZULMAMALI.
+    // Ilk yazilisinda sinirlama anlik ornege uygulanmisti ve o haliyle
+    // 12 kHz'lik bir bilesenin kendi dalgasini keserdi — catirti.
+    // Dogrusu zarfa uygulamak; asagidaki sinama ikisini ayiriyor.
+    {
+        const float atak = 32767.0f / (static_cast<float>(SES_HZ) * 0.002f);
+        const float salim = std::pow(0.5f, 1.0f /
+                                     (static_cast<float>(SES_HZ) * 0.070f));
+
+        // --- 1) kapaliyken cikti degismiyor
+        {
+            const auto kaynak = sinus(700, GEMINI_CIKIS_HZ, 20000, 12000.0);
+            pati::YenidenOrnekleyici duz_o;
+            const auto duz = calistir(duz_o, kaynak, adim, 1.0f);
+            pati::YenidenOrnekleyici kapali_o;
+            kapali_o.patlama_kur(0.0f, salim);
+            const auto kapali = calistir(kapali_o, kaynak, adim, 1.0f);
+            sina("patlama_kur(0) ciktiyi degistirmiyor",
+                 kapali.size() == duz.size() &&
+                     std::equal(kapali.begin(), kapali.end(), duz.begin()),
+                 "yumusaticisiz yol birebir korunuyor");
+        }
+
+        // --- 2) ani patlama yumusuyor
+        //
+        // Sessizlikten sonra tam genlikte bir patlama. Ilk tepe belirgin
+        // sekilde bastirilmali, sonra tam seviyeye ulasmali.
+        {
+            std::vector<std::int16_t> kaynak(12000, 0);
+            const auto patlama = sinus(1000, GEMINI_CIKIS_HZ, 6000, 32000.0);
+            kaynak.insert(kaynak.end(), patlama.begin(), patlama.end());
+
+            pati::YenidenOrnekleyici o;
+            o.patlama_kur(atak, salim);
+            const auto c = calistir(o, kaynak, adim, 1.0f);
+
+            // Patlamanin cikistaki baslangici: 12000 kaynak ornegi /
+            // adim kadar cikis ornegi sonra.
+            const auto bas = static_cast<std::size_t>(12000.0f / adim);
+            const auto ms = static_cast<std::size_t>(SES_HZ / 1000);
+
+            std::int16_t ilk_tepe = 0, gec_tepe = 0;
+            for (std::size_t i = bas; i < bas + ms && i < c.size(); ++i)
+                ilk_tepe = std::max<std::int16_t>(ilk_tepe, std::abs(c[i]));
+            for (std::size_t i = bas + 10 * ms; i < bas + 20 * ms && i < c.size(); ++i)
+                gec_tepe = std::max<std::int16_t>(gec_tepe, std::abs(c[i]));
+
+            sina("ani patlamanin ilk milisaniyesi bastirilmis",
+                 ilk_tepe * 2 < gec_tepe,
+                 biciml("ilk 1 ms tepe %d, yerlesik tepe %d",
+                        static_cast<int>(ilk_tepe), static_cast<int>(gec_tepe)));
+            sina("patlama sonrasinda tam seviyeye ciliyor",
+                 gec_tepe > 30000,
+                 biciml("yerlesik tepe %d (kaynak 32000)",
+                        static_cast<int>(gec_tepe)));
+        }
+
+        // --- 3) 🔴 SUREKLI SES BOZULMUYOR
+        //
+        // Zarf yerlestikten sonra izin == zarf olur, kazanc tam 1.0'dir
+        // ve carpma bloguna hic girilmez — yani cikis BIREBIR ayni
+        // olmali. Yaklasik degil, birebir.
+        for (int hz : {200, 700, 3000, 9000}) {
+            const auto kaynak = sinus(hz, GEMINI_CIKIS_HZ, 24000, 14000.0);
+            pati::YenidenOrnekleyici duz_o;
+            const auto duz = calistir(duz_o, kaynak, adim, 1.0f);
+            pati::YenidenOrnekleyici yum_o;
+            yum_o.patlama_kur(atak, salim);
+            const auto yum = calistir(yum_o, kaynak, adim, 1.0f);
+
+            // Ilk 20 ms yerlesme; sonrasi birebir olmali.
+            const auto yerlesme = static_cast<std::size_t>(SES_HZ / 50);
+            std::size_t fark = 0, ilk = 0;
+            for (std::size_t i = yerlesme; i < yum.size(); ++i) {
+                if (yum[i] != duz[i]) { if (!fark) ilk = i; ++fark; }
+            }
+            sina(biciml("%d Hz surekli ses bozulmuyor", hz).c_str(),
+                 fark == 0,
+                 fark == 0
+                     ? biciml("%zu ornek yerlesme sonrasi BIREBIR ayni",
+                              yum.size() - yerlesme)
+                     : biciml("BOZULUYOR: %zu ornek farkli, ilki %zu. "
+                              "Zarf yerine dalga kirpiliyor olabilir.",
+                              fark, ilk));
+        }
+
+        // --- 4) dilim boyutundan bagimsizlik
+        {
+            const auto kaynak = sinus(700, GEMINI_CIKIS_HZ, 40000, 12000.0);
+            pati::YenidenOrnekleyici tek_o;
+            tek_o.patlama_kur(atak, salim);
+            const auto tek = calistir(tek_o, kaynak, adim, 1.0f);
+
+            pati::YenidenOrnekleyici parca_o;
+            parca_o.patlama_kur(atak, salim);
+            const std::size_t dilimler[] = {4800, 6720, 5000, 6100, 4800,
+                                            6720, 5880, 6000};
+            std::vector<std::int16_t> parcali;
+            std::size_t konum = 0, k = 0;
+            while (konum < kaynak.size()) {
+                const std::size_t n =
+                    std::min(dilimler[k++ % 8], kaynak.size() - konum);
+                const auto b = calistir(
+                    parca_o,
+                    std::span<const std::int16_t>(kaynak.data() + konum, n),
+                    adim, 1.0f);
+                parcali.insert(parcali.end(), b.begin(), b.end());
+                konum += n;
+            }
+            const bool ayni = parcali.size() == tek.size() &&
+                              std::equal(parcali.begin(), parcali.end(),
+                                         tek.begin());
+            sina("yumusatici dilim boyutundan bagimsiz", ayni,
+                 ayni ? "tek parca ile 8 duzensiz dilim BIREBIR ayni"
+                      : "AYRISIYOR — her dilim sinirinda TIK sesi demek");
+        }
+    }
+
     // -- 5. FAZ KAYMASI -----------------------------------------------------
     //
     // faz her dilimde `t - N` ile yeniden hesaplaniyor ve t bir float.
