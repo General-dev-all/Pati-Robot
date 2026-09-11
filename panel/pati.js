@@ -123,6 +123,8 @@ const D = {
   // Konusma ayarlari. Soz kesme VARSAYILAN KAPALI: kulakliksizken
   // Pati kendi sozunu kesiyor (yasandi, uydurma degil).
   sozKesme: false,
+  kabloylaAc: false,
+  powerbank: false,
   vad: '',                   // '' = Google varsayilani
   yuz: true,
   cocuk: { ...ORNEK.cocuk },
@@ -780,6 +782,16 @@ function durumu_uygula(d) {
   if (typeof d.uyku === 'number') {
     mesaj({ tip: 'uyku', dakika: d.uyku });
   }
+  if (typeof d.powerbank === 'boolean') {
+    D.powerbank = d.powerbank;
+    const k = $('#powerbank');
+    if (k && document.activeElement !== k) k.checked = D.powerbank;
+  }
+  if (typeof d.kabloyla_ac === 'boolean') {
+    D.kabloylaAc = d.kabloyla_ac;
+    const k = $('#kabloylaAc');
+    if (k && document.activeElement !== k) k.checked = D.kabloylaAc;
+  }
   if (d.konusma) {
     mesaj({ tip: 'gecikme_ayar', vad: d.konusma.vad || '',
             yuz: d.konusma.yuz, soz_kesme: d.konusma.soz_kesme });
@@ -1290,6 +1302,10 @@ $('#dene').addEventListener('click', async () => {
 
 function konusmaYaz() {
   $('#sozKesme').checked = D.sozKesme;
+  {
+    const k = $('#kabloylaAc');
+    if (k && document.activeElement !== k) k.checked = D.kabloylaAc;
+  }
   // 🔴 CIHAZDAKI DEGER LISTEDE YOKSA KUTU BOS GORUNUR.
   //
   // select'e listede olmayan bir deger yazilinca tarayici hicbir sey
@@ -1314,6 +1330,26 @@ function konusmaYaz() {
   // Tarayici tarafi: soz kesme KAPALIYSA yarim dupleks ACIK.
   tarayiciSes.yarimDubleks = !D.sozKesme;
 }
+
+$('#powerbank').addEventListener('change', (e) => {
+  D.powerbank = e.target.checked;
+  fetch('/api/ayar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ alan: 'powerbank', deger: D.powerbank ? 1 : 0 }),
+  }).then(() => tost(D.powerbank ? 'Powerbank uyanık tutulacak ✓'
+                                 : 'Powerbank darbesi kapalı ✓')).catch(() => {});
+});
+
+$('#kabloylaAc').addEventListener('change', (e) => {
+  D.kabloylaAc = e.target.checked;
+  fetch('/api/ayar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ alan: 'kabloyla_ac', deger: D.kabloylaAc ? 1 : 0 }),
+  }).then(() => tost(D.kabloylaAc ? 'Kabloda açık kalır ✓'
+                                  : 'Kabloda kapanır ✓')).catch(() => {});
+});
 
 $('#sozKesme').addEventListener('change', (e) => {
   D.sozKesme = e.target.checked;

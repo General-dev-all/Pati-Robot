@@ -48,6 +48,16 @@ const std::string& ayar_ses_adi();
 float ayar_hiz();
 int ayar_uyku_dk();
 bool ayar_soz_kesme();
+
+// Kablo takilinca Pati acik kalsin mi (varsayilan: HAYIR, geri kapanir).
+// ⚠️ Bu ayari pati_guc.cpp NVS'ten DOGRUDAN okuyor, cunku karar
+// ayar_baslat()'tan cok once veriliyor. Anahtar adi: "kabloyla_ac".
+bool ayar_kabloyla_ac();
+
+// Powerbank'li gövde: bosta duzenli kisa motor darbesi atilsin mi.
+// Varsayilan KAPALI — kalem pilli eski gövdenin buna ihtiyaci yok ve
+// bosuna pil yerdi.
+bool ayar_powerbank();
 int ayar_vad_ms();          // 0 = Google varsayilani
 bool ayar_yuz_araci();
 
@@ -101,6 +111,8 @@ void ayar_ses_adi_yaz(const std::string& ad);
 void ayar_hiz_yaz(float hiz);
 void ayar_uyku_yaz(int dakika);
 void ayar_soz_kesme_yaz(bool acik);
+void ayar_kabloyla_ac_yaz(bool acik);
+void ayar_powerbank_yaz(bool acik);
 void ayar_vad_yaz(int ms);
 void ayar_yuz_yaz(bool acik);
 void ayar_beden_hiz_yaz(int yuzde);

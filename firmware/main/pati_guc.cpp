@@ -212,6 +212,73 @@ void hatti_tara()
     }
 }
 
+// ---------------------------------------------------------------------------
+// 🔴 KABLO TAKILINCA ACILDIYSA GERI KAPAN
+// ---------------------------------------------------------------------------
+//
+// Kullanicinin istegi (12.09.2026): "yan dugmeyle kesin kapattigimda
+// sarja takinca kendi kendine aciliyor, sonra tekrar kapatmak zorunda
+// kaliyorum."
+//
+// M5PM1'i bunu yapmamaya ikna etmek MUMKUN DEGIL — yazmac haritasinin
+// tamami tarandi, boyle bir bit yok (pati_pinler.h · PATI_PM1_WAKE_SRC).
+// Geriye acilip hemen geri kapanmak kaliyor.
+//
+// 🔴 AYRIM GERCEK KARTTA OLCULDU (12.09.2026), tahmin degil:
+//
+//     kablo takilinca aciliyorsa   uyanma_src = 0x22  (VIN + GPIO)
+//     yan dugmeyle aciliyorsa      uyanma_src = 0x04  (yalnizca dugme)
+//
+// Yani VIN biti VAR ve DUGME biti YOK ise kullanici bunu istememis
+// demektir. Iki kosul da aranıyor; yalnizca VIN'e bakmak yetmezdi,
+// cunku kablo takiliyken dugmeye basildiginda ikisi birden kalkabilir.
+//
+// ⚠️ EN BUYUK RISK: yanlislikla dugmeyle acilisi da kapatmak. O zaman
+// Pati HIC ACILAMAZ hale gelirdi. Uc koruma var:
+//   1. dugme biti varsa hicbir sey yapilmiyor
+//   2. okuma basarisizsa hicbir sey yapilmiyor
+//   3. acilis sebebi COKME ise (brownout/panic/bekci) hicbir sey
+//      yapilmiyor — cokup yeniden baslayan robot kapanmamali
+//
+// Ayrica panelden kapatilabiliyor ("Kablo takilinca acilsin"). O ayara
+// ayar_baslat()'tan ONCE ihtiyacimiz var (bu islev daha erken
+// calisiyor), o yuzden NVS'ten dogrudan okunuyor — ayni "pati" alani,
+// ayni anahtar adi.
+void kabloyla_acildiysa_kapan(std::uint8_t w)
+{
+    const bool vin = (w & PATI_PM1_WAKE_VIN) != 0;
+    const bool dugme = (w & PATI_PM1_WAKE_BTN) != 0;
+    if (!vin || dugme) return;
+
+    // Cokup yeniden baslayan robot kapanmamali.
+    const esp_reset_reason_t sebep = esp_reset_reason();
+    if (sebep == ESP_RST_BROWNOUT || sebep == ESP_RST_PANIC ||
+        sebep == ESP_RST_TASK_WDT || sebep == ESP_RST_INT_WDT) {
+        ESP_LOGW(ETIKET, "kabloyla acilis gibi gorunuyor ama acilis "
+                         "sebebi cokme — kapanmiyoruz");
+        return;
+    }
+
+    std::int32_t kabloyla_ac = 0;
+    nvs_handle_t h;
+    if (nvs_open("pati", NVS_READONLY, &h) == ESP_OK) {
+        nvs_get_i32(h, "kabloyla_ac", &kabloyla_ac);
+        nvs_close(h);
+    }
+    if (kabloyla_ac != 0) {
+        ESP_LOGI(ETIKET, "kabloyla acildi; ayar 'acik kalsin' diyor");
+        return;
+    }
+
+    ESP_LOGW(ETIKET, "kabloyla acildi (0x%02X), kullanici istemedi — "
+                     "geri kapaniyor", static_cast<unsigned>(w));
+    // M5PM1'in kendi kapanma komutu. Ekran hic acilmadigi icin
+    // disaridan gorunen sey kisa bir yesil isik.
+    vTaskDelay(pdMS_TO_TICKS(150));
+    pm1_yaz(PATI_PM1_SYS_CMD, PATI_PM1_KAPAT);
+    vTaskDelay(pdMS_TO_TICKS(2000));  // kapanma tamamlanana kadar
+}
+
 }  // namespace
 
 i2c_master_bus_handle_t i2c_yolu() { return g_yol; }
@@ -335,9 +402,17 @@ esp_err_t guc_baslat()
     // sarja takinca kendi kendine aciliyor". Gerekcesi ve yazmac
     // haritasinin neden cozmedigi pati_pinler.h'de.
     //
-    // ⚠️ TEMIZLENMIYOR (yazmac "write 0 to clear"). Ilk adimda hicbir
-    // sey YAZMIYORUZ: bayraklar acilistan acilista birikiyor mu, once
-    // onu gorecegiz. Birikiyorsa temizleme sonra eklenir.
+    // 🔴 OKUDUKTAN SONRA TEMIZLENIYOR — ve bu bir OLCUMDEN geliyor.
+    //
+    // 3.5.11 bilerek temizlemiyordu: once bayraklarin birikip
+    // birikmedigini gormek istedik. 12.09.2026'da gercek kartta okunan
+    // deger 0x2E cikti — VIN takildi + guc dugmesi + sifirlama dugmesi
+    // + haricî GPIO, hepsi ayni anda. Yani yazmac gecmisteki her olayi
+    // tutuyor ve temizlenmeden HANGI acilisin neden oldugunu
+    // SOYLEMIYOR.
+    //
+    // Artik okunup hemen sifirlaniyor ("write 0 to clear"), yani
+    // buradaki deger yalnizca BU acilisa ait.
     {
         std::uint8_t w = 0;
         if (pm1_oku(PATI_PM1_WAKE_SRC, w) == ESP_OK) {
@@ -346,6 +421,12 @@ esp_err_t guc_baslat()
                      static_cast<unsigned>(w),
                      (w & PATI_PM1_WAKE_VIN) ? " [VIN takildi]" : "",
                      (w & PATI_PM1_WAKE_BTN) ? " [guc dugmesi]" : "");
+            // Sonraki acilis temiz bir sayfadan baslasin.
+            if (pm1_yaz(PATI_PM1_WAKE_SRC, 0x00) != ESP_OK) {
+                ESP_LOGW(ETIKET, "uyanma bayraklari temizlenemedi — "
+                                 "sonraki okuma birikmis olabilir");
+            }
+            kabloyla_acildiysa_kapan(w);
         } else {
             ESP_LOGW(ETIKET, "uyanma sebebi okunamadi");
         }

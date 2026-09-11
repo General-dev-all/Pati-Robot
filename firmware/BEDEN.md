@@ -815,3 +815,67 @@ kablolarıyla aynı vidaya giriyor. Yoksa aynı şey tekrarlar.
 
 Hattaki gerilim çöküşü ayrı bir iş ve 100 nF onu çözmüyor: AA uçlarına
 paralel **470–1000 µF elektrolitik** gerekiyor (henüz alınmadı).
+
+---
+
+## 🔴 Powerbank'li gövde — 12.09.2026
+
+İkinci bir gövde yapıldı. Eskisiyle **aynı**: 2 servo, 2 DC motor, aynı
+sürücüler. Tek fark besleme: eski gövde 4'lü kalem pil, yeni gövde
+**powerbank** (Thull 5000 mAh).
+
+⚠️ **Eski gövde duruyor ve kullanılıyor.** Bu yüzden çözüm panelden
+açılıp kapanan bir ayar: `powerbank`, **varsayılan KAPALI.** Kalem pilli
+gövdenin buna ihtiyacı yok ve boşuna pil yerdi.
+
+### Sorun
+
+Powerbank akım çekilmeyince **15 saniyede** kendini kapatıyor. Bir kere
+uyuduğunda kendiliğinden uyanmıyor: kabloyu çıkarıp takmak ya da
+powerbank'in düğmesine basmak gerekiyor.
+
+⚠️ **Powerbank her çıkışı AYRI izliyor.** Kullanıcı Type-C'yi Stick'e,
+USB-A'yı gövdeye bağlamış. Stick sürekli 100-200 mA çekiyor ama USB-A
+kendi başına uyuyor. Yani *"Stick'i powerbank'e bağla"* çözümü zaten
+devrede ve yetmiyor.
+
+### Çözüm: 13 saniyede bir minik kol hareketi
+
+Pati boştayken iki kol da **5 puan** oynayıp geri dönüyor. Yön her
+seferinde ters çevriliyor, yani kol bulunduğu yerin etrafında salınıp
+aynı noktaya dönüyor — zamanla kaymıyor.
+
+Servo hareket ederken **150-250 mA** çekiyor; powerbank'in sayacı
+sıfırlanıyor.
+
+⚠️ Hedef yine `kol_hedef_yaz`'dan geçiyor, yani mekanik aralığa
+kırpılıyor. **Kol hiçbir şeye çarpamaz.** Aralık ucundaysa o yöndeki
+hareket kırpılır; bir sonraki turda ters yöne gideceği için hareket
+yine olur.
+
+Kol kipi kapalıysa hareket de gönderilmiyor — "kapalı" kapalı demek.
+
+### Denenip ELENEN iki yol
+
+| Deneme | Sonuç |
+|---|---|
+| **Motor darbesi** — %12 duty, 80 ms, 8 sn arayla | powerbank yine uyudu. %12 duty stall akımını eşiğin üstüne çıkarmaya yetmiyor |
+| **Servoları sürekli enerjili bırakmak** | yine uyudu. Kollar hafif, tutma akımı 10-20 mA civarında kalıyor. Ayrıca sürekli vızıltı yapıyor ve mikrofon 10 cm ötede |
+
+### 🔴 Yol üstünde yapılan muhakeme hatası — kayda geçsin
+
+İki başarısız denemeden sonra şöyle denildi: *"powerbank ORTALAMA akıma
+bakar, kısa darbe hiçbir zaman yetmez."*
+
+**Yanlıştı.** Kullanıcı itiraz etti ve haklıydı: powerbank'lerin çoğu
+ortalama değil **zamanlayıcı** kullanıyor — *"eşiğin altında 15 saniye
+geçerse kapan"*. O modelde eşiği aşan **herhangi** bir kısa yük sayacı
+sıfırlıyor.
+
+Yani sorun sürenin kısalığı değil, motor darbesinin **gücüydü**. Doğru
+teşhis konunca çözüm ilk denemede çalıştı.
+
+**Ders:** bir mekanizmanın nasıl çalıştığı varsayılmadan önce, elde iki
+başarısız ölçüm varken bile o ölçümlerin *neyi* elediği ayrı ayrı
+sorulmalı. "Süre yetersiz" ile "güç yetersiz" farklı şeyler ve ikisi
+aynı belirtiyi veriyordu.

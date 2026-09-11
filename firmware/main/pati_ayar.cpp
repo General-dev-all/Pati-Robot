@@ -52,6 +52,12 @@ std::string g_ses_adi;
 float g_hiz = 1.30f;
 int g_uyku_dk = 4;
 bool g_soz_kesme = false;
+// Kablo takilinca acik kalsin mi. Varsayilan HAYIR: kullanicinin
+// istegi "kapaliyken sarja takinca acilmasin" (12.09.2026).
+bool g_kabloyla_ac = false;
+// Powerbank'li gövde icin bosta uyanik tutma darbesi. Varsayilan
+// KAPALI: kalem pilli gövdede gereksiz ve pil yer.
+bool g_powerbank = false;
 int g_vad_ms = 0;
 bool g_yuz = true;
 int g_beden_hiz = 70;   // panelde %50
@@ -148,6 +154,8 @@ esp_err_t ayar_baslat()
         g_uyku_dk = std::clamp(static_cast<int>(v), UYKU_EN_AZ, UYKU_EN_FAZLA);
     }
     if (nvs_get_i32(h, "soz_kesme", &v) == ESP_OK) g_soz_kesme = (v != 0);
+    if (nvs_get_i32(h, "kabloyla_ac", &v) == ESP_OK) g_kabloyla_ac = (v != 0);
+    if (nvs_get_i32(h, "powerbank", &v) == ESP_OK) g_powerbank = (v != 0);
     if (nvs_get_i32(h, "vad_ms", &v) == ESP_OK) {
         g_vad_ms = (v == 0) ? 0 : std::clamp(static_cast<int>(v),
                                              VAD_EN_AZ, VAD_EN_FAZLA);
@@ -197,6 +205,8 @@ const std::string& ayar_ses_adi() { return g_ses_adi; }
 float ayar_hiz() { return g_hiz; }
 int ayar_uyku_dk() { return g_uyku_dk; }
 bool ayar_soz_kesme() { return g_soz_kesme; }
+bool ayar_kabloyla_ac() { return g_kabloyla_ac; }
+bool ayar_powerbank() { return g_powerbank; }
 int ayar_vad_ms() { return g_vad_ms; }
 bool ayar_yuz_araci() { return g_yuz; }
 
@@ -264,6 +274,20 @@ void ayar_uyku_yaz(int dakika)
     g_uyku_dk = std::clamp(dakika, UYKU_EN_AZ, UYKU_EN_FAZLA);
     i32_yaz("uyku_dk", g_uyku_dk);
     ESP_LOGI(ETIKET, "uyku: %d dk", g_uyku_dk);
+}
+
+void ayar_powerbank_yaz(bool acik)
+{
+    g_powerbank = acik;
+    i32_yaz("powerbank", acik ? 1 : 0);
+    ESP_LOGI(ETIKET, "powerbank uyanik tutma: %s", acik ? "acik" : "kapali");
+}
+
+void ayar_kabloyla_ac_yaz(bool acik)
+{
+    g_kabloyla_ac = acik;
+    i32_yaz("kabloyla_ac", acik ? 1 : 0);
+    ESP_LOGI(ETIKET, "kabloyla acilma: %s", acik ? "acik kalsin" : "kapansin");
 }
 
 void ayar_soz_kesme_yaz(bool acik)
@@ -345,6 +369,7 @@ void ayar_sifirla()
     const nvs_handle_t h = ac(NVS_READWRITE);
     if (h != 0) {
         for (const char* a : {"ses_adi", "hiz_yuz", "uyku_dk", "soz_kesme",
+                              "kabloyla_ac", "powerbank",
                               "vad_ms", "yuz", "beden_hiz", "tekerlek",
                               "kol", "hareket", "sevinc"}) {
             nvs_erase_key(h, a);
@@ -374,13 +399,15 @@ std::string ayar_json()
     std::snprintf(b, sizeof(b),
                   "\"ses\":{\"seviye\":%.3f,\"en_az\":%.2f,\"en_fazla\":%.2f,"
                   "\"hiz\":%.2f,\"ses_adi\":\"%s\"},"
-                  "\"uyku\":%d,"
+                  "\"uyku\":%d,\"kabloyla_ac\":%s,\"powerbank\":%s,"
                   "\"konusma\":{\"soz_kesme\":%s,\"vad\":%d,\"yuz\":%s},"
                   "\"kumanda\":{\"hiz\":%d,\"tekerlek\":%d,\"kol\":%d,"
                   "\"kol_sol_az\":%d,\"kol_sol_cok\":%d,"
                   "\"kol_sag_az\":%d,\"kol_sag_cok\":%d}",
                   ses_seviyesi(), SES_SEVIYESI_EN_AZ, SES_SEVIYESI_EN_FAZLA,
                   g_hiz, g_ses_adi.c_str(), g_uyku_dk,
+                  g_kabloyla_ac ? "true" : "false",
+                  g_powerbank ? "true" : "false",
                   g_soz_kesme ? "true" : "false", g_vad_ms,
                   g_yuz ? "true" : "false",
                   g_beden_hiz, g_tekerlek_kip, g_kol_kip,

@@ -127,6 +127,48 @@ constexpr std::uint32_t TEKER_KURA = 3;
 constexpr int DONGU_MESGUL_MS = 20;    // bir sey hareket ederken
 constexpr int DONGU_BOS_MS    = 200;   // bosta
 
+// ---------------------------------------------------------------------------
+// 🔴 POWERBANK'I UYANIK TUTMA — periyodik MINIK KOL HAREKETI
+// ---------------------------------------------------------------------------
+//
+// Kullanicinin sorunu (12.09.2026): yeni gövde powerbank'le besleniyor
+// (Thull 5000 mAh) ve powerbank akim cekilmeyince 15 saniyede kendini
+// kapatiyor. Bir kere uyudugunde kendiliginden uyanmiyor.
+//
+// ⚠️ POWERBANK HER CIKISI AYRI IZLIYOR. Type-C Stick'e, USB-A gövdeye
+// bagli; Stick surekli 100-200 mA cekiyor ama USB-A kendi basina
+// uyuyor. Yani "Stick'i powerbank'e bagla" cozumu zaten devrede.
+//
+// 🔴 IKI YOL DENENDI VE GERCEK KARTTA ELENDI:
+//
+//   1. Motor darbesi (%12 duty, 80 ms, 8 sn arayla) — powerbank yine
+//      uyudu. Muhtemel sebep: %12 duty stall akimini esigin uzerine
+//      cikarmaya yetmiyor.
+//   2. Servolari SUREKLI enerjili birakmak — yine uyudu. Kollar hafif,
+//      tutma akimi 10-20 mA civari kaliyor.
+//
+// ⚠️ ARADA BIR MUHAKEME HATASI YAPILDI, kayda geciyor: "powerbank
+// ORTALAMA akima bakar, kisa darbe hicbir zaman yetmez" denildi.
+// Kullanici itiraz etti ve haklıydı — powerbank'lerin cogu ortalama
+// degil ZAMANLAYICI kullaniyor: "esigin altinda 15 saniye gecerse
+// kapan". O modelde esigi asan HERHANGI bir kisa yuk sayaci
+// sifirliyor. Yani sorun surenin kisaligi degil, darbenin GUCUYDU.
+//
+// Bu yuzden simdi denenen: gercek bir kol hareketi. Servo hareket
+// ederken 150-250 mA cekiyor — stall'daki dusuk duty'li motordan cok
+// daha net bir yuk.
+//
+// Hareket KUCUK ve iki kolda birden: goze carpmiyor ama akim gercek.
+// Yon her seferinde ters ceviriliyor, yani kol bulundugu yerin etrafinda
+// salinip ayni noktaya donuyor; zamanla kaymiyor.
+//
+// ⚠️ HEDEF YINE kol_hedef_yaz'dan geciyor, yani mekanik aralige
+// KIRPILIYOR. Kol hicbir seye carpamaz. Aralik ucundaysa o yondeki
+// hareket kirpilir; bir sonraki turda ters yone gidecegi icin hareket
+// yine olur.
+constexpr int POWERBANK_KOL_ADIM = 5;               // yuzde puani
+constexpr std::int64_t POWERBANK_ARA_US = 13000000; // 13 sn (< 15 sn esigi)
+
 // Algilamanin kararli kalmasi gereken sure. Takip cikarirken kontak
 // sekiyor; sekmeyi durum degisikligi saymak panelin kumanda kartini
 // acip kapatmasi demek olurdu.
@@ -284,6 +326,10 @@ void beden_gorevi(void*)
 
     // Konusma jesti zamanlamasi.
     std::int64_t sonraki_jest_us = 0;
+
+    // Powerbank uyanik tutma: son darbe zamani ve siradaki yon.
+    std::int64_t son_powerbank_us = 0;
+    int powerbank_yon = 1;
 
     // Akan jestin tekerlek istegi. Bir onceki tikte, jest ilerletme
     // blogunda yaziliyor — 20 ms'lik gecikme goze gorunmuyor, ama
@@ -663,6 +709,22 @@ void beden_gorevi(void*)
 
         const bool mesgul = suruyor || kol_oynuyor || akan != nullptr
                             || darbe_acik[0] || darbe_acik[1];
+
+        // ---- POWERBANK'I UYANIK TUT --------------------------------------
+        //
+        // Yalnizca: ayar acik + gövde takili + hicbir sey oynamiyor +
+        // kol kipi acik. Kollar kapaliyken dokunmuyoruz — "kapali"
+        // kapali demek.
+        if (!mesgul && ayar_powerbank() && kol_kip == KIP_ACIK
+            && simdi - son_powerbank_us > POWERBANK_ARA_US) {
+            son_powerbank_us = simdi;
+            powerbank_yon = -powerbank_yon;
+            for (int i = 0; i < 2; ++i) {
+                const int su = g_kol_hedef[i].load(std::memory_order_relaxed);
+                kol_hedef_yaz(i, su + powerbank_yon * POWERBANK_KOL_ADIM);
+            }
+        }
+
         ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(mesgul ? DONGU_MESGUL_MS
                                                       : DONGU_BOS_MS));
     }

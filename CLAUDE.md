@@ -446,6 +446,24 @@ geldi" diye geçerdi.
 Kipler tek bir boğazda okunuyor (`pati_beden.cpp`), yeni bir yol açanın
 unutabileceği ikinci bir kontrol yok.
 
+🔴 **İkinci bir gövde var: powerbank'li.** Eskisiyle aynı (2 servo,
+2 DC motor), tek farkı besleme. **Eski kalem pilli gövde duruyor ve
+kullanılıyor** — bu yüzden çözüm panelden açılan bir ayar
+(`powerbank`, varsayılan KAPALI).
+
+Powerbank akım çekilmeyince 15 saniyede kapanıyor ve kendiliğinden
+uyanmıyor. Pati boştayken **13 saniyede bir iki kolu da 5 puan
+oynatıp geri alıyor**; servo hareketi 150-250 mA çekiyor ve
+powerbank'in sayacı sıfırlanıyor.
+
+⚠️ Powerbank **her çıkışı ayrı izliyor**: Type-C Stick'te, USB-A
+gövdede. Stick'in 100-200 mA'i USB-A'yı uyanık tutmuyor.
+
+Denenip elenen iki yol (motor darbesi, servoyu sürekli enerjili
+bırakmak) ve **yol üstünde yapılan muhakeme hatası** `BEDEN.md`'de
+yazılı — özeti: "ortalama akım" sanıldı, oysa powerbank **zamanlayıcı**
+kullanıyor; sorun sürenin değil darbenin **gücüydü**.
+
 🔴 **Pati bedeninin olup olmadığını BİLİYOR — ve bu ölçülmüş bir
 hatadan çıktı.** Çocuk "kolunu kaldır" dedi, Pati "benim kolum yok ki"
 dedi. Yanlıştı; gövdesi var, o an takılı değildi. Model bunu bilemezdi:
