@@ -161,18 +161,25 @@ volatile bool g_uykuda = false;
 std::int64_t g_son_hareket_us = 0;
 std::uint32_t g_uyku_sayisi = 0;
 
-// 🔴 "HADI UYU" ISTEGI — HEMEN DEGIL, CUMLE BITINCE.
+// 🔴 SESLE UYUTMA KALDIRILDI — 12.09.2026, kullanicinin istegi.
 //
-// Kullanicinin sikayeti (09.09.2026): "hadi uyu iyi geceler dedigimde
-// gozlerini uyku moduna geciriyor ama sonra tekrar normal haline
-// getiriyor." Model yalnizca IFADEYI degistiriyordu; gercek uyku
-// baska bir sey.
+// 3.5.0'da iki yol birden eklenmisti: modelin `uyku` arac alani ve
+// cocugun dokumunde kalip aramasi (uyku_istegi_mi). Ikisi de kalkti.
 //
-// Bayrak burada birakiliyor ve bosta bekcisi honoruyor. Hemen uyumak
-// yanlis olurdu: Pati'nin "iyi geceler, tatli ruyalar" demesi yarida
-// kalirdi. Bekci zaten dogru kosullari bekliyor — tur kapali ve
-// konusma bitmis.
-std::atomic<bool> g_uyku_istek{false};
+// SEBEP: gercek kullanimda YANLIS POZITIF. Kullanicinin ifadesi —
+// "pati bazen konusurken uyuyor, sanirim konusmamin icinden bir
+// kelimeyi uyu olarak algiliyor."
+//
+// ⚠️ EKLENIRKEN YAZILAN GEREKCE YANLIS CIKTI. Soyle diyordu: "yanlis
+// pozitifin bedeli KUCUK — Pati uyur, cocuk konusunca 617 ms'de
+// uyanir. Yanlis negatifin bedeli ise tam da kullanicinin sikayeti."
+// Olculen sey bunun tersi oldu: bir cocuk icin robotun cumle
+// ortasinda kapanmasi "bozuldu" demek ve uyanma suresinin bununla
+// ilgisi yok. Hizli toparlanmak, hic olmamasi gereken bir seyi
+// mazur gostermiyor.
+//
+// Uyku artik TEK yoldan geliyor: sessizlik zaman asimi (ayar_uyku_dk,
+// panelden ayarlanabilir). Bir yol, bir kural, yanlis pozitif yok.
 
 std::uint32_t g_tur = 0;
 std::uint32_t g_dusen_olay = 0;
@@ -450,9 +457,6 @@ void uyandir()
 
     const std::int64_t t0 = esp_timer_get_time();
     g_uykuda = false;
-    // Uyanirken bekleyen istek varsa DUSURULUYOR: cocuk konusarak
-    // uyandirdiysa hemen tekrar uyumak yanlis olurdu.
-    g_uyku_istek.store(false, std::memory_order_relaxed);
     g_son_hareket_us = t0;
 
     // Prompt tazeleniyor: uykuda yeni bilgi ogrenilmis olabilir.
@@ -673,36 +677,6 @@ void kopmayi_toparla()
 //
 // AGIR DEGIL: tur basina bir kez, tek bir kisa cumlede birkac alt dize
 // aramasi. Regex ya da sozluk yigini yok (PLAN.md).
-// Cocuk uyumasini istedi mi?
-//
-// 🔴 MODELIN ARACINA EK OLARAK, YERINE DEGIL.
-//
-// Asil yol arac alani (`uyku`): model paraphrase'i anliyor, "artik
-// yatiyorum", "gorusuruz" gibi seyleri de yakaliyor. Ama modelin araci
-// cagirmasi GARANTI DEGIL — yuz aracinin cagrilma orani prototipte
-// olculmustu ve %100 degildi. Kullanicinin adiyla soyledigi cumlenin
-// ("hadi uyu iyi geceler") modele bagli kalmasi dogru olmazdi.
-//
-// Yanlis pozitifin bedeli KUCUK: Pati uyur, cocuk konusunca 617 ms'de
-// uyanir (Asama 1'de olculdu). Yanlis negatifin bedeli ise tam da
-// kullanicinin sikayeti. Bu dengesizlik iki yolu birden tutmayi
-// haklı cikariyor.
-bool uyku_istegi_mi(const std::string& metin)
-{
-    if (metin.empty()) return false;
-    static const char* const KALIP[] = {
-        "hadi uyu", "haydi uyu", "artik uyu", "artık uyu",
-        "uyu artik", "uyu artık", "iyi geceler", "iyi uykular",
-        "hadi yat", "haydi yat", "uykun gelsin", "uyuma zamani",
-        "uyuma zamanı", "tatli ruyalar", "tatlı rüyalar",
-    };
-    const std::string k = hafiza_kucult(metin);
-    for (const char* p : KALIP) {
-        if (k.find(p) != std::string::npos) return true;
-    }
-    return false;
-}
-
 bool unutma_istegi_mi(const std::string& metin)
 {
     if (metin.empty()) return false;
@@ -853,12 +827,6 @@ void olayi_isle(const ConversationEvent& olay)
         // "emin degilsen yazma" kuralini KALDIRIYOR. Isaret olmadan
         // model temkinli davranip atliyordu.
         // (prototype/pati.py §_hafizayi_guncelle ile ayni.)
-        // "Hadi uyu" ikinci yoldan da yakalaniyor (bkz.
-        // uyku_istegi_mi). Bayrak, uyku cumle bitince gelsin diye
-        // birakiliyor — burada uyunmuyor.
-        if (uyku_istegi_mi(olay.text)) {
-            g_uyku_istek.store(true, std::memory_order_relaxed);
-        }
         cikarim_dokum_ekle(unutma_istegi_mi(olay.text) ? "Cocuk (!)"
                                                        : "Cocuk",
                            olay.text);
@@ -905,14 +873,6 @@ void olayi_isle(const ConversationEvent& olay)
                     cJSON_GetObjectItemCaseSensitive(a, "hareket");
                 if (cJSON_IsString(h) && h->valuestring != nullptr) {
                     hareket = h->valuestring;
-                }
-                // Cocuk uyumasini istedi. Isaret birakiliyor; uyku
-                // cumle bitince geliyor (bkz. g_uyku_istek).
-                const cJSON* u =
-                    cJSON_GetObjectItemCaseSensitive(a, "uyku");
-                if (cJSON_IsTrue(u)) {
-                    g_uyku_istek.store(true, std::memory_order_relaxed);
-                    ESP_LOGI(ETIKET, "model uyku istedi");
                 }
                 cJSON_Delete(a);
             }
@@ -986,20 +946,13 @@ void ses_gorevi(void* /*arg*/)
             // BOSTA BEKCISI. Tur ortasinda uyumuyoruz: yarim kalan
             // cevap kaybolurdu.
             if (!g_uykuda && acik_tur() == nullptr && !g_konusuyor) {
-                // ISTENEREK UYUMA once bakiliyor: cocuk "hadi uyu"
-                // dediyse sureyi beklemenin anlami yok. Bayragi burada
-                // tuketiyoruz, yani uyandiktan sonra kendiliginden
-                // yeniden uyumuyor.
-                if (g_uyku_istek.exchange(false, std::memory_order_relaxed)) {
-                    ESP_LOGW(ETIKET, "istenerek uyudu (\"hadi uyu\")");
+                // TEK UYKU YOLU: sessizlik. Sesle uyutma 12.09.2026'da
+                // kaldirildi (gerekce yukarida, g_uyku_istek'in yerinde).
+                const std::int64_t bosta_us =
+                    esp_timer_get_time() - g_son_hareket_us;
+                if (bosta_us > static_cast<std::int64_t>(ayar_uyku_dk())
+                                   * 60 * 1000000) {
                     uyu();
-                } else {
-                    const std::int64_t bosta_us =
-                        esp_timer_get_time() - g_son_hareket_us;
-                    if (bosta_us > static_cast<std::int64_t>(ayar_uyku_dk())
-                                       * 60 * 1000000) {
-                        uyu();
-                    }
                 }
             }
         }

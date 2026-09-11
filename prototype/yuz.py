@@ -136,14 +136,24 @@ def arac_tanimi(beden: bool = False) -> dict:
             "enum": IFADELER,
             "description": "Gosterilecek yuz ifadesi",
         },
-        # Beden alani gibi degil: BU HER ZAMAN VAR, cunku uyumak icin
-        # govdeye gerek yok.
-        "uyku": {
-            "type": "BOOLEAN",
-            "description": ("Cocuk uyumani istediyse true yap. Robot "
-                            "cumlesini bitirince uyur; gozleri kapanir "
-                            "ve cocuk konusunca uyanir."),
-        },
+        # 🔴 "uyku" ALANI KALDIRILDI — 12.09.2026, kullanicinin istegi.
+        #
+        # Gercek kullanimda YANLIS POZITIF veriyordu: Pati konusmanin
+        # ortasinda uyuyordu. Kullanicinin ifadesi: "pati bazen
+        # konusurken uyuyor, sanirim konusmamin icinden bir kelimeyi
+        # uyu olarak algiliyor."
+        #
+        # Model, uyku GECEN her cumleyi ("dun gece uyuyamadim", "kardesim
+        # uyuyor") istek sanabiliyor ve prompt "sadece cocuk isterse"
+        # dese de bu garanti degil.
+        #
+        # 3.5.0'da eklenirken gerekce soyleydi: "yanlis pozitifin bedeli
+        # kucuk — Pati uyur, cocuk konusunca 617 ms'de uyanir." ⚠️ O
+        # varsayim yanlis cikti: cocuk icin robotun cumle ortasinda
+        # kapanmasi "bozuldu" demek, uyanma suresi ne olursa olsun.
+        #
+        # Uyku artik TEK yoldan: sessizlik zaman asimi (panelden
+        # ayarlanabilir, varsayilan 4 dk).
     }
     if beden:
         ozellikler["hareket"] = {
@@ -182,14 +192,9 @@ degistiriyorsun: sevinince "mutlu" ya da "cok_mutlu", uzulunce
 "uzgun", sasirinca "saskin", sitem edince "somurtkan", sakalasirken
 "afacan", merak edince "meraklı".
 
-COCUK SENI UYUTMAK ISTERSE ("hadi uyu", "iyi geceler", "artik yat",
-"yatma vakti") once guzel ve kisa bir iyi geceler cumlesi soyle, ayni
-cagrida `ifade` icin "uykulu" sec ve `uyku` alanini true yap. Cumleni
-bitirince gercekten uyursun: gozlerin kapanir, sessizce beklersin ve
-cocuk yeniden konusunca uyanirsin.
-
-⚠ SADECE COCUK ISTERSE. Kendi kendine "ben uyuyayim" deme, ve cocuk
-sana iyi geceler demeden `uyku` alanini hic kullanma.
+COCUK SANA IYI GECELER DERSE guzel ve kisa bir iyi geceler cumlesi
+soyle ve `ifade` icin "uykulu" sec. Uykuya kendin gecmiyorsun; sessizlik
+olursa kendiliginden uyuyacaksin.
 
 IFADEN DEGISTIGINDE ya da HAREKET ETMEK ISTEDIGINDE cagir. Ayni
 ifade devam ediyorsa ve hareket de etmeyeceksen cagirma, "notr"

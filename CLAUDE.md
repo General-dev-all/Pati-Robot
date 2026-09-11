@@ -496,15 +496,22 @@ unutulursa bir yerlere çarpıp servo bozulabilir."*
 veren** sayılar. Normal ayarlar sıfırlanabiliyor ve sıfırlamanın bir
 anlamı kalmalı (`pati_anahtar.hpp` · `kalici_sayi_oku`).
 
-🔴 **"Hadi uyu, iyi geceler" ile gerçekten uyuyor.** Önce model sadece
-*ifadeyi* "uykulu" yapıp sonra geri alıyordu. Artık iki yol birden:
-araç alanı `uyku` (model paraphrase'i anlıyor) **ve** çocuğun
-dökümünde kalıp araması (`uyku_istegi_mi`). İkisi birden, çünkü modelin
-aracı çağırması garanti değil ve kullanıcının adıyla söylediği cümlenin
-modele bağlı kalması doğru olmaz. Yanlış pozitifin bedeli küçük — Pati
-uyur, çocuk konuşunca 617 ms'de uyanır; yanlış negatifin bedeli ise tam
-da şikâyetin kendisi. **Uyku hemen değil, cümle bitince** geliyor
-(boşta bekçisi honorluyor), yoksa "iyi geceler" yarıda kalırdı.
+🔴 **Pati SESLE uyutulmuyor — tek yol sessizlik.** 3.5.0'da iki yol
+eklenmişti (modelin `uyku` araç alanı ve çocuğun dökümünde kalıp
+araması) ve **3.5.7'de ikisi de kaldırıldı.** Kullanıcının şikâyeti:
+*"Pati bazen konuşurken uyuyor, sanırım konuşmamın içinden bir kelimeyi
+uyu olarak algılıyor."*
+
+⚠️ **Eklenirken yazılan gerekçe ölçümle yanlış çıktı.** Şöyle diyordu:
+*"yanlış pozitifin bedeli küçük — Pati uyur, çocuk konuşunca 617 ms'de
+uyanır."* Değilmiş: bir çocuk için robotun **cümle ortasında kapanması**
+"bozuldu" demek ve uyanma süresinin bununla ilgisi yok. Hızlı
+toparlanmak, hiç olmaması gereken bir şeyi mazur göstermiyor.
+
+Uyku artık yalnızca **sessizlik zaman aşımından** geliyor
+(`ayar_uyku_dk`, varsayılan 4 dk, panelden ayarlanır). Bir yol, bir
+kural, yanlış pozitif yok. Model hâlâ "iyi geceler" deyip *ifadeyi*
+uykulu yapabiliyor — ama uyumaya o karar vermiyor.
 
 🔴 **Motorlar anlık tam güce ASLA geçmiyor.** Kullanıcının açık isteği
 (06.09.2026): *"bir daha motorları anlık %100'de yapma, ne olursa olsun

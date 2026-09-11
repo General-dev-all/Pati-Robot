@@ -177,7 +177,7 @@ inline constexpr const char* YUZ_ARAC_ADI = "yuz_ifadesi";
 inline constexpr const char* YUZ_ARAC_ACIKLAMA =
     R"PATIPROMPT(Robotun ekrandaki gozlerinin ifadesini degistirir. Duygun degistiginde cagir: sevinince, uzulunce, sasirinca, sitem edince. Konusmaya BASLARKEN cagir ki cocuk yuzunu sozunle birlikte gorsun.)PATIPROMPT";
 inline constexpr const char* YUZ_ARAC_SEMA =
-    R"PATIPROMPT({"type":"object","properties":{"ifade":{"type":"string","enum":["notr","mutlu","cok_mutlu","uzgun","kizgin","somurtkan","saskin","meraklı","afacan","uykulu"],"description":"Gosterilecek yuz ifadesi"},"uyku":{"type":"boolean","description":"Cocuk uyumani istediyse true yap. Robot cumlesini bitirince uyur; gozleri kapanir ve cocuk konusunca uyanir."}},"required":["ifade"]})PATIPROMPT";
+    R"PATIPROMPT({"type":"object","properties":{"ifade":{"type":"string","enum":["notr","mutlu","cok_mutlu","uzgun","kizgin","somurtkan","saskin","meraklı","afacan","uykulu"],"description":"Gosterilecek yuz ifadesi"}},"required":["ifade"]})PATIPROMPT";
 
 // BEDEN TAKILIYKEN kullanilan sema — `hareket` alani bunda var.
 //
@@ -187,7 +187,7 @@ inline constexpr const char* YUZ_ARAC_SEMA =
 // beklemek icin ikinci bir sebep olurdu; oysa model bu araci duygusu
 // degistiginde nasilsa cagiriyor.
 inline constexpr const char* YUZ_ARAC_SEMA_BEDEN =
-    R"PATIPROMPT({"type":"object","properties":{"ifade":{"type":"string","enum":["notr","mutlu","cok_mutlu","uzgun","kizgin","somurtkan","saskin","meraklı","afacan","uykulu"],"description":"Gosterilecek yuz ifadesi"},"uyku":{"type":"boolean","description":"Cocuk uyumani istediyse true yap. Robot cumlesini bitirince uyur; gozleri kapanir ve cocuk konusunca uyanir."},"hareket":{"type":"string","enum":["sevin","dans","hayir","bak_etrafina","titre","selam","alkis","iki_kol","sag_kol","sol_kol","dinlen"],"description":"Bedenin yapacagi hareket. Istege bagli. Hicbiri robotu yerinden goturmez."}},"required":["ifade"]})PATIPROMPT";
+    R"PATIPROMPT({"type":"object","properties":{"ifade":{"type":"string","enum":["notr","mutlu","cok_mutlu","uzgun","kizgin","somurtkan","saskin","meraklı","afacan","uykulu"],"description":"Gosterilecek yuz ifadesi"},"hareket":{"type":"string","enum":["sevin","dans","hayir","bak_etrafina","titre","selam","alkis","iki_kol","sag_kol","sol_kol","dinlen"],"description":"Bedenin yapacagi hareket. Istege bagli. Hicbiri robotu yerinden goturmez."}},"required":["ifade"]})PATIPROMPT";
 
 // Beden TAKILIYKEN promptun sonuna ayrica ekleniyor. Beden yokken hic
 // gonderilmiyor: olmayan bir bedeni anlatmak Pati'ye yapamayacagi bir
@@ -359,14 +359,9 @@ degistiriyorsun: sevinince "mutlu" ya da "cok_mutlu", uzulunce
 "uzgun", sasirinca "saskin", sitem edince "somurtkan", sakalasirken
 "afacan", merak edince "meraklı".
 
-COCUK SENI UYUTMAK ISTERSE ("hadi uyu", "iyi geceler", "artik yat",
-"yatma vakti") once guzel ve kisa bir iyi geceler cumlesi soyle, ayni
-cagrida `ifade` icin "uykulu" sec ve `uyku` alanini true yap. Cumleni
-bitirince gercekten uyursun: gozlerin kapanir, sessizce beklersin ve
-cocuk yeniden konusunca uyanirsin.
-
-⚠ SADECE COCUK ISTERSE. Kendi kendine "ben uyuyayim" deme, ve cocuk
-sana iyi geceler demeden `uyku` alanini hic kullanma.
+COCUK SANA IYI GECELER DERSE guzel ve kisa bir iyi geceler cumlesi
+soyle ve `ifade` icin "uykulu" sec. Uykuya kendin gecmiyorsun; sessizlik
+olursa kendiliginden uyuyacaksin.
 
 IFADEN DEGISTIGINDE ya da HAREKET ETMEK ISTEDIGINDE cagir. Ayni
 ifade devam ediyorsa ve hareket de etmeyeceksen cagirma, "notr"

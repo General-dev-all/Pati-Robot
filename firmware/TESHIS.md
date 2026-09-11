@@ -314,17 +314,19 @@ ediyor. Uzun sürerse yanar.
 bölümünde). Yani "sıfırladım, o yüzden bozuldu" açıklaması geçerli
 değil — başka bir yere bak.
 
-### "Hadi uyu" dedim, Pati uyumuyor
+### "Hadi uyu" dedim, Pati uyumuyor — ARTIK BEKLENEN DAVRANIŞ
 
-3.5.0'dan itibaren iki yol birden var: modelin araç alanı ve çocuğun
-dökümünde kalıp araması. İkisi de tutmuyorsa:
+🔴 **Sesle uyutma 3.5.7'de kaldırıldı.** Pati yalnızca **sessizlikten**
+uyuyor (panel → Uyku, varsayılan 4 dk). "Hadi uyu" demek onu
+uyutmuyor; model "iyi geceler" deyip gözlerini uykulu yapabilir ama
+gerçek uyku zaman aşımını bekler.
 
-1. Pati cümlesini **bitirdi mi**? Uyku bilerek cümle bitince geliyor;
-   yarıda uyumak "iyi geceler"i keserdi.
-2. Panel → Konuşma → **"Gözleriyle duygusunu göstersin"** kapalıysa
-   araç yolu yok — ama kalıp yolu yine çalışır.
-3. Seri portta `istenerek uyudu` satırı çıkıyor mu? Çıkıyorsa uyku
-   gerçekleşti ve sorun başka yerde (gözler).
+Sebebi ters yöndeki şikâyetti: Pati **konuşmanın ortasında** uyuyordu.
+Model, uyku geçen her cümleyi ("dün gece uyuyamadım") istek sanabiliyor.
+
+Pati hiç uyumuyorsa bakılacak yer **süre**: panel → Uyku. Sıfırlanan
+sayaç her ses olayında yenileniyor, yani ortamda sürekli gürültü varsa
+uyku hiç gelmeyebilir.
 
 ### Dönerken kol titriyor ya da kol bir yere sıçrıyor
 
