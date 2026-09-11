@@ -1,2 +1,2 @@
 3.5.11
-Pati kapaliyken sarja takinca kendi kendine aciliyor. Bunu kapatan bir ayar guc yongasinda YOK; tum yazmac listesi tarandi. Geriye kalan yol, acilista "beni ne uyandirdi" diye sorup cevap "kablo takildi" ise hemen geri kapanmak. Bu surum yalnizca o bilgiyi okuyup panelde gosteriyor, henuz hicbir sey yapmiyor: once dogru okundugundan emin olmak gerekiyor, cunku yanlis okursak Pati hic acilamaz hale gelir.
+Pati kapaliyken sarja takinca kendi kendine aciliyor. Bunu kapatan bir ayar guc yongasinda YOK; tum yazmac listesi tarandi. Geriye kalan yol, acilista "beni ne uyandirdi" diye sorup cevap "kablo takildi" ise hemen geri kapanmak. Bu surum yalnizca o bilgiyi okuyup panelde gosteriyor, henuz hicbir sey
