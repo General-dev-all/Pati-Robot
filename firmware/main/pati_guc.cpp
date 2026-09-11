@@ -34,6 +34,8 @@ std::atomic<int> g_vin_mv{-1};
 std::atomic<int> g_pil_mv{0};
 std::atomic<std::uint32_t> g_ornek_ms{0};
 std::atomic<int> g_amfi_kip{0};
+// Acilista bir kez okunan M5PM1 uyanma sebebi. -1 = okunamadi.
+std::atomic<int> g_uyanma_src{-1};
 
 // M5PM1 islemleri BIRKAC KEZ DENENIYOR.
 //
@@ -326,6 +328,29 @@ esp_err_t guc_baslat()
     }
 
     g_hazir = true;
+
+    // 🔴 UYANMA SEBEBI — YALNIZCA OKUNUYOR, HENUZ HICBIR KARAR VERMIYOR.
+    //
+    // Amac kullanicinin sikayetini olculebilir yapmak: "kapaliyken
+    // sarja takinca kendi kendine aciliyor". Gerekcesi ve yazmac
+    // haritasinin neden cozmedigi pati_pinler.h'de.
+    //
+    // ⚠️ TEMIZLENMIYOR (yazmac "write 0 to clear"). Ilk adimda hicbir
+    // sey YAZMIYORUZ: bayraklar acilistan acilista birikiyor mu, once
+    // onu gorecegiz. Birikiyorsa temizleme sonra eklenir.
+    {
+        std::uint8_t w = 0;
+        if (pm1_oku(PATI_PM1_WAKE_SRC, w) == ESP_OK) {
+            g_uyanma_src.store(w, std::memory_order_relaxed);
+            ESP_LOGI(ETIKET, "uyanma sebebi: 0x%02X%s%s",
+                     static_cast<unsigned>(w),
+                     (w & PATI_PM1_WAKE_VIN) ? " [VIN takildi]" : "",
+                     (w & PATI_PM1_WAKE_BTN) ? " [guc dugmesi]" : "");
+        } else {
+            ESP_LOGW(ETIKET, "uyanma sebebi okunamadi");
+        }
+    }
+
     pil_ornekle();
 
     // Arizali acilisi say. Buraya kadar gelindi, yani I2C ve M5PM1
@@ -600,6 +625,8 @@ void guc_derin_uyku()
 std::uint32_t cokme_sayisi() { return g_cokme_ram; }
 
 int son_cokme_mv() { return g_cokme_mv_ram; }
+
+int uyanma_sebebi() { return g_uyanma_src.load(std::memory_order_relaxed); }
 
 void cokme_sayaci_sifirla()
 {

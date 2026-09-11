@@ -131,6 +131,33 @@
 #define PATI_PM1_SYS_CMD 0x0C
 #define PATI_PM1_KAPAT   0xA1
 
+// ---------------------------------------------------------------------------
+// UYANMA SEBEBI — "kapaliyken sarja takinca kendi kendine aciliyor"
+// ---------------------------------------------------------------------------
+//
+// Kullanicinin sikayeti (12.09.2026): yan dugmeyle TAMAMEN kapatilan
+// Pati, USB takilinca kendiliginden aciliyor.
+//
+// 🔴 BUNU KAPATAN BIR AYAR YOK. M5PM1'in yazmac haritasinin tamami
+// tarandi (github.com/m5stack/M5PM1 · src/M5PM1.h):
+//   - IRQ_STATUS2 [0] "5VIN insertion" olayi yalnizca BILDIRIYOR
+//   - IRQ_MASK2 kesmeyi susturuyor, guc dizisini durdurmuyor
+//   - HOLD_CFG kapanista zaten 0x00'a donuyor
+//   - WAKE_SRC bir DURUM yazmaci ("write 0 to clear"), izin maskesi degil
+// Yani acilma M5PM1'in donanim davranisi ve yazilimdan engellenemiyor.
+//
+// GERIYE KALAN YOL: acilista "beni ne uyandirdi" diye sorup, cevap
+// "VIN takildi" ise hemen geri kapanmak. Once bu yazmacin gercek
+// kartta ne dondugu OLCULECEK — bit yanlis okunursa Pati hic
+// acilamaz hale gelir.
+//
+// [6] 5VINOUT takildi   [5] haricî GPIO   [4] komutla sifirlama
+// [3] sifirlama dugmesi [2] GUC DUGMESI   [1] VIN TAKILDI
+// [0] zamanlayici
+#define PATI_PM1_WAKE_SRC 0x05
+#define PATI_PM1_WAKE_VIN 0x02  // [1]
+#define PATI_PM1_WAKE_BTN 0x04  // [2]
+
 // Yan guc dugmesi.
 #define PATI_PM1_BTN_STATUS 0x48  // [0] basili mi, [7] basildi bayragi
 #define PATI_PM1_BTN_CFG_1  0x49  // [7] indirme kilidi, [4:3] uzun basma

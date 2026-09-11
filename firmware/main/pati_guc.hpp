@@ -158,6 +158,11 @@ std::uint32_t cokme_sayisi();
 // gerilim tek basina belirleyici DEGIL. Tek bir olcum bunu kesin
 // soylemiyor; sayi biriktikce soyleyecek.
 int son_cokme_mv();
+
+// M5PM1'in "beni ne uyandirdi" yazmaci, acilista bir kez okundu.
+// -1 = okunamadi. Bit anlamlari pati_pinler.h · PATI_PM1_WAKE_SRC.
+// ⚠️ Su an yalnizca RAPORLANIYOR; hicbir karar buna bagli degil.
+int uyanma_sebebi();
 void cokme_sayaci_sifirla();   // A/B olcumune temiz baslamak icin
 
 // ---------------------------------------------------------------------------

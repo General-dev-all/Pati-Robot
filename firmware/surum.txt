@@ -1,2 +1,2 @@
-3.5.10
-Panelde "Cevap hizi" kutusu bos gorunuyordu. Sebebi, cihazdaki degerin (0,5 saniye) listede hic olmamasiydi; secenek eklendi ve artik cihazda hangi deger varsa kutuda o goruluyor. Ayarin kendisi degismedi, yalnizca gorunmeyen deger gorunur oldu.
+3.5.11
+Pati kapaliyken sarja takinca kendi kendine aciliyor. Bunu kapatan bir ayar guc yongasinda YOK; tum yazmac listesi tarandi. Geriye kalan yol, acilista "beni ne uyandirdi" diye sorup cevap "kablo takildi" ise hemen geri kapanmak. Bu surum yalnizca o bilgiyi okuyup panelde gosteriyor, henuz hicbir sey yapmiyor: once dogru okundugundan emin olmak gerekiyor, cunku yanlis okursak Pati hic acilamaz hale gelir.

@@ -408,6 +408,39 @@ Devreye alınan ayarlar (`sdkconfig.defaults`, gerekçeleri orada):
 
 ---
 
+## Kapalıyken şarja takınca kendi kendine açılıyor
+
+🔴 **M5PM1'in donanım davranışı. Kapatan bir ayar YOK** — sürücü
+başlığındaki (github.com/m5stack/M5PM1 · `src/M5PM1.h`) yazmaç
+haritasının tamamı tarandı (12.09.2026):
+
+| Yazmaç | Neden çözmüyor |
+|---|---|
+| `IRQ_STATUS2` [0] "5VIN inserted" | olayı yalnızca **bildiriyor** |
+| `IRQ_MASK2` | kesmeyi susturuyor, **güç dizisini durdurmuyor** |
+| `HOLD_CFG` (0x07) | kapanışta zaten `0x00`'a dönüyor |
+| `WAKE_SRC` (0x05) | **durum** yazmacı ("write 0 to clear"), izin maskesi değil |
+| `PWR_CFG` (0x06) | rayları ve şarjı açıyor, açılışı değil |
+| `BTN_CFG_2` (0x4A) | yalnızca çift tık kapatmayı kapatıyor |
+
+**Geriye kalan tek yol:** açılışta `WAKE_SRC`'a bakıp "beni VIN
+takılması uyandırdı" ise hemen geri kapanmak (`SYS_CMD` = `0xA1`).
+
+⚠️ **Bu tehlikeli bir mantık.** Bit yanlış okunur ya da güç düğmesiyle
+açarken de VIN biti kalkarsa **Pati hiç açılamaz hale gelir.** O yüzden
+3.5.11 yalnızca yazmacı okuyup panele yazıyor (`guc.uyanma_src`);
+hiçbir karar ona bağlı değil.
+
+Karar verilmeden önce gerçek kartta iki ölçüm gerekiyor:
+
+1. Kapalıyken USB tak → `uyanma_src` ne diyor? `0x02` (VIN) bekleniyor.
+2. USB takılıyken güç düğmesiyle aç → `0x04` (düğme) olmalı, **VIN biti
+   olmamalı.** İkisi de kalkıyorsa bu yol kapalı demektir.
+
+Bit anlamları `pati_pinler.h` · `PATI_PM1_WAKE_SRC`.
+
+---
+
 ## Panelde bir ayar kutusu BOŞ görünüyor
 
 🔴 **Cihazdaki değer listede yoksa `<select>` hiçbir şey seçmez.**

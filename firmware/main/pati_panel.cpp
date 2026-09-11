@@ -264,6 +264,8 @@ esp_err_t durum_isle(httpd_req_t* r)
     cJSON_AddNumberToObject(g, "ses_en_uzun_bosluk_ms",
                             ses_en_uzun_bosluk_ms());
     cJSON_AddNumberToObject(g, "ses_tampon_ms", ses_tampon_ms());
+    // "Kapaliyken sarja takinca aciliyor" sikayetini olculebilir yapar.
+    cJSON_AddNumberToObject(g, "uyanma_src", uyanma_sebebi());
     // Brownout besleme düşmesini bildirir; tek başına hangi yükün
     // veya bileşenin sorumlu olduğunu kanıtlamaz.
     const esp_reset_reason_t sebep = esp_reset_reason();
