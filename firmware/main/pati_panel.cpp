@@ -379,10 +379,6 @@ esp_err_t ayar_isle(httpd_req_t* r)
         ayar_ses_adi_yaz(json_dize(k, "deger"));
     } else if (alan == "uyku") {
         ayar_uyku_yaz(static_cast<int>(json_sayi(k, "deger", 4)));
-    } else if (alan == "powerbank") {
-        ayar_powerbank_yaz(json_sayi(k, "deger", 0) != 0);
-    } else if (alan == "kabloyla_ac") {
-        ayar_kabloyla_ac_yaz(json_sayi(k, "deger", 0) != 0);
     } else if (alan == "soz_kesme") {
         ayar_soz_kesme_yaz(json_sayi(k, "deger", 0) != 0);
     } else if (alan == "vad") {

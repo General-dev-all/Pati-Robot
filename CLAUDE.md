@@ -448,8 +448,12 @@ unutabileceği ikinci bir kontrol yok.
 
 🔴 **İkinci bir gövde var: powerbank'li.** Eskisiyle aynı (2 servo,
 2 DC motor), tek farkı besleme. **Eski kalem pilli gövde duruyor ve
-kullanılıyor** — bu yüzden çözüm panelden açılan bir ayar
-(`powerbank`, varsayılan KAPALI).
+kullanılıyor.** Çözüm önce panelden açılan bir ayardı; kullanıcı
+gereksiz buldu (12.09.2026) ve kaldırıldı — hareket artık **her
+gövdede** çalışıyor, kapatmanın tek yolu kol kipini kapatmak.
+
+Aynı gün `kabloyla_ac` ayarı da kaldırıldı: kabloyla açılınca geri
+kapanma artık koşulsuz. **Panelde ikisi de yok.**
 
 Powerbank akım çekilmeyince 15 saniyede kapanıyor ve kendiliğinden
 uyanmıyor. Pati boştayken **13 saniyede bir iki kolu da 5 puan

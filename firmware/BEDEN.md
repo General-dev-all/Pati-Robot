@@ -824,9 +824,15 @@ paralel **470–1000 µF elektrolitik** gerekiyor (henüz alınmadı).
 sürücüler. Tek fark besleme: eski gövde 4'lü kalem pil, yeni gövde
 **powerbank** (Thull 5000 mAh).
 
-⚠️ **Eski gövde duruyor ve kullanılıyor.** Bu yüzden çözüm panelden
-açılıp kapanan bir ayar: `powerbank`, **varsayılan KAPALI.** Kalem pilli
-gövdenin buna ihtiyacı yok ve boşuna pil yerdi.
+⚠️ **Eski gövde duruyor ve kullanılıyor.** Çözüm önce panelden açılıp
+kapanan bir ayardı; kullanıcı 12.09.2026'da *"panelde olmalarına gerek
+yok, varsayılan olarak açık olsunlar"* dedi ve ayar kaldırıldı.
+**Hareket artık her gövdede çalışıyor.**
+
+Kalem pilli gövdedeki bedeli küçük ama sıfır değil: 13 saniyede bir
+5 puanlık iki kol hareketi, yani hafif bir pil tüketimi ve göze
+çarpabilen bir kıpırdanma. Bilinerek kabul edildi. Geri alınacak yer
+`pati_beden.cpp`'de tek bir koşul.
 
 ### Sorun
 
@@ -854,6 +860,7 @@ hareket kırpılır; bir sonraki turda ters yöne gideceği için hareket
 yine olur.
 
 Kol kipi kapalıysa hareket de gönderilmiyor — "kapalı" kapalı demek.
+Tek kapatma yolu bu.
 
 ### Denenip ELENEN iki yol
 

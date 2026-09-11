@@ -712,10 +712,18 @@ void beden_gorevi(void*)
 
         // ---- POWERBANK'I UYANIK TUT --------------------------------------
         //
-        // Yalnizca: ayar acik + gövde takili + hicbir sey oynamiyor +
-        // kol kipi acik. Kollar kapaliyken dokunmuyoruz — "kapali"
+        // 🔴 AYARI YOK, HEP CALISIYOR — kullanicinin karari (12.09.2026):
+        // "panelde olmalarina gerek yok, varsayilan olarak acik olsunlar".
+        //
+        // ⚠️ KALEM PILLI ESKI GÖVDEDE DE CALISIYOR. Bedeli kucuk ama
+        // sifir degil: 13 saniyede bir 5 puanlik iki kol hareketi, yani
+        // hafif bir pil tuketimi ve goze carpabilen bir kipirdanma.
+        // Bilinerek kabul edildi; rahatsiz ederse geri alinacak yer
+        // burasi ve tek satir.
+        //
+        // Kollar kapaliyken (KIP_KAPALI) yine dokunmuyoruz — "kapali"
         // kapali demek.
-        if (!mesgul && ayar_powerbank() && kol_kip == KIP_ACIK
+        if (!mesgul && kol_kip == KIP_ACIK
             && simdi - son_powerbank_us > POWERBANK_ARA_US) {
             son_powerbank_us = simdi;
             powerbank_yon = -powerbank_yon;

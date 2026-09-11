@@ -1,2 +1,2 @@
-3.5.12
-Iki yenilik. Birincisi: Pati kapaliyken sarja takildiginda artik acik kalmiyor, bir an yanip kendini geri kapatiyor ve sarj olmaya devam ediyor. Isterseniz panelden "Kablo takilinca acilsin" ile acik kalmasini secebilirsiniz. Ikincisi: govde powerbank ile besleniyorsa, panelden "Powerbank'li govde" 
+3.5.13
+Panelde iki ayar kaldirildi, davranislari her zaman acik. Pati kapaliyken sarja takildiginda bir an yanip kendini geri kapatiyor ve sarj olmaya devam ediyor. Powerbank'li govde icin Pati bostayken 13 saniyede bir kollarini cok az oynatiyor; boylece powerbank kendini kapatmiyor. Ayarlamaniz gereken bir sey yok.

@@ -240,10 +240,13 @@ void hatti_tara()
 //   3. acilis sebebi COKME ise (brownout/panic/bekci) hicbir sey
 //      yapilmiyor — cokup yeniden baslayan robot kapanmamali
 //
-// Ayrica panelden kapatilabiliyor ("Kablo takilinca acilsin"). O ayara
-// ayar_baslat()'tan ONCE ihtiyacimiz var (bu islev daha erken
-// calisiyor), o yuzden NVS'ten dogrudan okunuyor — ayni "pati" alani,
-// ayni anahtar adi.
+// 🔴 AYARI YOK, HEP CALISIYOR — kullanicinin karari (12.09.2026):
+// "panelde olmasina gerek yok, varsayilan acik olsun". Once panelden
+// kapatilabilen bir ayar vardi; kullanici gereksiz buldu.
+//
+// Geri almak gerekirse: asagidaki kosula bir ayar eklemek yeterli,
+// ama o ayarin ayar_baslat()'tan ONCE okunmasi gerekir (bu islev daha
+// erken calisiyor), yani NVS'ten dogrudan.
 void kabloyla_acildiysa_kapan(std::uint8_t w)
 {
     const bool vin = (w & PATI_PM1_WAKE_VIN) != 0;
@@ -256,17 +259,6 @@ void kabloyla_acildiysa_kapan(std::uint8_t w)
         sebep == ESP_RST_TASK_WDT || sebep == ESP_RST_INT_WDT) {
         ESP_LOGW(ETIKET, "kabloyla acilis gibi gorunuyor ama acilis "
                          "sebebi cokme — kapanmiyoruz");
-        return;
-    }
-
-    std::int32_t kabloyla_ac = 0;
-    nvs_handle_t h;
-    if (nvs_open("pati", NVS_READONLY, &h) == ESP_OK) {
-        nvs_get_i32(h, "kabloyla_ac", &kabloyla_ac);
-        nvs_close(h);
-    }
-    if (kabloyla_ac != 0) {
-        ESP_LOGI(ETIKET, "kabloyla acildi; ayar 'acik kalsin' diyor");
         return;
     }
 
