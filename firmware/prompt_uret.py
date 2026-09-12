@@ -127,6 +127,45 @@ PROMPT = kisilik.sistem_promptu(hafiza_ac=False, robot_adi="{ROBOT_ADI}")
 SINIR = "PATIPROMPT"
 
 
+# 🔴 TURKCE HARF CARPISMASI — "sik" DIZISI PROMPTA GIREMEZ.
+#
+# 13.09.2026, kullanicinin bildirdigi sorun: Pati bazen "sıkıcı" yerine
+# noktali i ile okuyor ve ortaya cocuga soylenmeyecek bir kelime
+# cikiyor.
+#
+# Sebep arandiginda PROMPTUN KENDISINDE bulundu: metin ASCII'ye
+# cevrilmisti ve "sık" -> "sik" carpismasi olmustu. Ustelik en kotu
+# yerde — Pati'ye tam o duyguyu ifade etmesi soylenen cumlede
+# o yazimi PROMPTTAN ogreniyordu.
+#
+# Duzeltmek yetmez, tekrarlanmasini engellemek gerekiyor: Turkce
+# karakter kullanmak bir uslup tercihi gibi gorunuyor ve bir sonraki
+# kisi yine ASCII yazabilir. Uretici artik reddediyor.
+#
+# ⚠️ "psikoloji/psikolog" mesru; yalnizca onun icindeki gecis muaf.
+def kufur_denetle(ad: str, metin: str) -> None:
+    """Prompt metninde 'sık/şik' yerine ASCII 'sik' yazilmis mi?"""
+    kucuk = metin.lower()
+    yer = 0
+    while True:
+        yer = kucuk.find("sik", yer)
+        if yer < 0:
+            return
+        if yer > 0 and kucuk[yer - 1] == "p":   # psikoloji, psikolog
+            yer += 3
+            continue
+        # Hatayi gorunur yap: hangi satir, hangi kelime.
+        bas = kucuk.rfind("\n", 0, yer) + 1
+        son = kucuk.find("\n", yer)
+        satir = metin[bas:son if son > 0 else len(metin)].strip()
+        raise SystemExit(
+            f"HATA: {ad} icinde ASCII 'sik' dizisi var.\n"
+            f"  satir: {satir}\n"
+            f"  Turkce harfleri kullan: sık / şik. ASCII'ye cevirmek "
+            f"cocuga soylenmeyecek bir kelime uretiyor ve Pati onu "
+            f"prompttan ogreniyor.")
+
+
 def sinirici_denetle(ad: str, metin: str) -> None:
     """Ham dizeyi erken kapatacak bir dizi var mi?
 
@@ -140,16 +179,27 @@ def sinirici_denetle(ad: str, metin: str) -> None:
 
 
 sinirici_denetle("prompt", PROMPT)
+kufur_denetle("prompt", PROMPT)
 sinirici_denetle("yuz araci aciklamasi", _YUZ_TANIM["description"])
+kufur_denetle("yuz araci aciklamasi", _YUZ_TANIM["description"])
 sinirici_denetle("yuz araci semasi", YUZ_SEMA)
+kufur_denetle("yuz araci semasi", YUZ_SEMA)
 sinirici_denetle("yuz prompt eki", yuz.PROMPT_EKI)
+kufur_denetle("yuz prompt eki", yuz.PROMPT_EKI)
 sinirici_denetle("yuz araci beden semasi", YUZ_SEMA_BEDEN)
+kufur_denetle("yuz araci beden semasi", YUZ_SEMA_BEDEN)
 sinirici_denetle("beden prompt eki", yuz.BEDEN_PROMPT_EKI)
+kufur_denetle("beden prompt eki", yuz.BEDEN_PROMPT_EKI)
 sinirici_denetle("bedensiz prompt eki", yuz.BEDENSIZ_PROMPT_EKI)
+kufur_denetle("bedensiz prompt eki", yuz.BEDENSIZ_PROMPT_EKI)
 sinirici_denetle("yeni beden eki", yuz.BEDEN_YENI_EKI)
+kufur_denetle("yeni beden eki", yuz.BEDEN_YENI_EKI)
 sinirici_denetle("tekerlek kapali eki", yuz.BEDEN_TEKERLEK_KAPALI_EKI)
+kufur_denetle("tekerlek kapali eki", yuz.BEDEN_TEKERLEK_KAPALI_EKI)
 sinirici_denetle("kol kapali eki", yuz.BEDEN_KOL_KAPALI_EKI)
+kufur_denetle("kol kapali eki", yuz.BEDEN_KOL_KAPALI_EKI)
 sinirici_denetle("hareketsiz eki", yuz.BEDEN_HAREKETSIZ_EKI)
+kufur_denetle("hareketsiz eki", yuz.BEDEN_HAREKETSIZ_EKI)
 
 # ASCII disi karakterler SORUN DEGIL — ayni karakterler kisilik.py'den
 # geliyor, yani PC de aynisini gonderiyor ve iki taraf birebir ayni metni
@@ -311,6 +361,7 @@ print(f"uretildi: {HEDEF.relative_to(BURASI)}")
 CIKARIM = hafiza.CIKARIM_PROMPTU
 if f"){SINIR}\"" in CIKARIM:
     raise SystemExit("HATA: cikarim promptunda sinirici dizisi var")
+kufur_denetle("cikarim promptu", hafiza.CIKARIM_PROMPTU)
 
 CIKARIM_BASLIK = f"""// URETILMIS DOSYA — ELLE DEGISTIRILMEZ.
 //

@@ -358,7 +358,7 @@ kaldir" ya da "dans et" derse durustce soyle ve uzulme, ornegin:
 Kollarim ve tekerleklerim su an kapali. Annene sorarsan acabilir!
 Simdilik sana gozlerimle anlatayim.
 
-Bunu sikayet gibi soyleme ve kendiliginden tekrar tekrar
+Bunu şikayet gibi soyleme ve kendiliginden tekrar tekrar
 hatirlatma."""
 
 

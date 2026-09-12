@@ -1011,3 +1011,63 @@ VIN biti de görünmez — yani iki ayrı yoldan da kapanmaz.
 Bu, brownout işi ile kablo işinin **aynı iş** olduğunu gösteriyor
 (`PIL.md`). Çökme durmadan bu koruma güvenilir olamaz.
 
+---
+
+## 🔴 13.09.2026 — Pati çocuğa küfür ediyordu, sebebi PROMPTUN KENDİSİYDİ
+
+Kullanıcının bildirdiği belirti: *"Pati bazen Türkçe harfleri
+söyleyemiyor… ‘çok sıkıcı' demek yerine ı'ları i olarak dediği için
+‘çok sıkıcı' yerine küfür duyuluyor. Bu çocuk için sorunlu."*
+
+**Belirtiden çıkarılan ilk teşhis yanlış olurdu:** "TTS Türkçe ı'yı
+okuyamıyor, yapacak bir şey yok." Aranınca sebep çok daha yakında
+çıktı.
+
+### Sebep
+
+`prototype/kisilik.py` — yani **sistem promptunun kendisi** — Türkçe
+harfsiz (ASCII'ye çevrilmiş) yazılmıştı. Türkçede o çeviri güvenli
+değil: **`sık` → `sik` çarpışması** var ve ortaya çocuğa söylenmeyecek
+bir kelime çıkıyor.
+
+Üç yerde geçiyordu, ikisi tam o kökte:
+
+| Yer | Yazılan | Olması gereken |
+|---|---|---|
+| `kisilik.py` karakter tarifi | `Sikilinca belli edersin` | `Sıkılınca` |
+| `kisilik.py` duygu bölümü | `sikildigini` | `sıkıldığını` |
+| `yuz.py` beden eki | `sikayet` | `şikayet` |
+
+🔴 **Birincisi mümkün olan en kötü yerdeydi:** Pati'ye *tam o duyguyu
+ifade etmesi* söylenen cümle. Yani model o yazımı **promptan
+öğreniyordu** ve kendi cevabında tekrarlıyordu; seslendirme de onu
+okuduğu gibi söylüyordu. "Bazen" olmasının sebebi de bu — model bazen
+doğru imlayı kullanıyor, bazen promptu aynalıyor.
+
+### Yapılanlar — üç kat
+
+1. **Üç kelime doğru Türkçe harflerle yazıldı.** Üretilen başlık zaten
+   UTF-8 taşıyor, uçtan uca sorun yok.
+2. **Prompta açık kural eklendi:** Türkçe harfleri doğru kullan; bu
+   kelimelerden emin değilsen eş anlamlısını seç (*"canım sıkıldı"*
+   yerine *"keyfim kaçtı"*). Bu ikinci savunma, seslendirmenin kendisi
+   yanlış okusa bile kelimeyi ortadan kaldırıyor.
+3. 🔴 **Üretici artık reddediyor.** `prompt_uret.py` · `kufur_denetle`
+   her prompt dizesini tarıyor; ASCII `sik` dizisi varsa **derleme
+   durur** ve hangi satır olduğunu yazar (`psikoloji/psikolog` muaf).
+
+Üçüncüsü şart: Türkçe karakter kullanmamak bir **üslup tercihi** gibi
+görünüyor ve bir sonraki yazan yine ASCII yazabilir. Düzeltmek tek
+seferlik; engellemek kalıcı.
+
+⚠️ **`guvenlik.py` içindeki kelime listesi bu taramanın dışında ve
+öyle kalmalı** — o, çocuğun söylediği küfrü *yakalayan* süzgeç; kelimeler
+orada bilerek duruyor.
+
+### Ders
+
+**ASCII'ye çevirmek Türkçede bilgi kaybetmiyor, bilgi ÜRETİYOR.**
+`sık` ile `şik` aynı diziye düşüyor ve o dizi başka bir kelime.
+Diğer dillerde zararsız görünen bir sadeleştirme, burada bir çocuğun
+duyduğu şeyi değiştiriyor.
+

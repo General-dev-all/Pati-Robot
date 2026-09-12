@@ -81,7 +81,7 @@ Cikti: []
 Konusma: Robot: "Mahmut mu? Kedi arkadasim Mahmut'u aklimda tutacagim!"
 Cikti: []
 
-Konusma: Cocuk: "Bugun canim sikkin." / Robot: "Uzuldum."
+Konusma: Cocuk: "Bugun canim sıkkın." / Robot: "Uzuldum."
 Cikti: []
 
 ZATEN BILDIKLERIN (bunlari TEKRAR YAZMA, farkli kelimelerle bile olsa):

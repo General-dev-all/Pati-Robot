@@ -1,2 +1,2 @@
-3.5.28
-Panele yeni bir ayar eklendi: Ileri/geri yonunu ters cevir. Cubugu yukari ittiginizde Pati geri gidiyorsa bunu acin; motor kablolari ters takilmis demektir ve bu ayar yonu yazilimdan duzeltir. Saga sola donuse dokunmuyor, cunku donus cubugun yan hareketinden geliyor. Varsayilan kapali. Hem bu ayar h
+3.5.29
+Onemli bir duzeltme. Pati bazen 'sikici' gibi duyulan, cocuga soylenmeyecek bir kelime soyluyordu. Sebep Pati'nin konusmasi degil, ona verilen talimat metniydi: o metinde Turkce noktasiz i harfleri kullanilmamisti ve boyle yazilinca kelime bambaska bir sey oluyor. Pati de yanlis yazimi oradan ogrenip tekrarliyordu. Metin duzeltildi, Pati'ye bu kelimelerde noktasiz i kullanmasi ya da esanlamlisini secmesi soylendi, ve ayni hatanin bir daha girmesi yazilimca engellendi.
