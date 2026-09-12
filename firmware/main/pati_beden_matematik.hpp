@@ -716,6 +716,42 @@ inline constexpr Kare JEST_YARAMAZ[] = {
     { 0,  0,   0,   0, KOL_NORMAL},
 };
 
+// 🔴 KACAMAK BAKIS — tablodaki ilk ASIMETRIK ritim.
+//
+// Net donus sifir olmak zorunda, ama bu "simetrik olmak" demek DEGIL:
+// sifirlanmasi gereken sey (teker x sure) TOPLAMI. Bu jest o farki
+// kullaniyor:
+//
+//     yavas ve genis git (50 x 480)   ->  hizli ve dar geri don (75 x 320)
+//                  24000                              24000
+//
+// Goze "usulca kaydi, baktı, sonra birden geri dondu" gorunuyor —
+// simetrik bir salinimla hicbir ortak yani yok. 13.09.2026'ya kadar
+// tablodaki ALTI tekerlekli jestin hepsi simetrikti ve kullanicinin
+// "hep ayni hareketi yapiyor" demesinin sebebi buydu; cesitliligin
+// ileri hareket gerektirdigi sanilmisti, gerektirmiyor.
+inline constexpr Kare JEST_KACAMAK[] = {
+    {-1, -1,  50, 480, KOL_NORMAL}, {-1, -1, 0, 500, KOL_NORMAL},
+    {-1, -1, -75, 320, KOL_NORMAL}, {-1, -1, 0,   0, KOL_NORMAL},
+};
+
+// 🔴 NAZ — kararlica git, gonulsuzce IKI ADIMDA geri don.
+//
+//     70 x 600  ->  70 x 300  +  70 x 300      (arada duraklama)
+//
+// Geri donusun ortasindaki duraklama jestin tamami: tek parca geri
+// donseydi sadece "genis bir salinim" olurdu. Iki adim, "geri dondum
+// ama isteyerek degil" demek.
+//
+// Uc kalkis iceriyor (tablodaki en pahali ikinci jest) ve bu bilincli
+// olarak kabul edildi: bosluk zaten kalkis sayisiyla orantili
+// (pati_beden.cpp), yani kendi maliyetini kendisi oduyor.
+inline constexpr Kare JEST_NAZ[] = {
+    {-1, -1,  70, 600, KOL_NORMAL}, {-1, -1, 0, 120, KOL_NORMAL},
+    {-1, -1, -70, 300, KOL_NORMAL}, {-1, -1, 0, 260, KOL_NORMAL},
+    {-1, -1, -70, 300, KOL_NORMAL}, {-1, -1, 0,   0, KOL_NORMAL},
+};
+
 // Dans: hazirlik — DORT SALINIM ust uste — kol koreografisi.
 //
 // 🔴 DORT VURUS AYNI UZUNLUKTA DEGIL: 300, 300, 380, 380. Ayni
@@ -783,6 +819,8 @@ inline constexpr Jest JESTLER[] = {
                                                      | RUH_DUSUK},
     {"firildak",     JEST_FIRILDAK, 4, true,  true,  RUH_NESE},
     {"yaramaz",      JEST_YARAMAZ,  9, true,  true,  RUH_NESE | RUH_SAKIN},
+    {"kacamak",      JEST_KACAMAK,  4, true,  true,  RUH_MERAK | RUH_NESE},
+    {"naz",          JEST_NAZ,      6, true,  true,  RUH_DUSUK | RUH_SAKIN},
     {"dans",         JEST_DANS,    14, true,  true,  RUH_NESE},
     {"sag_kol",      JEST_SAG_KOL,  2, false, false, RUH_HEPSI},
     {"sol_kol",      JEST_SOL_KOL,  2, false, false, RUH_HEPSI},

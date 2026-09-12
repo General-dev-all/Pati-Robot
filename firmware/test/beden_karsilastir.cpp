@@ -589,6 +589,32 @@ void jest_tablosu()
         // KURAL 3
         kontrol(net_donus == 0, "jestin net donusu sifir degil");
 
+        // \U0001f534 AYNALANMIS HALI DE GECERLI OLMALI.
+        //
+        // Beden gorevi her calisista yazi tura atip butun kareleri ters
+        // isaretle oynatiyor (pati_beden.cpp · jest_ayna) — gorunur
+        // cesitlilik ikiye katlansin diye. Bu, tablonun UC kuralini da
+        // bozmamali:
+        //   - net donus: toplamin isareti degisiyor, sifirin isareti yok
+        //   - donus siniri: |-x| == |x|
+        //   - yon degisimi: sifir kareleri yerinde kaliyor
+        // Ucu de apacik dogru, ama "apacik" olan seyler sessizce
+        // bozuluyor; tarama bedava.
+        int ayna_net = 0;
+        int ayna_onceki = 0;
+        for (int k = 0; k < g.adet; ++k) {
+            const int t = -g.kare[k].teker;
+            if (t == 0) { ayna_onceki = 0; continue; }
+            kontrol(std::abs(t) <= JEST_DONUS_EN_COK,
+                    "aynalanmis kare donus sinirini asiyor");
+            const int isaret = (t > 0) ? 1 : -1;
+            kontrol(ayna_onceki == 0 || ayna_onceki == isaret,
+                    "aynalanmis jestte yon degisiminde sifir karesi yok");
+            ayna_onceki = isaret;
+            ayna_net += t * static_cast<int>(g.kare[k].bekle_ms);
+        }
+        kontrol(ayna_net == 0, "aynalanmis jestin net donusu sifir degil");
+
         kontrol(teker_ms <= JEST_TEKER_EN_COK_MS,
                 "jestin tekerlek suresi sinirin ustunde");
 

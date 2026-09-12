@@ -466,6 +466,19 @@ void beden_gorevi(void*)
     // temizleniyor ve ayni tekerlek jesti pekala tekrar secilebiliyordu.
     int son_teker_jest = -1;
 
+    // 🔴 AKAN JEST AYNALANSIN MI — her calisista yazi tura.
+    //
+    // 13.09.2026'ya kadar tablodaki her tekerlekli jest AYNI YONDEN
+    // basliyordu (hayir haric hepsi saga). Cocuk her seferinde once
+    // saga donen bir robot goruyordu ve "hep ayni hareketi yapiyor"
+    // sikayetinin yarisi buydu.
+    //
+    // Aynalama bedava: butun kareler ters isaretle oynayinca net donus
+    // yine sifir (toplamin isareti degisiyor, sifirin isareti yok),
+    // sol + sag == 0 yapisal olarak korunuyor ve tabloya tek satir
+    // eklenmiyor. Gorunur cesitlilik ise IKIYE katlaniyor.
+    bool jest_ayna = false;
+
     // Akan jesti KIM istedi. Kip kontrolu buna bakiyor: "sadece
     // kumandadan" kipinde panelin dugmesi calisiyor, Pati'nin kendi
     // karari calismiyor.
@@ -696,6 +709,7 @@ void beden_gorevi(void*)
         if (istek >= 0 && istek < JEST_ADET) {
             akan = &JESTLER[istek];
             akan_kaynak = ham_istek / JEST_KAYNAK_CARPAN;
+            jest_ayna = (esp_random() % 2) == 0;
             son_jest = istek;
             // Elle ya da sesle istenen jest de seyreklik sayacini
             // besliyor: cocuk "dans et" dedikten hemen sonra Pati'nin
@@ -778,6 +792,7 @@ void beden_gorevi(void*)
             if (aday >= 0) {
                 akan = &JESTLER[aday];
                 akan_kaynak = JEST_KAYNAK_PATI;
+                jest_ayna = (esp_random() % 2) == 0;
                 son_jest = aday;
                 if (JESTLER[aday].teker_var) {
                     son_teker_us = simdi;
@@ -863,7 +878,14 @@ void beden_gorevi(void*)
         // geciyor; jest bitince kendiliginden sifirlaniyor, yani
         // "jest yarida kaldi ama tekerlek donmeye devam etti" hali
         // yapisi geregi olusamiyor.
-        jest_teker = (akan != nullptr) ? akan->kare[kare_no].teker : 0;
+        // Aynalama BURADA uygulaniyor, tek yerde: `teker` alani baska
+        // hicbir yerde okunmuyor. Iki yerde olsaydi biri unutulur ve
+        // jestin yarisi ters donerdi — net donus sifir olmaktan cikardi.
+        jest_teker = 0;
+        if (akan != nullptr) {
+            const int t = akan->kare[kare_no].teker;
+            jest_teker = jest_ayna ? -t : t;
+        }
 
         // Sohbet gorevi "uzerine yazayim mi" diye buna bakiyor.
         g_jest_akiyor.store(akan != nullptr, std::memory_order_relaxed);

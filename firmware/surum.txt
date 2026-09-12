@@ -1,2 +1,2 @@
-3.5.26
-Pati neredeyse her cevabinda saga sola donuyordu; bu duzeltildi. Sebep su: iki donus arasindaki bekleme suresi Pati SUSARKEN de isliyordu, oysa hareket ancak konusurken baslayabiliyor. Yani cocuk konusurken sayac doluyor ve Pati agzini actigi anda donus hazir oluyordu. Artik bekleme sure degil HAREK
+3.5.27
+Pati'nin donus hareketleri artik birbirine benzemiyor. Once her donus ayni yonden basliyordu; artik her seferinde yazi tura atiliyor, yani ayni hareket bazen saga bazen sola basliyor. Iki de yeni hareket var: Kacamak bak (usulca kayar, bakar, sonra birden geri doner) ve Naz yap (kararlica doner, sonra gonulsuzce iki adimda geri gelir). Ikisi de eskilerin aksine simetrik degil, o yuzden goze bambaska geliyor. Donuslerin SIKLIGI degismedi - sadece cesitlendi. Pati yine yalnizca oldugu yerde doner, kendi karariyla asla ilerlemez.

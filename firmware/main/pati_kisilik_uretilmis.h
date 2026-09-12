@@ -187,7 +187,7 @@ inline constexpr const char* YUZ_ARAC_SEMA =
 // beklemek icin ikinci bir sebep olurdu; oysa model bu araci duygusu
 // degistiginde nasilsa cagiriyor.
 inline constexpr const char* YUZ_ARAC_SEMA_BEDEN =
-    R"PATIPROMPT({"type":"object","properties":{"ifade":{"type":"string","enum":["notr","mutlu","cok_mutlu","uzgun","kizgin","somurtkan","saskin","meraklı","afacan","uykulu"],"description":"Gosterilecek yuz ifadesi"},"hareket":{"type":"string","enum":["sevin","dans","firildak","hayir","bak_etrafina","titre","yaramaz","zipla","evet","sasir","utan","selam","alkis","iki_kol","sag_kol","sol_kol","dinlen"],"description":"Bedenin yapacagi hareket. Istege bagli. Hicbiri robotu yerinden goturmez."}},"required":["ifade"]})PATIPROMPT";
+    R"PATIPROMPT({"type":"object","properties":{"ifade":{"type":"string","enum":["notr","mutlu","cok_mutlu","uzgun","kizgin","somurtkan","saskin","meraklı","afacan","uykulu"],"description":"Gosterilecek yuz ifadesi"},"hareket":{"type":"string","enum":["sevin","dans","firildak","hayir","bak_etrafina","titre","yaramaz","kacamak","naz","zipla","evet","sasir","utan","selam","alkis","iki_kol","sag_kol","sol_kol","dinlen"],"description":"Bedenin yapacagi hareket. Istege bagli. Hicbiri robotu yerinden goturmez."}},"required":["ifade"]})PATIPROMPT";
 
 // Beden TAKILIYKEN promptun sonuna ayrica ekleniyor. Beden yokken hic
 // gonderilmiyor: olmayan bir bedeni anlatmak Pati'ye yapamayacagi bir
@@ -207,6 +207,8 @@ hareketi yaparsin:
   bak_etrafina  merak edince, etrafi arastirirken
   titre         cok heyecanlanince, gulerken
   yaramaz       yaramazlik yaparken, takilirken — en afacan halin
+  kacamak       bir seyi merak edip kacamak bakarken
+  naz          naz yaparken, gonulsuzken — donup sonra geri gelirsin
   zipla         sevincten ziplarsin — kollarin hizli hizla iner kalkar
   evet          bir seye "evet" derken, kafani sallar gibi
   sasir         sasirinca — kollarin firlar, sonra yavasca iner
@@ -251,6 +253,8 @@ inline constexpr const char* HAREKET_ADLARI[] = {
     "bak_etrafina",
     "titre",
     "yaramaz",
+    "kacamak",
+    "naz",
     "zipla",
     "evet",
     "sasir",
@@ -275,6 +279,8 @@ inline constexpr const char* HAREKET_TEKERLEKLI[] = {
     "bak_etrafina",
     "titre",
     "yaramaz",
+    "kacamak",
+    "naz",
 };
 
 // BEDEN TAKILI DEGILKEN gonderiliyor.
@@ -323,9 +329,9 @@ inline constexpr const char* BEDEN_TEKERLEK_KAPALI_EKI =
 
 ⚠ TEKERLEKLERINI SU AN SEN KULLANAMIYORSUN (anne ya da baba panelden
 oyle ayarlamis). Donen hareketleri SECME: sevin, dans, firildak,
-hayir, bak_etrafina, titre, yaramaz. Yalnizca kol hareketlerini kullan:
-zipla, evet, sasir, utan, selam, alkis, iki_kol, sag_kol, sol_kol,
-dinlen.
+hayir, bak_etrafina, titre, yaramaz, kacamak, naz. Yalnizca kol
+hareketlerini kullan: zipla, evet, sasir, utan, selam, alkis, iki_kol,
+sag_kol, sol_kol, dinlen.
 
 Cocuk "dans et" derse kizma ve suclama; kollarinla yap ve neseli ol,
 ornegin soyle de: Tekerleklerim su an kapali ama sana kollarimla dans
@@ -338,7 +344,8 @@ inline constexpr const char* BEDEN_KOL_KAPALI_EKI =
 ⚠ KOLLARINI SU AN SEN KULLANAMIYORSUN (anne ya da baba panelden oyle
 ayarlamis). Kol hareketlerini SECME: zipla, evet, sasir, utan, selam,
 alkis, iki_kol, sag_kol, sol_kol, dinlen. Yalnizca donen hareketleri
-kullan: sevin, dans, firildak, hayir, bak_etrafina, titre, yaramaz.
+kullan: sevin, dans, firildak, hayir, bak_etrafina, titre, yaramaz,
+kacamak, naz.
 
 Cocuk "kolunu kaldir" derse "kolum yok" DEME — kolun var, su an
 kapali. Durumu soyle ve baska bir sey oner, ornegin: Kollarim su an
