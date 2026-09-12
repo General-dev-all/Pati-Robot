@@ -2,11 +2,13 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
 
 #include <cJSON.h>
+#include <esp_app_desc.h>
 #include <esp_http_server.h>
 #include <esp_log.h>
 #include <esp_system.h>
@@ -127,10 +129,59 @@ double json_sayi(const cJSON* k, const char* alan, double varsayilan)
 // Sayfa dosyalari
 // ---------------------------------------------------------------------------
 
+// 🔴 PANEL DOSYALARI TARAYICIDA ONBELLEGE TAKILIYORDU — 13.09.2026.
+//
+// Kullanicinin sikayeti: "guncelleme yaptikca bazi seyler eskiye
+// donuyor gibi". Olculdu: cihazin index.html cevabinda Cache-Control
+// YOKTU (yalnizca JSON'da `no-store` vardi). Onbellek basligi olmayan
+// bir cevabi tarayici kendi bildigi gibi saklayabiliyor.
+//
+// Sonucu tam olarak "ayarlar geri dondu" gibi gorunuyor: yeni sürumde
+// eklenen dugmeler yok, kaydiricinin araligi eski, etiketler eski.
+// Oysa cihazda dogru yazilim duruyor — telefonun elindeki sayfa eski.
+//
+// ⚠️ AYARLARIN KENDISI HICBIR ZAMAN SILINMIYOR: OTA yalnizca
+// uygulama bolumlerini yaziyor, `nvs` ve `anahtar` bolumlerine
+// dokunmuyor (partitions.csv). Kaybolan sey veri degil, SAYFAYDI.
+//
+// Cozum `no-store` DEGIL: panelin tamami ~150 KB ve her acilista
+// yeniden indirmek gereksiz. Bunun yerine ETag = firmware surumu.
+// Dosyalar firmware'in ICINDE gomulu, yani surum degismedikce
+// icerikleri de degismiyor — etiket icin bundan iyi bir kaynak yok.
+//
+// Tarayici artik dosyayi saklayabiliyor ama KULLANMADAN ONCE soruyor
+// (`no-cache` = "sakla, ama dogrula"). Degismediyse 304 alip birkac
+// bayta kurtuluyor; guncellemeden sonra ilk isteginde yeni dosyayi
+// indiriyor. Yani indirme guncelleme basina bir kez.
+const char* panel_etiketi()
+{
+    static char e[48] = {0};
+    if (e[0] == '\0') {
+        const esp_app_desc_t* d = esp_app_get_description();
+        std::snprintf(e, sizeof(e), "\"%s\"",
+                      (d != nullptr) ? d->version : "0");
+    }
+    return e;
+}
+
 esp_err_t dosya_isle(httpd_req_t* r)
 {
     for (const auto& d : DOSYALAR) {
         if (std::strcmp(r->uri, d.yol) == 0) {
+            const char* etiket = panel_etiketi();
+            httpd_resp_set_hdr(r, "ETag", etiket);
+            httpd_resp_set_hdr(r, "Cache-Control", "no-cache");
+
+            // Tarayicinin elindeki kopya bu surume aitse govdeyi hic
+            // gondermiyoruz.
+            char gelen[64] = {0};
+            if (httpd_req_get_hdr_value_str(r, "If-None-Match", gelen,
+                                            sizeof(gelen)) == ESP_OK
+                && std::strcmp(gelen, etiket) == 0) {
+                httpd_resp_set_status(r, "304 Not Modified");
+                return httpd_resp_send(r, "", 0);
+            }
+
             httpd_resp_set_type(r, d.tur);
             return httpd_resp_send(
                 r, reinterpret_cast<const char*>(d.bas),

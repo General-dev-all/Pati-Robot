@@ -401,7 +401,8 @@ void qr_ciz(const std::uint8_t (*qr)[33], int x0, int y0, int px)
 // ---------------------------------------------------------------------------
 //
 // Sayilar elle secildi, olcut uc tane: sembol uzaktan taninsin, yazi
-// kisik ekranda (pilde parlaklik 0,35-0,45) okunsun, hicbir sey disari
+// kisik ekranda (parlaklik 0,25 — app_main.cpp, tek deger) okunsun,
+// hicbir sey disari
 // tasmasin. Yazinin kuyruklu harfi (S) govdenin 2 olcek altina
 // iniyor — YAZI_Y secilirken bu paya dikkat.
 

@@ -1,2 +1,2 @@
-3.5.19
-Pati artik cok daha hareketli. Donusleri hem uzadi hem hizlandi, iki donus arasindaki duraklama kisaldi, yani hareketler daha seri ve daha enerjik. Iki yeni hareket var: Ziplama (kollarini hizli hizla indirip kaldirir) ve Firildak (kendi etrafinda buyuk bir savurma yapar). Dans artik konusma sirasin
+3.5.20
+Panel sayfasi telefonda eski haliyle takili kalabiliyordu. Guncelleme yaptiktan sonra yeni dugmeler gorunmuyor, ayarlar eski gibi duruyor ve sanki degisiklikler geri alinmis gibi hissettiriyordu. Aslinda cihazdaki ayarlar hicbir zaman silinmiyor; sadece telefonun sakladigi sayfa eskiyordu. Artik panel her guncellemede kendini bir kez yeniliyor. Pati'nin davranisinda bir degisiklik yok.

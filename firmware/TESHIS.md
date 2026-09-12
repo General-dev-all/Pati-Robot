@@ -909,3 +909,105 @@ Panelde ag.rssi_dbm (0=okunamadı), ag.tx_ceyrek_dbm (-1=okunamadı)
 ve ag.tasarruf (-1=okunamadı, 0=uyku tasarrufu kapalı) eklendi. TX
 değeri sürücü sınırıdır, anlık yayılan güç ölçümü değildir. Mevcut
 derleme PHY üst sınırı 20 dBm; güç azaltma ve modem uykusu kapalı.
+
+---
+
+## 🔴 13.09.2026 — "güncelleme yaptıkça bazı şeyler eskiye dönüyor"
+
+Kullanıcının gözlemi, iki örnekle: *"dün kablo takılınca kendi açılmasını
+çözmüştük, bugün yine var"* ve *"dün ekran parlaklığını kısmıştık, bugün
+bana aynı gibi geldi"*.
+
+**Üçü de ölçüldü ve üçünün cevabı farklı çıktı.** Bu bölüm asıl olarak
+bir şeyi anlatıyor: *"eskiye döndü"* tek bir belirti değil, en az üç
+ayrı sebebin ortak görünüşü.
+
+### 1. Ayarlar hiçbir zaman silinmiyor — yapısal
+
+`partitions.csv`: OTA yalnızca `ota_0` / `ota_1` bölümlerine yazıyor.
+`nvs` (0x9000) ve `anahtar` (0x12000) **hiç dokunulmuyor.** Yani ses,
+uyku süresi, kol aralıkları, wifi, hafıza — hepsi güncellemeden sağ
+çıkıyor. Bir ayar gerçekten kaybolduysa sebep OTA değildir; ya
+`ayar_sifirla()` çalışmıştır ya NVS bozulup silinmiştir (app_main).
+
+### 2. 🔴 Panel sayfası tarayıcıda takılı kalıyordu — GERÇEK HATA
+
+Ölçüm (13.09.2026, `curl -i http://pati.local/index.html`):
+
+```
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: 23352
+```
+
+**`Cache-Control` yok.** `no-store` yalnızca JSON cevaplarındaydı
+(`json_yolla`), sayfa dosyalarında değil. Başlıksız bir cevabı tarayıcı
+kendi bildiği gibi saklayabiliyor.
+
+Görünüşü tam olarak "ayarlar geri döndü": yeni sürümde eklenen düğmeler
+yok, kaydırıcının aralığı eski, etiketler eski. **Cihazda doğru yazılım
+duruyor — telefonun elindeki sayfa eski.** Panele son aylarda çok şey
+eklendiği için (kol yönü anahtarı, cevap hızı, yeni jest düğmeleri) bu
+hata tam da en çok yanıltacağı dönemde ortaya çıktı.
+
+Çözüm `no-store` **değil**: panelin tamamı ~150 KB ve her açılışta
+yeniden indirmek gereksiz. `ETag = firmware sürümü` + `Cache-Control:
+no-cache` kondu — dosyalar firmware'in *içinde* gömülü olduğu için sürüm
+değişmedikçe içerikleri de değişmiyor. Tarayıcı saklıyor ama kullanmadan
+önce soruyor; değişmediyse 304, güncellemeden sonra ilk isteğinde yeni
+dosya. İndirme **güncelleme başına bir kez.**
+
+⚠️ Panelde bir şey "eski görünüyorsa" ilk bakılacak yer hâlâ burası:
+sayfayı zorla yenile (telefonda sekmeyi kapatıp yeniden aç).
+
+### 3. Parlaklık geri dönmedi — hiç ayar olmadı ki
+
+`app_main.cpp` · `ekran_parlaklik_ayarla(0.25f)`. **Panelde ayarı yok,
+NVS'te kaydı yok, sabit bir sayı.** 3.5.4'te (11.09.2026) 0.35'ten
+0.25'e indi ve o günden beri her sürümde 0.25. Geri dönmesi mümkün değil.
+
+Neden "aynı" görünüyor olabilir, iki ihtimal:
+
+- 0.35 → 0.25 göz için küçük bir adım. Kademeli gidiliyor
+  (0.45 → 0.35 → 0.25, taban 0.15) çünkü kullanıcının donanım kuralı bu.
+- ⚠️ **`isik_uygula()`'nın yedek yolu.** LEDC kurulamazsa `g_ledc_hazir`
+  false kalıyor ve arka ışık düz GPIO'ya düşüyor: **tam parlaklık**, ve
+  `g_parlaklik` hiçbir şey yapmıyor. Dışarıdan "parlaklık ayarı
+  çalışmıyor" diye görünür. Ayırt etmenin tek yolu açılış logu
+  (`pati_ekran.cpp` · `ekran_baslat` uyarısı) — paneldeki hiçbir alan
+  bunu söylemiyor.
+
+### 4. Kablo takılınca açılma geri dönmedi — üç kasıtlı istisnası var
+
+`git log -S kabloyla_acildiysa_kapan`: tek commit (77b172a), hiç
+kaldırılmamış. Sonraki değişiklik (0644942) yalnızca **ayarı** kaldırdı,
+yani davranışı koşulsuz yaptı — zayıflatmadı, güçlendirdi.
+
+Kapanmama, üç kasıtlı istisnadan birine denk gelmiş olabilir
+(`pati_guc.cpp` · `kabloyla_acildiysa_kapan`):
+
+| İstisna | Bu cihazda ne kadar olası |
+|---|---|
+| `WAKE_SRC` okunamadı | düşük |
+| Düğme biti de set | kabloyla birlikte düğmeye basıldıysa |
+| 🔴 Açılış sebebi **çökme** | **yüksek** — `cokme` sayacı 13.09'da 28 |
+
+Üçüncüsü bu cihazda canlı bir ihtimal: kablo takılınca ilk açılışta
+brownout olursa, ikinci açılışın sebebi `ESP_RST_BROWNOUT` olur ve koruma
+bilerek devreye girmez ("çöküp yeniden başlayan robot kapanmamalı").
+Üstelik `WAKE_SRC` ilk açılışta zaten sıfırlandığı için ikinci okumada
+VIN biti de görünmez — yani iki ayrı yoldan da kapanmaz.
+
+**Ölçüm yöntemi, alet gerekmiyor:** kendi kendine açıldığı anda paneli
+(ya da `http://<ip>/api/durum`) aç ve iki alana bak:
+
+| Alan | Beklenen | Ne demek |
+|---|---|---|
+| `uyanma_src` | `34` (0x22) | kabloyla açıldı, koruma çalışmalıydı |
+| `uyanma_src` | `4` (0x04) | düğmeyle açıldı — koruma doğru davrandı |
+| `uyanma_src` | `0` | bayrak zaten temizlenmişti → **ikinci açılış**, yani araya bir çökme girdi |
+| `acilis` | `"guc"` dışında bir şey | açılış sebebi çökme → koruma bilerek devre dışı |
+
+Bu, brownout işi ile kablo işinin **aynı iş** olduğunu gösteriyor
+(`PIL.md`). Çökme durmadan bu koruma güvenilir olamaz.
+
