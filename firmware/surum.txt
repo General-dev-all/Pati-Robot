@@ -1,2 +1,2 @@
 3.5.20
-Panel sayfasi telefonda eski haliyle takili kalabiliyordu. Guncelleme yaptiktan sonra yeni dugmeler gorunmuyor, ayarlar eski gibi duruyor ve sanki degisiklikler geri alinmis gibi hissettiriyordu. Aslinda cihazdaki ayarlar hicbir zaman silinmiyor; sadece telefonun sakladigi sayfa eskiyordu. Artik panel her guncellemede kendini bir kez yeniliyor. Pati'nin davranisinda bir degisiklik yok.
+Panel sayfasi telefonda eski haliyle takili kalabiliyordu. Guncelleme yaptiktan sonra yeni dugmeler gorunmuyor, ayarlar eski gibi duruyor ve sanki degisiklikler geri alinmis gibi hissettiriyordu. Aslinda cihazdaki ayarlar hicbir zaman silinmiyor; sadece telefonun sakladigi sayfa eskiyordu. Artik pan
