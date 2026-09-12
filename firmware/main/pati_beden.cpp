@@ -114,39 +114,33 @@ constexpr std::int64_t OLU_ADAM_US = 600000;   // 600 ms
 //
 // 🔴 SEYREKLIK BIR SUS DEGIL, GUVENLIK SINIRIDIR. Yerinde donus yer
 // degistirmiyor ama tekerlek kaymasi ikinci dereceden bir surunme
-// birakiyor. Iki donus arasina bir bosluk koymak, o milimetrelerin
-// birikmesine izin vermiyor. Ayrica surekli kipirdayan bir robot
-// sevimli degil, huzursuz gorunuyor.
+// birakiyor. Surunme her KALKIS darbesinde olusuyor; iki donus arasina
+// bosluk koymak, o milimetrelerin birikmesine izin vermiyor.
 //
-// ⚠️ BIRIKEN SEY SURE DEGIL, KALKIS SAYISI. Surunme her KALKIS
-// darbesinde oluyor (pati_beden_matematik.hpp · "HER TEKERLEK KARESI EN
-// AZ 300 ms"); donusun kendisi yer degistirmiyor.
+// ⚠️ 13.09.2026: 14 -> 10 saniye. Kullanicinin olcumu: "konusurken
+// cok az kullaniyor dc motorlarini, seri degil, eglenceli degil."
 //
-// 12.09.2026'da jest tablosunda titre ve dans DORT kalkistan IKI'ye
-// indi (sevin ve bak zaten ikiydi), ve kareler 320-360 ms'ye uzadi.
-// Bu, KURA'yi 1/3'ten 1/2'ye cekmeye yer acti:
+// BU BIR TAKAS VE SAYISI YAZILI. Jest basina kalkis ayni gun 2'den
+// 4'e cikti; bosluk da 14'ten 10'a inince dakikadaki kalkis sayisi
+// asagidaki gibi oluyor:
 //
-//                        jest arasi   kalkis/jest   kalkis/sn   donus/sn
-//   3.5.16 (12 sn, 1/3)    ~24,6 sn       2,67        0,108      18 ms
-//   3.5.18 (12 sn, 1/2)    ~19,6 sn       2,00        0,102      35 ms
-//   3.5.19 (14 sn, 1/2)    ~19,4 sn       2,00        0,103      45 ms
+//                          jest arasi   kalkis/jest   kalkis/sn
+//   3.5.16 (12 sn, 1/3)      ~24,6 sn       2,67        0,108
+//   3.5.18 (12 sn, 1/2)      ~19,6 sn       2,00        0,102
+//   3.5.19 (14 sn, 1/2)      ~19,4 sn       2,00        0,103
+//   3.5.21 (10 sn, 1/2)      ~15,4 sn       4,00        0,260
 //
-// 🔴 14 SANIYE BIR GERILEME DEGIL. 3.5.19'da jest arasi bekleme
-// 3-7'den 2-5 saniyeye indi (kollar daha canli olsun diye) ve bu,
-// bosluk dolar dolmaz tekerlekli jestin daha CABUK secilmesi demek.
-// Bosluk 12'de kalsaydi tekerlekli jest ~17,4 saniyede bire cikardi,
-// yani dakikadaki kalkis sayisi ~%13 ARTARDI. 14 saniye tam olarak o
-// farki geri veriyor: tekerlekli jestin sikligi 3.5.18'deki gibi,
-// donus suresi ise %30 daha uzun.
+// Yani ileri kayma hizi kabaca IKI BUCUK KATINA cikiyor. Kullanici
+// bunu bilerek istedi ve kendisine sayiyla soylendi; kaymanin gercek
+// cozumu zaten mekanik (BEDEN.md · "govdede DORT tekerlek var").
 //
-// Yani canlilik artisi KOLLARDAN geliyor — kolun ileri kayma maliyeti
-// sifir. Tekerlegin dakikadaki payi olculene kadar sabit tutuluyor
-// (BEDEN.md · "Ileri kayma").
+// 🔴 GERI ALMA YOLU TEK SATIR: bu sayiyi buyut. Kayma rahatsiz
+// ederse once buraya bakilacak, jest tablosuna degil — tablo
+// kullanicinin istedigi canliligi tasiyor.
 //
 // (Jest arasi hesabi: bosluk + kalan bekleme ortalamasi + (kura-1) x
-// jest arasi ortalamasi. Kalkis/jest, kendiliginden secilebilen
-// tekerlekli jestlerin ortalamasi. Gercek kartta olculmedi.)
-constexpr std::int64_t TEKER_ARA_EN_AZ_US = 14000000;   // 14 sn
+// jest arasi ortalamasi. Gercek kartta olculmedi.)
+constexpr std::int64_t TEKER_ARA_EN_AZ_US = 10000000;   // 10 sn
 
 // Sirasi gelen jestin tekerlekli olma ihtimali: yari yariya. Kalan
 // seferde yalnizca kollar oynuyor.

@@ -425,10 +425,25 @@ inline constexpr int JEST_DONUS_EN_COK = 75;
 // bu jestlerde de var; kol donus boyunca duruyor ve servo darbesi
 // kesiliyor, ucuncu onlem 100 nF'lar.
 
-// Bir jestin toplam tekerlek suresi bunu asamaz. Ozerkligin siniri
-// ADIM DEGIL SURE: yer degistirme zaten yapisal olarak sifir, ama uzun
-// sure donmek kayma yuzunden ikinci dereceden bir surunme birakiyor.
-inline constexpr int JEST_TEKER_EN_COK_MS = 900;
+// Bir jestin toplam tekerlek suresi bunu asamaz.
+//
+// 🔴 13.09.2026: 900 -> 1400, VE BU BIR GEVSEME. Gerekcesi
+// kullanicinin olcumu: 3.5.19'da jest basina hareket sayisi dortten
+// IKIYE inmisti ve kullanici "daha kotu hale mi getirdin, dans et
+// diyorum iki hareket yapiyor, seri degil, eglenceli degil" dedi.
+//
+// ⚠️ 3.5.19'DA YANLIS DEGISKEN BUYUTULDU. Ileri kaymayi azaltmak
+// icin "ayni donus suresi, yarisi kadar kalkis" secildi. Donus suresi
+// gercekten arttı ama INSANIN GORDUGU SEY TOPLAM SURE DEGIL, AYRI AYRI
+// HAREKET SAYISI. Iki genis salinim, dort kisa salinimdan daha CANSIZ
+// gorunuyor — olculdu, kullanici soyledi.
+//
+// Simdi ikisi birden aliniyor: dort hareket VE her kare yeterince uzun
+// (>= 280 ms, yani darbe bittikten sonra gercek donus var). Bunun
+// bedeli dogrudan ve acikca kayma: dort kalkis, iki kalkisin iki kati
+// surunme. Kullanici bunu bilerek kabul etti; kaymanin gercek cozumu
+// zaten mekanik (BEDEN.md · "govdede DORT tekerlek var").
+inline constexpr int JEST_TEKER_EN_COK_MS = 1400;
 
 // Yerinde donus hizini iki tekerlege dagitir.
 //
@@ -490,109 +505,103 @@ inline constexpr Kare JEST_ALKIS[]   = {{55, 55, 0, 60}, {30, 30, 0, 60},
                                         {55, 55, 0, 60}, {0, 0, 0, 0}};
 inline constexpr Kare JEST_DUSUN[]   = {{50, 0, 0, 420}, {0, 0, 0, 0}};
 
-// 🔴 SURELER 13.09.2026'DA BUYUTULDU — "hala yeterince hareketli
-// degil". Uc sey birden degisti ve ucu de ayni butcenin icinde kaldi
-// (JEST_TEKER_EN_COK_MS = 900):
+// 🔴 JEST BASINA DORT HAREKET — KULLANICININ OLCUMU (13.09.2026)
 //
-//   1. Donus kareleri 320-360 -> 420-440 ms. Kare ne kadar uzunsa,
-//      darbeden SONRAKI gercek donusun payi o kadar buyuk.
-//   2. Donus hizi 60 -> 75 (JEST_DONUS_EN_COK).
-//   3. Yon degistirme boslugu 70 -> 40-55 ms. Kullanicinin sozu:
-//      "2 motor arasi biraz zaman fazla gibi". Bosluk sifirlanamaz —
-//      motoru dogrudan ters cevirmek en kotu akim tepesi — ama
-//      kisaltilabilir; 3.5.16'ya kadar zaten 50-60 ms'ydi.
+// 3.5.19'da hareket sayisi 4'ten 2'ye indirilmisti (ileri kaymayi
+// azaltmak icin) ve kullanicinin cevabi net oldu: "daha kotu hale mi
+// getirdin... seri degil, eglenceli degil, eskiden bu kadar degildi".
 //
-// ⚠️ BOSLUK ILERI KAYMAYI ETKILERSE ILK BUYUTULECEK YER BURASI.
-// Motor elektriksel olarak aninda duruyor ama sasi hala doniyor; cok
-// kisa bir bosluk, donen sasiyi ters darbeyle karsilamak demek.
+// Ders: CANLILIGIN OLCUSU TOPLAM DONUS SURESI DEGIL, AYRI AYRI HAREKET
+// SAYISI. Bir izleyici icin "dort kere kipirdadi" ile "iki kere genis
+// dondu" ayni sey degil, ikincisi daha az canli.
+//
+// Uc kural birlikte tutuluyor:
+//
+//   1. DORT hareket (bak_etrafina ve firildak haric — onlarin kimligi
+//      zaten tek buyuk savurma).
+//   2. Her kare >= 280 ms, yani darbe (180) + rampa inisi (~60) bitince
+//      geriye gercek donus kaliyor. Bundan kisasi yalnizca sarsinti.
+//   3. Yon degistirme boslugu 40 ms — sifirlanamaz (motoru dogrudan
+//      ters cevirmek en kotu akim tepesi) ama en kucuk makul deger.
+//
+// ⚠️ KOL KARESI IKI DONUSUN ARASINA KONMAZ. Kullanicinin sozu:
+// "1. ve 2. dc motor arasi mesafe cok fazla". Sebebi tabloda duruyordu:
+// dans'ta iki donusun arasinda bir kol karesi vardi ve kol kareleri
+// KOLUN VARMASINI BEKLIYOR (~180 ms yol + bekleme), yani iki donus
+// arasi 40 ms degil ~350 ms oluyordu. Kollar artik donuslerin ONUNDE ve
+// ARKASINDA.
 
-// Sevinc: saga don, dur, sola don, dur, kollarla kutlama.
-// Eski `sevinc` donusunun yerine geciyor — ayni fikir, artik jest.
+// Sevinc: dort salinim, sonra kollarla kutlama.
 inline constexpr Kare JEST_SEVIN[] = {
-    {-1, -1,  75, 440}, {-1, -1, 0, 45},
-    {-1, -1, -75, 440}, {-1, -1, 0, 45},
-    {95, 95,   0, 200}, {40, 40,  0, 150},
-    {95, 95,   0, 200}, { 0,  0,  0,   0},
+    {-1, -1,  75, 320}, {-1, -1, 0, 40},
+    {-1, -1, -75, 320}, {-1, -1, 0, 40},
+    {-1, -1,  75, 320}, {-1, -1, 0, 40},
+    {-1, -1, -75, 320}, {-1, -1, 0, 40},
+    {95, 95,   0, 180}, { 0,  0,  0,   0},
 };
 
-// Kikirdama: iki yana genis salinim, sonra kollarla ziplama.
-//
-// ⚠️ ESKIDEN DORT KISA TITRESIMDI (4 x 120 ms) ve kullanicinin "en
-// cok kikirdada ileri kayiyor" dedigi jest buydu. 120 ms, kalkis
-// darbesinin tepesine bile varmadan bitiyor: robot donmuyor, yalnizca
-// sarsiliyor — ve bunu jest basina DORT kez yapiyordu. Simdi iki genis
-// salinim var: daha fazla donus, yarisi kadar kalkis.
+// Kikirdama: tablonun en hizli dort salinimi, sonra kollarla ziplama.
+// 280 ms kuralin tam tabaninda — bilerek, cunku bu jestin kimligi HIZ.
 inline constexpr Kare JEST_TITRE[] = {
-    {-1, -1,  75, 420}, {-1, -1, 0, 45},
-    {-1, -1, -75, 420}, {-1, -1, 0, 45},
-    {70, 70,   0, 110}, {25, 25,  0, 110},
-    {70, 70,   0, 110}, { 0,  0,  0,   0},
+    {-1, -1,  75, 280}, {-1, -1, 0, 40},
+    {-1, -1, -75, 280}, {-1, -1, 0, 40},
+    {-1, -1,  75, 280}, {-1, -1, 0, 40},
+    {-1, -1, -75, 280}, {-1, -1, 0, 40},
+    {70, 70,   0, 100}, { 0,  0,  0,   0},
 };
 
 // "Hayir" — kafa sallamanin tekerlekli karsiligi. Bedenin ANLAM
 // tasidigi tek jest: Pati bir seye hayir derken bunu yapiyor.
-//
-// 🔴 TEK ISTISNA: DORT SALINIM KALIYOR. Iki salinim "hayir" degil
-// "etrafina bakti" demek olurdu; anlam salinim SAYISINDA. Kalkis
-// sayisinin yuksek kalmasi bilerek kabul edildi — bu jest
-// kendiliginden secilmiyor, yalnizca Pati gercekten hayir derken
-// oynuyor, yani kayma birikecek siklikta degil.
-//
-// "Daha seri olsun" istegi burada BOSLUKTAN karsilandi (70 -> 40 ms):
-// kare sureleri 240/200'de kaldi, cunku kisaltmak jesti yine
-// sarsintiya cevirirdi.
+// Anlam salinim SAYISINDA, o yuzden dort.
 inline constexpr Kare JEST_HAYIR[] = {
-    {-1, -1, -60, 240}, {-1, -1, 0, 40},
-    {-1, -1,  60, 240}, {-1, -1, 0, 40},
-    {-1, -1, -60, 200}, {-1, -1, 0, 40},
-    {-1, -1,  60, 200}, {-1, -1, 0,  0},
+    {-1, -1, -70, 300}, {-1, -1, 0, 40},
+    {-1, -1,  70, 300}, {-1, -1, 0, 40},
+    {-1, -1, -70, 300}, {-1, -1, 0, 40},
+    {-1, -1,  70, 300}, {-1, -1, 0,  0},
 };
 
 // Merak: yavasca don, DUR VE BAK, sonra geri don.
-// Ortadaki uzun duraklama jestin tamami — donusun kendisi degil.
-//
-// Bu jestin kimligi BEKLEMEK, o yuzden ortadaki bosluk kisaltilmadi.
+// Bu jestin kimligi BEKLEMEK; dort salinim kurali buraya uygulanmiyor,
+// yoksa "bak" degil "titre" olurdu.
 inline constexpr Kare JEST_BAK[] = {
     {-1, -1,  70, 440}, {-1, -1, 0, 400},
     {-1, -1, -70, 440}, {-1, -1, 0,   0},
 };
 
-// Firildak: tek bir buyuk savurma, saga sonra sola. Kol yok.
+// Firildak: tablonun en buyuk iki savurmasi. Kol yok.
 //
-// Tablodaki en YUKSEK donus/kalkis oranina sahip jest: 880 ms donus,
-// yalnizca iki kalkis. Ileri kayma kalkis basina olustugu icin
-// (BEDEN.md · "Ileri kayma") "en cok hareket, en az kayma" burada.
-// Pati cok sevindiginde bunu yapiyor.
+// Tek kare 600 ms — darbe ve rampa bittikten sonra ~360 ms boyunca
+// tablodaki hizda donuyor, yani Pati gercekten kendi etrafinda
+// savruluyor. Dort kisa salinimin yapamadigi sey bu.
 inline constexpr Kare JEST_FIRILDAK[] = {
-    {-1, -1,  75, 440}, {-1, -1, 0, 40},
-    {-1, -1, -75, 440}, {-1, -1, 0,  0},
+    {-1, -1,  75, 600}, {-1, -1, 0, 40},
+    {-1, -1, -75, 600}, {-1, -1, 0,  0},
 };
 
 // Zipla: kollarla hizli ziplama. TEKERLEK YOK — ve bu bilincli.
-//
-// Kullanici "daha enerjik olsun" dedi ama ayni govdede ileri kayma
-// sorunu var. Kol hareketinin kayma maliyeti SIFIR, yani canlilik
-// bedavaya buradan gelebiliyor. Tablodaki en hizli kol jesti.
+// Kol hareketinin ileri kayma maliyeti sifir, yani canlilik buradan
+// bedavaya geliyor.
 inline constexpr Kare JEST_ZIPLA[] = {
     {85, 85, 0, 80}, {20, 20, 0, 80},
     {85, 85, 0, 80}, {20, 20, 0, 80},
     {85, 85, 0, 80}, { 0,  0, 0,  0},
 };
 
-// Dans: kol ve tekerlek SIRAYLA, hic ayni anda degil (kural 1).
+// Dans: hazirlik — DORT SALINIM ust uste — kol koreografisi.
 //
-// Tablonun en uzun jesti ve 13.09.2026'dan beri KENDILIGINDEN de
-// seciliyor — eskiden "uzun" diye disarida birakilmisti, ama
-// kullanicinin istedigi canlilik tam olarak bu.
+// ⚠️ 3.5.19'a kadar kol kareleri donuslerin ARASINDAYDI ve jestin
+// ritmini bozan sey oydu (yukaridaki kol karesi uyarisi). Artik dort
+// donus kesintisiz, kollar once ve sonra.
 inline constexpr Kare JEST_DANS[] = {
-    {75, 75,   0, 120},
-    {-1, -1,  75, 440}, {-1, -1, 0, 45},
-    {20, 20,   0, 120},
-    {-1, -1, -75, 440}, {-1, -1, 0, 45},
-    {95, 95,   0, 150},
-    {30, 30,   0, 120},
-    {95, 95,   0, 150},
-    {30, 30,   0, 120},
+    {75, 75,   0, 110},
+    {-1, -1,  75, 320}, {-1, -1, 0, 40},
+    {-1, -1, -75, 320}, {-1, -1, 0, 40},
+    {-1, -1,  75, 320}, {-1, -1, 0, 40},
+    {-1, -1, -75, 320}, {-1, -1, 0, 40},
+    {20, 20,   0, 110},
+    {95, 95,   0, 130},
+    {30, 30,   0, 110},
+    {95, 95,   0, 130},
     { 0,  0,   0,   0},
 };
 
@@ -627,12 +636,12 @@ inline constexpr Jest JESTLER[] = {
     {"alkis",        JEST_ALKIS,    6, true,  false},
     {"dusun",        JEST_DUSUN,    2, true,  false},
     {"zipla",        JEST_ZIPLA,    6, true,  false},
-    {"sevin",        JEST_SEVIN,    8, true,  true},
-    {"titre",        JEST_TITRE,    8, true,  true},
+    {"sevin",        JEST_SEVIN,   10, true,  true},
+    {"titre",        JEST_TITRE,   10, true,  true},
     {"hayir",        JEST_HAYIR,    8, false, true},
     {"bak_etrafina", JEST_BAK,      4, true,  true},
     {"firildak",     JEST_FIRILDAK, 4, true,  true},
-    {"dans",         JEST_DANS,    11, true,  true},
+    {"dans",         JEST_DANS,    14, true,  true},
     {"sag_kol",      JEST_SAG_KOL,  2, false, false},
     {"sol_kol",      JEST_SOL_KOL,  2, false, false},
 };

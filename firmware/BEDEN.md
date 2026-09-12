@@ -279,17 +279,22 @@ darbeden *sonraki* sürekli dönüş — tepe akımı değişmiyor.
 |---|---|---|---|
 | `dinlen` `selam` `iki_kol` `alkis` `dusun` | — | — | yalnızca kol |
 | `zipla` | — | — | kollarla hızlı zıplama — **kayma maliyeti sıfır** |
-| `sevin` | 2 × 440 ms | 2 | sağa dön, sola dön, kollarla kutlama |
-| `titre` | 2 × 420 ms | 2 | iki yana geniş salınım + kol zıplaması — kıkırdama |
-| `hayir` | 240·240·200·200 | **4** | sönen sağ-sol: **kafa sallayıp "hayır" demek** |
+| `sevin` | 4 × 320 ms | 4 | dört salınım, sonra kollarla kutlama |
+| `titre` | 4 × 280 ms | 4 | tablonun en hızlı dört salınımı — kıkırdama |
+| `hayir` | 4 × 300 ms | 4 | sağ-sol: **kafa sallayıp "hayır" demek** |
 | `bak_etrafina` | 2 × 440 ms | 2 | yavaş dön, **dur ve bak** (400 ms), geri dön |
-| `firildak` | 2 × 440 ms | 2 | tek büyük savurma — **en yüksek dönüş/kalkış oranı** |
-| `dans` | 2 × 440 ms | 2 | kol ve dönüş sırayla, koreografi |
+| `firildak` | 2 × 600 ms | 2 | tablonun en büyük savurması |
+| `dans` | 4 × 320 ms | 4 | hazırlık, dört salınım üst üste, kol koreografisi |
 
-Yön değiştirme boşluğu **40–45 ms** (kullanıcı: *"2 motor arası biraz
-zaman fazla gibi"*). Sıfırlanamaz — motoru doğrudan ters çevirmek en
-kötü akım tepesi — ama 3.5.16'ya kadar zaten 50–60 ms'ydi.
-⚠️ İleri kayma bundan etkilenirse ilk büyütülecek yer burası.
+Yön değiştirme boşluğu **40 ms** — sıfırlanamaz (motoru doğrudan ters
+çevirmek en kötü akım tepesi) ama en küçük makul değer.
+
+🔴 **Kol karesi iki dönüşün ARASINA konmaz.** Kullanıcının sözü
+(13.09.2026): *"1. ve 2. dc motor arası mesafe çok fazla"*. Sebebi
+tabloda duruyordu: `dans`'ta iki dönüşün arasında bir kol karesi vardı
+ve **kol kareleri kolun varmasını bekliyor** (~180 ms yol + bekleme),
+yani iki dönüş arası 40 ms değil **~350 ms** oluyordu. Kollar artık
+dönüşlerin önünde ve arkasında.
 
 Yalnızca `hayir` **kendiliğinden seçilmiyor**: rastgele "hayır" demek
 tuhaf olurdu, anlam taşıyor. `dans` 13.09.2026'da kendiliğinden
@@ -1206,13 +1211,43 @@ bilyeli caster, mobilya kaydırıcısı ya da yuvarlak pürüzsüz bir ayak.
 Dönemeyen bir tekerlek yerinde dönüşe katılamaz — ne kadar iyi
 yapılmış olursa olsun.
 
-#### Yazılım ne yaptı
+#### 🔴 Yazılım önce YANLIŞ değişkeni büyüttü — 3.5.19
 
-Kaymayı sıfırlayamadığı için **hareket/kayma oranını** en büyük yapmaya
-çalıştı:
+Kaymayı sıfırlayamadığı için "hareket/kayma oranını" en büyük yapmaya
+çalıştı: aynı dönüş süresi, **yarısı kadar kalkış**. Jest başına hareket
+sayısı 4'ten 2'ye indi, kareler uzadı.
 
-- Kalkış başına dönüş 320–360 → **440 ms**, dönüş hızı 60 → **75**
-- Dakikadaki kalkış sayısı **sabit tutuldu** (`TEKER_ARA_EN_AZ_US`
-  12 → 14 sn, jest arası 3–7 → 2–5 sn ile birlikte)
-- Yeni canlılığın tamamı **kollardan** geldi: `zipla` jesti, daha sık
-  jest, `dans`ın kendiliğinden seçilmesi — kolun kayma maliyeti sıfır
+**Kullanıcının cevabı bunu eledi** (13.09.2026): *"daha kötü hale mi
+getirdin, dans et diyorum 2 tane dc motor hareketi yapıyor, seri değil,
+eğlenceli değil, eskiden bu kadar değildi."*
+
+⚠️ **Ders: canlılığın ölçüsü toplam dönüş süresi değil, ayrı ayrı
+hareket sayısı.** İzleyici için "dört kere kıpırdadı" ile "iki kere
+geniş döndü" aynı şey değil; ikincisi daha cansız — toplam dönüş açısı
+daha büyük olsa bile. Sayıyı büyütmek doğruydu, *hangi* sayıyı
+büyüteceğim yanlıştı.
+
+#### Yazılım şimdi ne yapıyor — 3.5.21
+
+Dördü birden alınıyor ve bedeli açıkça yazılı:
+
+- Jest başına **4 hareket**, her kare **≥ 280 ms** (darbe bitince gerçek
+  dönüş var)
+- Kol karesi dönüşlerin arasından çıktı
+- `TEKER_ARA_EN_AZ_US` 14 → **10 sn**
+- `JEST_TEKER_EN_COK_MS` 900 → **1400**
+
+| | Jest arası | Kalkış/jest | Kalkış/sn |
+|---|---|---|---|
+| 3.5.16 | ~24,6 sn | 2,67 | 0,108 |
+| 3.5.18 | ~19,6 sn | 2,00 | 0,102 |
+| 3.5.19 | ~19,4 sn | 2,00 | 0,103 |
+| **3.5.21** | **~15,4 sn** | **4,00** | **0,260** |
+
+🔴 **İleri kayma hızı kabaca iki buçuk katına çıkıyor.** Kullanıcı bunu
+bilerek istedi ve kendisine sayıyla söylendi. Kaymanın gerçek çözümü
+zaten yukarıda: **dönebilen bir destek tekerleği.**
+
+**Geri alma yolu tek satır:** `TEKER_ARA_EN_AZ_US`'u büyüt. Kayma
+rahatsız ederse önce oraya bakılacak, jest tablosuna değil — tablo
+kullanıcının istediği canlılığı taşıyor.
