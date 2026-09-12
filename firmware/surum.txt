@@ -1,2 +1,2 @@
-3.5.14
-Panele "Kol yonunu ters cevir" ayari eklendi. Ikinci govdede servolar ters takili oldugu icin "kolunu kaldir" deyince kol asagi iniyordu; bu ayar yonu yazilimdan duzeltiyor. Varsayilan kapali, yani ilk govdede hicbir sey degismiyor. Kol araliklari gibi bu ayar da "fabrika ayarlarina don" dendiginde 
+3.5.15
+Paneldeki kol dugmeleri artik sizin ayarladiginiz siniri asmiyor. Onceden sol kolun tavanini yuzde 70 yapsaniz bile yukari dugmesine basmaya devam edince panel yuzde 100 yaziyordu; kol gercekte 70'te duruyordu, yani panel yanlis soyluyordu. Kolun gittigi yer degismedi, yalnizca gosterge duzeldi. "Dinlen" de artik tabani asagi degil, ayarladiginiz en dusuk degere indiriyor.

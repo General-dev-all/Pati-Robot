@@ -455,6 +455,33 @@ function hizYaz(gosterilen) {
   if (r) r.textContent = `Motora giden: %${gosterilendenGercege(gosterilen)}`;
 }
 
+// 🔴 KOLU EBEVEYNIN AYARLADIGI ARALIGA KIRP — panelin kendi tarafinda.
+//
+// Cihaz zaten kirpiyor (pati_beden.cpp · kol_hedef_yaz) ve ASIL KORUMA
+// ORASI; burasi onun yerine gecmiyor. Buranin isi PANELIN DOGRU
+// SOYLEMESI.
+//
+// Kusur (12.09.2026, kullanici bildirdi): panel 0-100 arasi kirpiyordu.
+// Sol kolun tavani %70 iken yukari dugmesine basmaya devam edince
+// panel "%100" yaziyordu; cihaz 70'te duruyordu. Yani ebeveyn
+// ayarladigi siniri paneldeki sayiya bakarak DOGRULAYAMIYORDU.
+//
+// Bu depoda ayni tuzak bir kez daha cikti (ses tavani, 3.5.5) ve dersi
+// yazili: bir siniri iki yerde tutuyorsan, ayristiklarinda kimse fark
+// etmez. Sinirlar cihazdan geliyor, panel onlari cubuklarda tutuyor;
+// buradan okuyoruz ki tek kaynak kalsin.
+function kolSinirla(hangi, deger) {
+  const az = parseInt($(hangi === 'sol' ? '#kKolSolAz' : '#kKolSagAz')?.value, 10);
+  const cok = parseInt($(hangi === 'sol' ? '#kKolSolCok' : '#kKolSagCok')?.value, 10);
+  const a = Number.isFinite(az) ? az : 0;
+  const b = Number.isFinite(cok) ? cok : 100;
+  // Cubuklar ters durabiliyor (ebeveyn tabani tavanin ustune itebilir);
+  // firmware de ayni durumda tabana yasliyor.
+  const alt = Math.min(a, b);
+  const ust = Math.max(a, b);
+  return Math.max(alt, Math.min(ust, deger));
+}
+
 function kolYaz() {
   const a = $('#vKolSol');
   const b = $('#vKolSag');
@@ -551,7 +578,7 @@ function kumandaKur() {
     d.addEventListener('click', () => {
       const hangi = d.dataset.kol;
       const yon = parseInt(d.dataset.yon, 10);
-      K.kol[hangi] = Math.max(0, Math.min(100, K.kol[hangi] + yon * 25));
+      K.kol[hangi] = kolSinirla(hangi, K.kol[hangi] + yon * 25);
       kolYaz();
       bedeneYolla(hangi === 'sol' ? { kol_sol: K.kol.sol }
                                   : { kol_sag: K.kol.sag });
@@ -561,8 +588,11 @@ function kumandaKur() {
   document.querySelectorAll('[data-jest]').forEach((d) => {
     d.addEventListener('click', () => {
       if (d.dataset.jest === 'dinlen') {
-        K.kol.sol = 0;
-        K.kol.sag = 0;
+        // "Dinlen" kollari tabana indiriyor — ama aralik tabani 0
+        // olmayabilir (sol kolda %10). Cihaz oraya kirpiyor, panel de
+        // ayni sayiyi gostersin.
+        K.kol.sol = kolSinirla('sol', 0);
+        K.kol.sag = kolSinirla('sag', 0);
         kolYaz();
       }
       bedeneYolla({ jest: d.dataset.jest });

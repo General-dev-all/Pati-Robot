@@ -933,3 +933,34 @@ Pati hangi gövdede olduğunu bilmiyor; aralıklar tek kopya ve kalıcı
 depoda. İkinci gövdenin mekanik sınırları farklıysa (kol farklı yere
 çarpıyorsa) gövde değiştirirken **aralıkların da ayarlanması gerekir.**
 Bu ölçülmedi — ikinci gövdede kolun neye çarptığı henüz bakılmadı.
+
+### Panelin kol düğmeleri sınırı aşıyor gösteriyordu — 3.5.15
+
+Kullanıcının bildirdiği kusur (12.09.2026): *"sol için %70 yaptım ama
+servo kontrol şeyinde onu 100'e kadar çıkarabiliyorum."*
+
+Panel kendi sayacını **0–100** arasında kırpıyordu, ebeveynin
+ayarladığı aralıkta değil:
+
+```js
+K.kol[hangi] = Math.max(0, Math.min(100, K.kol[hangi] + yon * 25));
+```
+
+Cihaz doğru davranıyordu — `kol_hedef_yaz` 70'e kırpıyor ve kol 70'te
+duruyor. **Yanlış olan gösterge**: panel "%100" yazıyordu.
+
+⚠️ Bedeli görünenden büyük: ebeveyn ayarladığı sınırı paneldeki sayıya
+bakarak **doğrulayamıyordu**. "Sınır çalışmıyor" diye okunabilirdi ve o
+yanlış okuma, aralığı hiç kullanmamaya götürürdü — yani servoyu
+koruyan tek şeyi.
+
+Düzeltme `kolSinirla()`: sınırları çubuklardan okuyor (onlar da
+cihazdan geliyor), yani tek kaynak kalıyor. "Dinlen" jesti de artık
+0'a değil, ayarlanan tabana iniyor.
+
+🔴 **Asıl koruma hâlâ cihazda** (`kol_hedef_yaz`). Paneldeki kırpma
+onun yerine geçmiyor, yalnızca panelin doğru söylemesini sağlıyor.
+
+**Aynı tuzak bu depoda üçüncü kez:** ses tavanı (3.5.5), cevap hızı
+kutusu (3.5.10), şimdi kol düğmeleri. Hepsinin dersi aynı — *bir sınırı
+iki yerde tutuyorsan, ayrıştıklarında kimse fark etmez.*
