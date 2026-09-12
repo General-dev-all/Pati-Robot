@@ -482,6 +482,16 @@ function kolSinirla(hangi, deger) {
   return Math.max(alt, Math.min(ust, deger));
 }
 
+// Dinlenme konumu = araligin ortasi. Cihazdaki kol_dinlenme() ile ayni
+// formul; sinirlar zaten cihazdan gelip cubuklarda duruyor.
+function kolDinlenme(hangi) {
+  const az = parseInt($(hangi === 'sol' ? '#kKolSolAz' : '#kKolSagAz')?.value, 10);
+  const cok = parseInt($(hangi === 'sol' ? '#kKolSolCok' : '#kKolSagCok')?.value, 10);
+  const a = Number.isFinite(az) ? az : 0;
+  const b = Number.isFinite(cok) ? cok : 100;
+  return Math.round((a + b) / 2);
+}
+
 function kolYaz() {
   const a = $('#vKolSol');
   const b = $('#vKolSag');
@@ -588,11 +598,12 @@ function kumandaKur() {
   document.querySelectorAll('[data-jest]').forEach((d) => {
     d.addEventListener('click', () => {
       if (d.dataset.jest === 'dinlen') {
-        // "Dinlen" kollari tabana indiriyor — ama aralik tabani 0
-        // olmayabilir (sol kolda %10). Cihaz oraya kirpiyor, panel de
-        // ayni sayiyi gostersin.
-        K.kol.sol = kolSinirla('sol', 0);
-        K.kol.sag = kolSinirla('sag', 0);
+        // "Dinlen" kollari DINLENME konumuna aliyor ve o da araligin
+        // ORTASI (12.09.2026, kullanicinin istegi). Cihaz da ayni sayiyi
+        // hesapliyor (pati_beden.cpp · kol_dinlenme); panel onu tekrar
+        // hesapliyor ki dokunma anindan itibaren dogru gostersin.
+        K.kol.sol = kolDinlenme('sol');
+        K.kol.sag = kolDinlenme('sag');
         kolYaz();
       }
       bedeneYolla({ jest: d.dataset.jest });

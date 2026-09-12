@@ -1,2 +1,2 @@
-3.5.15
-Paneldeki kol dugmeleri artik sizin ayarladiginiz siniri asmiyor. Onceden sol kolun tavanini yuzde 70 yapsaniz bile yukari dugmesine basmaya devam edince panel yuzde 100 yaziyordu; kol gercekte 70'te duruyordu, yani panel yanlis soyluyordu. Kolun gittigi yer degismedi, yalnizca gosterge duzeldi. "Di
+3.5.16
+Kollarin dinlenme konumu degisti. Artik ayarladiginiz araligin TAM ORTASINA gidiyorlar: sol kolu 0 ile 70 arasi yaptiysaniz dinlenme yuzde 35, sag kol 0 ile 100 ise yuzde 50 oluyor. Onceden hep en dusuk degere iniyorlardi. Ortada durmak daha guvenli: kol iki ucta da bir seye degebiliyor, ortada ikisinden de uzakta kaliyor. Jestler bittiginde de kollar artik oraya donuyor.

@@ -964,3 +964,56 @@ onun yerine geçmiyor, yalnızca panelin doğru söylemesini sağlıyor.
 **Aynı tuzak bu depoda üçüncü kez:** ses tavanı (3.5.5), cevap hızı
 kutusu (3.5.10), şimdi kol düğmeleri. Hepsinin dersi aynı — *bir sınırı
 iki yerde tutuyorsan, ayrıştıklarında kimse fark etmez.*
+
+### Dinlenme konumu = aralığın ortası — 3.5.16
+
+Kullanıcının isteği (12.09.2026): *"dinlenme derecesi min ile maks
+toplamı bölü 2 olsun — çocuk sol kolu 0-70 ayarlarsa dinlenme 35, sağ
+0-100 ise 50 olacak."*
+
+Öncesinde dinlenme sabit `%0` idi ve `kol_hedef_yaz` onu aralığın **alt
+ucuna** kırpıyordu. Yani dinlenme ile mekanik alt sınır aynı şeydi ve
+birbirinden ayrılamıyordu.
+
+Orta nokta ayrıca **en güvenli yer**: kol iki uçta da bir şeye
+değebiliyor (sol kol aşağıda tekerleğe, yukarıda kabloya), ortada
+ikisinden de en uzakta duruyor.
+
+Tek kaynak `pati_beden.cpp` · `kol_dinlenme()`.
+
+⚠️ **Jest tablosundaki `0` artık "dinlenme" demek**, "en aşağı" değil.
+Her jestin son karesi `{0, 0}` ve anlamı "kolları bırak"; `JEST_DINLEN`
+zaten tek kare: `{0, 0, 0, 0}`. Bağlanmasaydı tutarsızlık çıkardı —
+konuşma sonunda kol ortaya, jest sonunda alt uca giderdi.
+
+Tablo **değiştirilmedi**: sabitler konak testinin taradığı veri ve
+orada `0` hâlâ `0`. Çeviri yalnızca uygulama anında.
+
+### 🔴 ÇÖZÜLEMEYEN: Pati kapalıyken servo oynuyor
+
+Kullanıcının gözlemi (12.09.2026): StickS3 tamamen kapalıyken ama gövde
+beslemedeyken servolardan biri aralığın dışına (~%-20) gidip hareket
+ediyor.
+
+**Sebep:** Pati kapanınca servo sinyal pinleri (`GPIO1`, `GPIO8`)
+havada kalıyor. Servo besleme almaya devam ediyor ve havadaki hat
+gürültü topluyor; servo bunu geçerli darbe sanıp rastgele bir yere
+gidiyor. Oraya dayanırsa ısınır ve yanar.
+
+| Durum | Yazılımla çözülür mü |
+|---|---|
+| **Derin uyku** (mavi tuş) | **evet** — çip beslemede, `gpio_hold_en` pinleri aşağıda tutabilir |
+| **Tam kapatma** (yan düğme) | **hayır** — çip beslemesiz, hiçbir yazılım çalışmıyor |
+
+🔴 **Tam kapatma için tek çözüm donanım**: her servo sinyal hattından
+toprağa 10 kΩ. Hat aşağıda kalır, servo geçerli darbe görmez, sessizce
+gevşer. Pati açıkken etkisi yok (0,3 mA).
+
+⚠️ **Kullanıcı direnç eklemek istemiyor** (12.09.2026) ve yazılımla
+çözülemediği için **bu sorun açık bırakıldı.** Gövde beslemesini Pati
+kapalıyken açık bırakmamak tek pratik önlem.
+
+Derin uyku tarafı yapılmadı: kullanıcının tarif ettiği durum tam
+kapatma ve o yol zaten kapalı. Yapılacaksa dikkat — uyanışta
+`gpio_hold_dis()` unutulursa LEDC pinleri süremez ve **gövde sessizce
+ölür.**

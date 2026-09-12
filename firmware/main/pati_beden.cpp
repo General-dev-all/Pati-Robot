@@ -300,6 +300,25 @@ std::int64_t rastgele_ara()
                                             - JEST_ARA_EN_AZ_US));
 }
 
+// 🔴 DINLENME KONUMU = ARALIGIN ORTASI.
+//
+// Kullanicinin istegi (12.09.2026): "dinlenme derecesi min ile maks
+// toplami bolu 2 olsun — cocuk sol kolu 0-70 ayarlarsa dinlenme 35,
+// sag 0-100 ise 50 olacak."
+//
+// Eskiden dinlenme sabit %0 idi ve `kol_hedef_yaz` onu araligin ALT
+// UCUNA kirpiyordu. Yani dinlenme ile mekanik alt sinir ayni seydi ve
+// birbirinden ayrilamiyordu.
+//
+// Orta nokta ayrica en guvenli yer: kol iki ucta da bir seye
+// degebiliyor (sol kol asagida tekerlege, yukarida kabloya), ortada
+// ikisinden de en uzakta duruyor.
+int kol_dinlenme(int taraf)
+{
+    const int i = (taraf == 1) ? 1 : 0;
+    return (ayar_kol_en_az(i) + ayar_kol_en_cok(i)) / 2;
+}
+
 // 🔴 KOL HEDEFI YALNIZCA BURADAN YAZILIYOR.
 //
 // Kolun gidebilecegi aralik MEKANIK bir sinir: sol kol asagida
@@ -395,8 +414,8 @@ void beden_gorevi(void*)
                          static_cast<unsigned>(g_takma.load()));
                 // Pati bedeninin geldigini fark etsin: kollari dinlenme
                 // konumuna al ve sevin.
-                kol_hedef_yaz(0, 0);
-                kol_hedef_yaz(1, 0);
+                kol_hedef_yaz(0, kol_dinlenme(0));
+                kol_hedef_yaz(1, kol_dinlenme(1));
                 // Bedenin geldigini hangi uzuvla kutlayacagi kipine
                 // bagli. Ikisi de kapaliysa hicbir sey yapmiyor —
                 // "kapali" gercekten kapali demek.
@@ -651,8 +670,26 @@ void beden_gorevi(void*)
             // dusurmek yerine kirpmak, "dans et" denince hic bir sey
             // olmamasindansa yarim bir dans vermeyi tercih ediyor.
             if (izinli(kol_kip, akan_kaynak)) {
-                if (k.sol >= 0) kol_hedef_yaz(0, k.sol);
-                if (k.sag >= 0) kol_hedef_yaz(1, k.sag);
+                // 🔴 JEST TABLOSUNDAKI 0 "DINLENME" DEMEK, "en asagi"
+                // degil. Her jestin son karesi {0, 0} ve anlami "kollari
+                // birak"; tablonun kendisi bunu boyle kullaniyor
+                // (JEST_DINLEN tek kare: {0, 0, 0, 0}).
+                //
+                // 12.09.2026'dan once 0 araligin ALT UCUNA kirpiliyordu.
+                // Dinlenme orta noktaya alininca burasi baglanmasaydi
+                // tutarsizlik cikardi: konusma sonunda kol ortaya,
+                // jest sonunda alt uca giderdi — ayni "dinlenme" icin
+                // iki farkli yer.
+                //
+                // ⚠️ Tablo DEGISTIRILMEDI: sabitler konak testinin
+                // taradigi veri ve orada 0 hala 0. Ceviri yalnizca
+                // uygulama aninda.
+                if (k.sol >= 0) {
+                    kol_hedef_yaz(0, k.sol == 0 ? kol_dinlenme(0) : k.sol);
+                }
+                if (k.sag >= 0) {
+                    kol_hedef_yaz(1, k.sag == 0 ? kol_dinlenme(1) : k.sag);
+                }
             }
 
             // 🔴 TEKERLEK KARESI KOLUN VARMASINI BEKLEMIYOR.
@@ -698,8 +735,8 @@ void beden_gorevi(void*)
         // (KOL_SUS_GECIKME), yani servo sessiz ve akimsiz kaliyor —
         // ebeveynin "hic hareket etmesin" istegi tam olarak bu.
         if (kol_kip == KIP_KAPALI) {
-            kol_hedef_yaz(0, 0);
-            kol_hedef_yaz(1, 0);
+            kol_hedef_yaz(0, kol_dinlenme(0));
+            kol_hedef_yaz(1, kol_dinlenme(1));
         }
 
         // Tekerlek donerken kollar DURUYOR — hedefi unutmadan.
@@ -968,8 +1005,8 @@ void beden_konusma_bildir(bool konusuyor)
             jest_no("selam") + JEST_KAYNAK_PATI * JEST_KAYNAK_CARPAN,
             std::memory_order_relaxed);
     } else if (!konusuyor && onceki) {
-        kol_hedef_yaz(0, 0);
-        kol_hedef_yaz(1, 0);
+        kol_hedef_yaz(0, kol_dinlenme(0));
+        kol_hedef_yaz(1, kol_dinlenme(1));
     }
     uyandir();
 }
