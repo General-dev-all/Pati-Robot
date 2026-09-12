@@ -565,6 +565,29 @@ tepeye) sürtünmeyi kırıyor, sonra **gitme tabanı** (%17) devreye
 giriyor. Joystick tepkisi ayrıca **karesel**: yarım itişte hızın dörtte
 biri. Darbe, yukarıdaki kurala bilinçli ve **onayı alınmış** istisna.
 
+🔴 **Bunun sonucu: her tekerlek karesi en az 260 ms olmak zorunda.**
+Darbe 180 ms sürüyor, rampanın ondan sonra tablodaki değere inmesi
+~80 ms alıyor. Daha kısa bir kare **tamamen darbenin içinde** geçiyor:
+tabloda ne yazarsa yazsın motor %85'te dönüyor ve robot daha dönmeye
+başlamadan kare bitiyor. Belirtisi 12.09.2026'da görüldü — ikinci
+gövdede *"dans et ve özellikle kıkırda Pati'yi ileri kaydırıyor"*, oysa
+jest tablosunun net dönüşü sıfır ve konak testi bunu her girdide
+tarıyor. **Kayan komut değil, fiziksel tepkiydi:** geriye yalnızca
+kalkış sarsıntısı kalıyordu ve kare başına bir sarsıntı vardı.
+`titre`'nin kareleri 120 ms ile tablonun en kısasıydı — kullanıcının
+"özellikle kıkırdada" demesinin sebebi bu.
+
+Kareler 320–360 ms'ye çıkarıldı ve jest başına kalkış 4 → 2 indi
+(`hayir` hariç; orada salınım *sayısı* anlamın kendisi). Toplam dönüş
+süresi neredeyse aynı, sarsıntı yarısı. ⚠️ **Bir jest az dönüyorsa
+çözüm `teker` değerini büyütmek değil, `bekle_ms`'i uzatmaktır** — ilk
+260 ms zaten darbeye ait.
+
+⚠️ Kaymayı **sıfırlamak** yazılımın elinde değil: bunun için dönüşe
+geri hareket karıştırmak, yani `sol + sag != 0` gerekirdi. O eşitlik
+Pati'nin masadan düşmemesinin tek yapısal garantisi. Hipotezin nasıl
+ölçüleceği `BEDEN.md` · "İleri kayma".
+
 🔴 **Ölü adam zamanlayıcısı pazarlıksız.** Komut gelmeden 600 ms geçerse
 motorlar duruyor. Panel dokunma sürerken 150 ms'de bir gönderiyor.
 Çocuk parmağını kaldırırsa, telefon kilitlenirse, wifi takılırsa Pati

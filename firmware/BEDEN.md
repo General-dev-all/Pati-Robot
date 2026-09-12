@@ -268,26 +268,47 @@ karesinin tek bir `teker` alanı var, dolayısıyla ileri giden bir jest
 
 Ayrıca bir jestin toplam tekerlek süresi **900 ms**'yi aşamıyor.
 
-| Jest | Tekerlek | Ne anlatıyor |
-|---|---|---|
-| `dinlen` `selam` `iki_kol` `alkis` `dusun` | — | yalnızca kol |
-| `sevin` | 400 ms | sağ dön, sol dön, iki kol yukarı |
-| `titre` | 480 ms | çok kısa hızlı titreşim — kıkırdama |
-| `hayir` | 680 ms | küçük sağ-sol: **kafa sallayıp "hayır" demek** |
-| `bak_etrafina` | 440 ms | yavaş dön, dur ve bak, geri dön |
-| `dans` | 720 ms | kol ve dönüş sırayla, koreografi |
+🔴 **Dördüncü bir kural 12.09.2026'da eklendi: her tekerlek karesi en az
+260 ms.** Gerekçesi ve ölçümü aşağıda ("İleri kayma").
+
+| Jest | Tekerlek | Kalkış | Ne anlatıyor |
+|---|---|---|---|
+| `dinlen` `selam` `iki_kol` `alkis` `dusun` | — | — | yalnızca kol |
+| `sevin` | 2 × 340 ms | 2 | sağa dön, sola dön, iki kol yukarı |
+| `titre` | 2 × 320 ms | 2 | iki yana geniş salınım + kol zıplaması — kıkırdama |
+| `hayir` | 240·240·200·200 | **4** | sönen sağ-sol: **kafa sallayıp "hayır" demek** |
+| `bak_etrafina` | 2 × 360 ms | 2 | yavaş dön, **dur ve bak** (380 ms), geri dön |
+| `dans` | 2 × 360 ms | 2 | kol ve dönüş sırayla, koreografi |
 
 `hayir` ve `dans` **kendiliğinden seçilmiyor** — yalnızca istenince.
 Biri anlam taşıyor (rastgele "hayır" demek tuhaf olurdu), diğeri uzun.
 
+⚠️ **`hayir` dört kalkışla tek istisna.** İki salınım "hayır" değil
+"etrafına baktı" demek olur; anlam salınım *sayısında*. Kendiliğinden
+seçilmediği için sürünme birikecek sıklıkta değil.
+
 #### Sıklık — seyreklik bir süs değil
 
-Sırası gelen jestin tekerlekli olma ihtimali **üçte bir**, ve iki
-tekerlekli jest arasında **en az 12 saniye** var. Yerinde dönüş yer
-değiştirmiyor ama tekerlek kayması her dönüşte birkaç milimetrelik
-**ikinci dereceden** bir sürünme bırakıyor; 12 saniye o milimetrelerin
-birikmesine izin vermiyor. Sürekli kıpırdayan bir robot ayrıca sevimli
-değil, huzursuz görünüyor.
+Sırası gelen jestin tekerlekli olma ihtimali **yarı yarıya**, ve iki
+tekerlekli jest arasında **en az 9 saniye** var. Yerinde dönüş yer
+değiştirmiyor ama tekerlek kayması **ikinci dereceden** bir sürünme
+bırakıyor; boşluk o milimetrelerin birikmesine izin vermiyor. Sürekli
+kıpırdayan bir robot ayrıca sevimli değil, huzursuz görünüyor.
+
+⚠️ **Biriken şey süre değil, kalkış sayısı** — sürünme kalkış
+darbesinde oluyor, dönüşün kendisinde değil. 12.09.2026'da jest başına
+kalkış dörtten ikiye indiği için boşluk 12 → 9 saniyeye, kura 1/3 →
+1/2'ye çekilebildi. Pati daha sık dönüyor ama dakikadaki kalkış sayısı
+yine de düşüyor:
+
+| | Jest arası | Kalkış/jest | Kalkış/sn |
+|---|---|---|---|
+| eski | ~27 sn | 4 | 0,148 |
+| yeni | ~19 sn | 2 | **0,105** |
+
+Sayılar tablodan hesap (jest arası ortalama 5 sn × kura + boşluk),
+gerçek kartta ölçülmedi. Ölçülmesi gereken şey bu sayılar değil,
+**sürünmenin kendisi** — aşağıdaki yöntem.
 
 Konuşma **başında** tekerlek yok, bilerek: her cümlenin başında dönmek
 hem sıkıcı hem gereksiz motor kalkışı olurdu.
@@ -1017,3 +1038,94 @@ Derin uyku tarafı yapılmadı: kullanıcının tarif ettiği durum tam
 kapatma ve o yol zaten kapalı. Yapılacaksa dikkat — uyanışta
 `gpio_hold_dis()` unutulursa LEDC pinleri süremez ve **gövde sessizce
 ölür.**
+
+---
+
+## 🔴 İleri kayma — "dans et" ve özellikle "kıkırda" (12.09.2026)
+
+Kullanıcının şikâyeti: *"eski patide yoktu ama bu pati örneğin dans et
+de biraz ileri gidiyor (özellikle kıkırdada), olduğu yerde kalmıyor."*
+İkinci (powerbank'li) gövdede, tekerlekler de farklı.
+
+### Neyin elendiği — sırayla
+
+| Şüpheli | Sonuç |
+|---|---|
+| Jest tablosunun net dönüşü sıfır değil | **elendi** — konak testi her jestte `net_donus == 0` sayıyor, beşi de sıfır |
+| `jest_donus` iki tekerleğe eşit dağıtmıyor | **elendi** — test her girdide `sol + sag == 0` tarıyor |
+| `motor_rampa` bir yönde farklı davranıyor | **elendi** — `yavasliyor` kararı iki işaret için simetrik, test ±'da aynı |
+| `motor_duty` işareti kaybediyor ama büyüklüğü değil | **elendi** — test `motor_duty(-h) == motor_duty(h)` |
+| Bir motor diğerinden güçlü | **elendi, ama düşünmeyi gerektiriyor** — aşağıda |
+
+**Bir motorun diğerinden güçlü olması kaymaya sebep olamaz**, çünkü her
+jest yönü değiştiriyor ve bu, her motorun eşit süre ileri ve geri
+gitmesi demek. A karesinde sol ileri/sağ geri, B karesinde tersi;
+motorlar arası fark iki karede ters işaretle çıkıp **kendiliğinden
+sadeleşiyor**. Tablodaki "net dönüş sıfır" kuralı bunu zaten garanti
+ediyor.
+
+Geriye **tek bir açıklama** kalıyor: kayma, `teker`'in işaretinden
+bağımsız. Yani gövde **ileri yöne geri yönden daha kolay kayıyor** —
+motorların değil, **şasinin** bir özelliği. Yeni gövdede tekerlekler ve
+muhtemelen destek noktası değiştiği için eski gövdede görünmüyordu.
+
+🔴 **Bunun sonucu önemli: jest tablosunun elindeki tek serbestlik
+(`teker`'in işareti) bu kaymayı iptal edemez.** Yazılım kaymayı
+*sıfırlayamaz*, yalnızca **azaltabilir**.
+
+### Kaymanın nerede oluştuğu
+
+Her tekerlek karesi motor DURURKEN başlıyor, yani her kare bir **kalkış
+darbesi** (%85, 180 ms) demek. Darbe bitince rampa tablodaki değere
+iniyor (~80 ms). Yani bir karenin **ilk 260 ms'si** darbe ve iniştir.
+
+Eski kareler 120–220 ms'ydi: **hiçbiri o 260 ms'yi görmüyordu.** Robot
+daha dönmeye başlamadan kare bitiyor, geriye yalnızca darbenin
+sarsıntısı kalıyor — ve jest başına dört kare, dört sarsıntı.
+
+Bu, kullanıcının *"özellikle kıkırdada"* gözlemiyle birebir uyuşuyor:
+`titre`'nin kareleri 120 ms ile tablonun **en kısası**ydı, yani dönüş
+oranı en düşük, sarsıntı oranı en yüksek jest oydu.
+
+### Yapılan
+
+1. **Her tekerlek karesi ≥ 260 ms** (fiilen 320–360 ms). Karenin son
+   bölümünde artık gerçek dönüş var, üstelik tablodaki sayı ilk kez
+   motora ulaşıyor.
+2. **Jest başına kalkış 4 → 2** (`hayir` hariç). Toplam dönüş süresi
+   neredeyse aynı kaldı, sarsıntı sayısı yarıya indi.
+3. Boşalan görünürlük bütçesi **sıklığa** gitti (9 sn / 1/2), ama
+   dakikadaki kalkış sayısı yine de düştü.
+
+### 🔴 Ölçülecek — tahmin değil
+
+Yukarıdaki teşhis **bir hipotez**: "kayma kalkış başına oluşuyor".
+Değişiklik onu sınanabilir yapıyor, çünkü `dans`'ın toplam dönüş süresi
+değişmedi (720 ms) ama kalkış sayısı yarıya indi.
+
+| Gözlem | Ne demek |
+|---|---|
+| `dans`'ın kayması **kabaca yarıya** indi | hipotez doğru, kayma kalkış başına |
+| `dans`'ın kayması **değişmedi** | kayma dönüş *süresine* bağlı — çözüm burada değil, toplam süreyi kısaltmak gerekir |
+| Kayma **arttı** | uzun karede sürekli dönüş de kaydırıyor; kareler kısaltılmalı ve kayma kaçınılmaz demektir |
+
+**Nasıl ölçülür** — ek koda gerek yok: Pati'yi düz bir masada bir
+bant çizgisinin üstüne koy, aynı jesti panelden **beş kez** çalıştır,
+çizgiye olan mesafeyi ölç. Beş jest sonunda kaç mm ilerlediği tek
+sayıdır ve iki sürüm arasında karşılaştırılabilir.
+
+⚠️ Eski değerler geri gerekirse: kareler 120–220 ms, `TEKER_KURA = 3`,
+`TEKER_ARA_EN_AZ_US = 12 sn`.
+
+### Yazılımın yapamayacağı
+
+Kaymayı gerçekten **sıfırlamak** için Pati'nin dönüşe bir miktar geri
+hareketi karıştırması gerekirdi — yani `sol + sag != 0`. **Bu yapılamaz
+ve yapılmayacak:** o eşitlik Pati'nin masadan düşmemesinin tek yapısal
+garantisi ve konak testi her girdide tarıyor. Ölçülmemiş bir telafi
+sayısı uğruna o garantiyi delmek, kaymadan çok daha pahalı bir hata
+olur.
+
+Kalan donanım yolları (kullanıcıya bırakıldı): tekerlek lastiğini daha
+kaygan/daha tutucu bir şeyle değiştirmek, ya da destek noktasını iki
+yönde eşit davranan bir bilyeye çevirmek.

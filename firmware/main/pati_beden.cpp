@@ -114,14 +114,29 @@ constexpr std::int64_t OLU_ADAM_US = 600000;   // 600 ms
 //
 // 🔴 SEYREKLIK BIR SUS DEGIL, GUVENLIK SINIRIDIR. Yerinde donus yer
 // degistirmiyor ama tekerlek kaymasi ikinci dereceden bir surunme
-// birakiyor: her donuste birkac milimetre. Iki donus arasina 12 saniye
-// koymak, o milimetrelerin birikmesine izin vermiyor. Ayrica surekli
-// kipirdayan bir robot sevimli degil, huzursuz gorunuyor.
-constexpr std::int64_t TEKER_ARA_EN_AZ_US = 12000000;   // 12 sn
+// birakiyor. Iki donus arasina bir bosluk koymak, o milimetrelerin
+// birikmesine izin vermiyor. Ayrica surekli kipirdayan bir robot
+// sevimli degil, huzursuz gorunuyor.
+//
+// ⚠️ BIRIKEN SEY SURE DEGIL, KALKIS SAYISI. Surunme her KALKIS
+// darbesinde oluyor (pati_beden_matematik.hpp · "HER TEKERLEK KARESI EN
+// AZ 260 ms"); donusun kendisi yer degistirmiyor. 12.09.2026'da jest
+// tablosu jest basina DORT kalkistan IKI'ye indi, yani ayni surede
+// yarisi kadar surunme birakiyor. Bu yuzden bosluk 12 -> 9 saniyeye,
+// kura 1/3 -> 1/2'ye cekilebildi: Pati daha sik doniyor ama dakikadaki
+// kalkis sayisi YINE DE dusuyor.
+//
+//   eski:  ~27 sn'de bir jest x 4 kalkis = 0,148 kalkis/sn
+//   yeni:  ~19 sn'de bir jest x 2 kalkis = 0,105 kalkis/sn
+//
+// (Iki sayi da tablodan hesap: jest arasi ortalama 5 sn, kura, ve
+// buradaki bosluk. Gercek kartta olculmedi — olculecek olan sey
+// surunmenin kendisi, BEDEN.md.)
+constexpr std::int64_t TEKER_ARA_EN_AZ_US = 9000000;    // 9 sn
 
-// Sirasi gelen jestin tekerlekli olma ihtimali: uctebir. Kalan iki
+// Sirasi gelen jestin tekerlekli olma ihtimali: yari yariya. Kalan
 // seferde yalnizca kollar oynuyor.
-constexpr std::uint32_t TEKER_KURA = 3;
+constexpr std::uint32_t TEKER_KURA = 2;
 
 // ---- zamanlama ------------------------------------------------------------
 constexpr int DONGU_MESGUL_MS = 20;    // bir sey hareket ederken
