@@ -98,6 +98,27 @@ int g_kol_cok[2] = {KOL_SOL_VARSAYILAN_COK, KOL_SAG_VARSAYILAN_COK};
 bool g_kol_ters = false;
 const char* const KOL_AD_TERS = "kol_ters";
 
+// 🔴 SURUS YONU VE HIZ SINIRI DA KALICI BOLUMDE.
+//
+// Kullanicinin istegi (13.09.2026): "bu ayar kalici olsun, fabrika
+// ayarlarina don'e basinca da kalsin."
+//
+// `surus_ters` kural geregi zaten oraya ait: kol_ters gibi bir TERCIH
+// degil, BU GOVDENIN NASIL KABLOLANDIGINI anlatan bir olcum. Kaybolursa
+// cocuk cubugu ileri itip Pati'yi geri surer — masa kenarinda
+// duzeltilemez bir surpriz.
+//
+// ⚠️ `beden_hiz` ICIN AYNI SEY SOYLENEMEZ ve bu bilincli bir
+// istisna. O bir donanim olcumu degil, ebeveynin tercihi; "yalnizca
+// kaybolmasi donanima zarar veren sayilar" kuralinin disinda kaliyor.
+// Kullanici acikca istedi, bedeli de kucuk ve TEK YONLU: fabrika
+// sifirlamasi artik hiz sinirini varsayilana (70, panelde %50)
+// DONDURMUYOR. Yani robotu baska bir cocuga verirken sifirlamak, hiz
+// sinirini de sifirlamiyor — panelden elle bakilmali.
+const char* const AD_SURUS_TERS = "surus_ters";
+const char* const AD_BEDEN_HIZ  = "beden_hiz";
+bool g_surus_ters = false;
+
 const char* const KOL_AD_AZ[2]  = {"kol_sol_az",  "kol_sag_az"};
 const char* const KOL_AD_COK[2] = {"kol_sol_cok", "kol_sag_cok"};
 int g_kol_kip = KIP_ACIK;
@@ -184,10 +205,6 @@ esp_err_t ayar_baslat()
                                              VAD_EN_AZ, VAD_EN_FAZLA);
     }
     if (nvs_get_i32(h, "yuz", &v) == ESP_OK) g_yuz = (v != 0);
-    if (nvs_get_i32(h, "beden_hiz", &v) == ESP_OK) {
-        g_beden_hiz = std::clamp(static_cast<int>(v), BEDEN_HIZ_EN_AZ,
-                                 BEDEN_HIZ_EN_FAZLA);
-    }
     if (nvs_get_i32(h, "tekerlek", &v) == ESP_OK) {
         g_tekerlek_kip = std::clamp(static_cast<int>(v), KIP_KAPALI, KIP_ACIK);
     } else if (nvs_get_i32(h, "hareket", &v) == ESP_OK) {
@@ -220,6 +237,10 @@ esp_err_t ayar_baslat()
         // bir yere carpar.
         int t = 0;
         if (kalici_sayi_oku(KOL_AD_TERS, t)) g_kol_ters = (t != 0);
+        if (kalici_sayi_oku(AD_SURUS_TERS, t)) g_surus_ters = (t != 0);
+        if (kalici_sayi_oku(AD_BEDEN_HIZ, t)) {
+            g_beden_hiz = std::clamp(t, BEDEN_HIZ_EN_AZ, BEDEN_HIZ_EN_FAZLA);
+        }
     }
     nvs_close(h);
 
@@ -246,6 +267,17 @@ int ayar_beden_hiz() { return g_beden_hiz; }
 int ayar_tekerlek_kip() { return g_tekerlek_kip; }
 
 bool ayar_kol_ters() { return g_kol_ters; }
+bool ayar_surus_ters() { return g_surus_ters; }
+
+void ayar_surus_ters_yaz(bool ters)
+{
+    if (ters == g_surus_ters) return;
+    g_surus_ters = ters;
+    // KALICI bolume: fabrika sifirlamasi bunu silmiyor. Gerekcesi
+    // pati_ayar.hpp'de, ayar_surus_ters()'in yaninda.
+    kalici_sayi_yaz(AD_SURUS_TERS, ters ? 1 : 0);
+    ESP_LOGI(ETIKET, "surus yonu: %s", ters ? "TERS" : "normal");
+}
 
 void ayar_kol_ters_yaz(bool ters)
 {
@@ -361,7 +393,10 @@ void ayar_beden_hiz_yaz(int yuzde)
     const int y = std::clamp(yuzde, BEDEN_HIZ_EN_AZ, BEDEN_HIZ_EN_FAZLA);
     if (y == g_beden_hiz) return;
     g_beden_hiz = y;
-    i32_yaz("beden_hiz", y);
+    // ⚠️ KALICI bolume yaziliyor, normal ayarlarin yanina degil.
+    // Kullanicinin istegi; bedeli ve gerekcesi AD_BEDEN_HIZ'in
+    // taniminda yazili.
+    kalici_sayi_yaz(AD_BEDEN_HIZ, y);
     // ANINDA gecerli: bir sonraki surus komutu yeni tavani kullaniyor.
     // Oturum yenilemesi gerekmiyor, bu ayar Gemini'ye gitmiyor.
 }
@@ -409,7 +444,7 @@ void ayar_sifirla()
         for (const char* a : {"ses_adi", "hiz_yuz", "uyku_dk", "soz_kesme",
                               "parlaklik",
 
-                              "vad_ms", "yuz", "beden_hiz", "tekerlek",
+                              "vad_ms", "yuz", "tekerlek",
                               "kol", "hareket", "sevinc"}) {
             nvs_erase_key(h, a);
         }
@@ -446,7 +481,7 @@ std::string ayar_json()
                   "\"uyku\":%d,\"parlaklik\":%d,"
                   "\"konusma\":{\"soz_kesme\":%s,\"vad\":%d,\"yuz\":%s},"
                   "\"kumanda\":{\"hiz\":%d,\"tekerlek\":%d,\"kol\":%d,"
-                  "\"kol_ters\":%s,"
+                  "\"kol_ters\":%s,\"surus_ters\":%s,"
                   "\"kol_sol_az\":%d,\"kol_sol_cok\":%d,"
                   "\"kol_sag_az\":%d,\"kol_sag_cok\":%d}",
                   ses_seviyesi(), SES_SEVIYESI_EN_AZ, SES_SEVIYESI_EN_FAZLA,
@@ -455,6 +490,7 @@ std::string ayar_json()
                   g_yuz ? "true" : "false",
                   g_beden_hiz, g_tekerlek_kip, g_kol_kip,
                   g_kol_ters ? "true" : "false",
+                  g_surus_ters ? "true" : "false",
                   g_kol_az[0], g_kol_cok[0], g_kol_az[1], g_kol_cok[1]);
     return b;
 }

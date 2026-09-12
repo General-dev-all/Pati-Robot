@@ -1115,7 +1115,21 @@ void beden_surus(int x, int y)
     // 🔴 ayar_beden_hiz() RAM'den okunuyor (pati_ayar.cpp). Bu fonksiyon
     // surus sirasinda saniyede ~7 kez cagriliyor; NVS'e gitseydi surus
     // yolunda flash erisimi olurdu.
-    const Surus m = surus_karistir(x, y, ayar_beden_hiz());
+    // 🔴 ILERI/GERI TERS CEVIRME — TEK BOGAZ, KARISTIRMADAN ONCE.
+    //
+    // Ikinci govdede motorlar hem ters hem caprazlanmis bagli: cubugu
+    // ileri itince Pati geri gidiyor ama donus dogru calisiyor
+    // (gerekce pati_ayar.hpp · ayar_surus_ters).
+    //
+    // ⚠️ YALNIZCA y CEVRILIYOR. Donus x'ten geliyor ve x'e
+    // dokunulmuyor, yani bu ayar donuse hicbir sey yapmiyor — zaten
+    // kullanicinin olcumu de "sag sol dogru" diyordu. Ikisini birden
+    // cevirmek calisan tarafi bozardi.
+    //
+    // Ozerk jestler buradan GECMIYOR (jest_donus ayri) ve gecmesine de
+    // gerek yok: onlarin ileri/geri bileseni yapisal olarak sifir.
+    const int gy = ayar_surus_ters() ? -y : y;
+    const Surus m = surus_karistir(x, gy, ayar_beden_hiz());
     g_sol.store(m.sol, std::memory_order_relaxed);
     g_sag.store(m.sag, std::memory_order_relaxed);
     g_surus_us.store(esp_timer_get_time(), std::memory_order_relaxed);

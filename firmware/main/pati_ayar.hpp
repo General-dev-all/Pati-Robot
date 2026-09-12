@@ -144,10 +144,30 @@ void ayar_beden_hiz_yaz(int yuzde);
 // Varsayilan false = eski gövdenin davranisi, hicbir sey degismiyor.
 bool ayar_kol_ters();
 
+// 🔴 JOYSTICK ILERI/GERI TERS MI — IKINCI GOVDEDE EVET.
+//
+// Kullanicinin olcumu (13.09.2026): powerbank'li govdede cubugu ileri
+// itince Pati GERI gidiyor, geri cekince ileri. Ama SAGA-SOLA DONUS
+// DOGRU.
+//
+// ⚠️ O ayrinti teshisin kendisi. "Iki motor da ters bagli" olsaydi
+// donus de ters olurdu. Ileri/geri ters + donus dogru, ancak iki motor
+// HEM ters HEM de kanallari caprazlanmis baglandiginda cikiyor: donus
+// iki kez terslenip duzeliyor, ileri/geri bir kez terslenip kaliyor.
+//
+// Yazilimdaki karsiligi tek islem: joystick'in y'sini ters cevirmek.
+// Donus x'ten geliyor, yani bu ayar donuse HIC dokunmuyor. Ozerk
+// jestler de etkilenmiyor — onlarin ileri/geri bileseni zaten yok
+// (sol + sag == 0).
+//
+// Varsayilan KAPALI: ilk (kalem pilli) govdede sorun yok.
+bool ayar_surus_ters();
+
 int ayar_kol_en_az(int taraf);
 int ayar_kol_en_cok(int taraf);
 void ayar_kol_araligi_yaz(int taraf, int en_az, int en_cok);
 void ayar_kol_ters_yaz(bool ters);
+void ayar_surus_ters_yaz(bool ters);
 
 void ayar_tekerlek_kip_yaz(int kip);
 void ayar_kol_kip_yaz(int kip);

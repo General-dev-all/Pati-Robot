@@ -523,13 +523,37 @@ bakarken servo öbür uca giderdi** ve aralık koruması ters çalışırdı.
 aralıkları tek kopya. Gövde değiştirirken ikisini de elle ayarlamak
 gerekebilir (`BEDEN.md`).
 
-🔴 **Kol aralıkları VE kol yönü `ayar_sifirla()` ile SİLİNMİYOR.** Ayrı flash
-bölümünde (`anahtar`) duruyorlar; `partitions.csv` o bölümü zaten tam
-bu iş için tanımlamış. Kullanıcının gerekçesi: *"tekrar ayarlanması
-unutulursa bir yerlere çarpıp servo bozulabilir."*
-**⚠️ Oraya keyfî ayar konmaz** — yalnızca kaybolması **donanıma zarar
-veren** sayılar. Normal ayarlar sıfırlanabiliyor ve sıfırlamanın bir
-anlamı kalmalı (`pati_anahtar.hpp` · `kalici_sayi_oku`).
+🔴 **Kol aralıkları, kol yönü, sürüş yönü ve hız sınırı
+`ayar_sifirla()` ile SİLİNMİYOR.** Ayrı flash bölümünde (`anahtar`)
+duruyorlar; `partitions.csv` o bölümü zaten tam bu iş için tanımlamış.
+Kullanıcının gerekçesi: *"tekrar ayarlanması unutulursa bir yerlere
+çarpıp servo bozulabilir."*
+
+İlk üçü aynı sınıftan: **bir tercih değil, bu gövdenin nasıl
+kablolandığını anlatan ölçüm.** Kaybolursa kol bir yere çarpar ya da
+çocuk çubuğu ileri itip Pati'yi geri sürer.
+
+⚠️ **`beden_hiz` (hız sınırı) bilinçli bir istisna** — 13.09.2026,
+kullanıcının açık isteği. O bir donanım ölçümü değil, ebeveynin
+tercihi. Bedeli tek yönlü ve panelde yazıyor: fabrika sıfırlaması artık
+hız sınırını varsayılana (70, panelde %50) **döndürmüyor.**
+
+**⚠️ Onun dışında oraya keyfî ayar konmaz** — kaybolması donanıma zarar
+veren ya da gövdenin kablolamasını anlatan sayılar. Normal ayarlar
+sıfırlanabiliyor ve sıfırlamanın bir anlamı kalmalı
+(`pati_anahtar.hpp` · `kalici_sayi_oku`).
+
+🔴 **İkinci gövdede joystick'in ileri/geri yönü de ters.** Çubuğu ileri
+itince Pati geri gidiyor — **ama sağa-sola dönüş doğru.** O ayrıntı
+teşhisin kendisi: "iki motor da ters bağlı" olsaydı dönüş de ters
+olurdu. İleri/geri ters + dönüş doğru, ancak iki motor **hem ters hem
+kanalları çaprazlanmış** bağlandığında çıkıyor — dönüş iki kez
+terslenip düzeliyor, ileri/geri bir kez terslenip kalıyor.
+
+Yazılımdaki karşılığı tek işlem: **joystick'in `y`'sini ters çevirmek**
+(`pati_beden.cpp` · `beden_surus`, tek boğaz). Dönüş `x`'ten geldiği
+için bu ayar ona hiç dokunmuyor. Özerk jestler de etkilenmiyor —
+onların ileri/geri bileşeni yapısal olarak sıfır.
 
 🔴 **Pati SESLE uyutulmuyor — tek yol sessizlik.** 3.5.0'da iki yol
 eklenmişti (modelin `uyku` araç alanı ve çocuğun dökümünde kalıp

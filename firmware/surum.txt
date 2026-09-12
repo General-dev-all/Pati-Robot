@@ -1,2 +1,2 @@
-3.5.27
-Pati'nin donus hareketleri artik birbirine benzemiyor. Once her donus ayni yonden basliyordu; artik her seferinde yazi tura atiliyor, yani ayni hareket bazen saga bazen sola basliyor. Iki de yeni hareket var: Kacamak bak (usulca kayar, bakar, sonra birden geri doner) ve Naz yap (kararlica doner, son
+3.5.28
+Panele yeni bir ayar eklendi: Ileri/geri yonunu ters cevir. Cubugu yukari ittiginizde Pati geri gidiyorsa bunu acin; motor kablolari ters takilmis demektir ve bu ayar yonu yazilimdan duzeltir. Saga sola donuse dokunmuyor, cunku donus cubugun yan hareketinden geliyor. Varsayilan kapali. Hem bu ayar hem de Hiz siniri artik fabrika ayarlarina donunce SILINMIYOR; hiz sinirinin varsayilani yuzde elli. Sifirlama hizi varsayilana dondurmedigi icin robotu baska bir cocuga verirken panelden bakmakta fayda var.

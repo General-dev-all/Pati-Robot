@@ -124,6 +124,7 @@ const D = {
   // Pati kendi sozunu kesiyor (yasandi, uydurma degil).
   sozKesme: false,
   kolTers: false,
+  surusTers: false,
   vad: '',                   // '' = Google varsayilani
   yuz: true,
   cocuk: { ...ORNEK.cocuk },
@@ -687,6 +688,23 @@ function kumandaKur() {
     }
   }
 
+  // Surus yonu — kol yonuyle ayni yerde, fabrika ayarlarindan
+  // etkilenmiyor. Yalnizca ileri/geri; donuse dokunmuyor.
+  {
+    const s = $('#surusTers');
+    if (s) {
+      s.addEventListener('change', (e) => {
+        D.surusTers = e.target.checked;
+        fetch('/api/ayar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ alan: 'surus_ters', deger: D.surusTers ? 1 : 0 }),
+        }).then(() => tost(D.surusTers ? 'İleri/geri ters ✓' : 'İleri/geri normal ✓'))
+          .catch(() => {});
+      });
+    }
+  }
+
   // KOL ARALIKLARI — iki cubuk TEK istekte gidiyor.
   //
   // Ayri ayri gonderilseydi arada `en_az > en_cok` olan bir an olusur
@@ -818,6 +836,11 @@ function bedenYaz(beden, kumanda) {
       if (k && document.activeElement !== k) {
         D.kolTers = !!kumanda.kol_ters;
         k.checked = D.kolTers;
+      }
+      const s = $('#surusTers');
+      if (s && document.activeElement !== s) {
+        D.surusTers = !!kumanda.surus_ters;
+        s.checked = D.surusTers;
       }
     }
 
