@@ -125,6 +125,7 @@ const D = {
   sozKesme: false,
   kolTers: false,
   surusTers: false,
+  donusTers: false,
   vad: '',                   // '' = Google varsayilani
   yuz: true,
   cocuk: { ...ORNEK.cocuk },
@@ -705,6 +706,22 @@ function kumandaKur() {
     }
   }
 
+  // Donus yonu — surus yonunun ikizi, ayni kalici yerde.
+  {
+    const d = $('#donusTers');
+    if (d) {
+      d.addEventListener('change', (e) => {
+        D.donusTers = e.target.checked;
+        fetch('/api/ayar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ alan: 'donus_ters', deger: D.donusTers ? 1 : 0 }),
+        }).then(() => tost(D.donusTers ? 'Sağ/sol ters ✓' : 'Sağ/sol normal ✓'))
+          .catch(() => {});
+      });
+    }
+  }
+
   // KOL ARALIKLARI — iki cubuk TEK istekte gidiyor.
   //
   // Ayri ayri gonderilseydi arada `en_az > en_cok` olan bir an olusur
@@ -841,6 +858,11 @@ function bedenYaz(beden, kumanda) {
       if (s && document.activeElement !== s) {
         D.surusTers = !!kumanda.surus_ters;
         s.checked = D.surusTers;
+      }
+      const d = $('#donusTers');
+      if (d && document.activeElement !== d) {
+        D.donusTers = !!kumanda.donus_ters;
+        d.checked = D.donusTers;
       }
     }
 

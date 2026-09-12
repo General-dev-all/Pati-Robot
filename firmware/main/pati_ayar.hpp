@@ -163,11 +163,30 @@ bool ayar_kol_ters();
 // Varsayilan KAPALI: ilk (kalem pilli) govdede sorun yok.
 bool ayar_surus_ters();
 
+// 🔴 JOYSTICK SAGI/SOLU TERS MI — IKIZI, AMA HENUZ GEREKMIYOR.
+//
+// 13.09.2026'da kullanicinin istegiyle eklendi: "ileri/geri harika
+// calisiyor, simdi ihtiyacim yok ama belki ileride olur diye sagi solu
+// ters cevir de ekler misin."
+//
+// Iki motorun kanallari CAPRAZ baglanirsa (ters degil, yalnizca yer
+// degistirmis) ileri/geri dogru kalir ama donus terslenir — bu ayarin
+// duzelttigi hal tam olarak o.
+//
+// ⚠️ OZERK JESTLERE UYGULANMIYOR ve bu bir eksiklik DEGIL: 3.5.27'den
+// beri her jest zaten yazi turayla aynalanıyor (pati_beden.cpp ·
+// jest_ayna), yani jestin donus yonu ZATEN rastgele. Duzeltilecek bir
+// sey yok; ayar yalnizca cocugun parmaginin altindaki cubuk icin var.
+//
+// Varsayilan KAPALI.
+bool ayar_donus_ters();
+
 int ayar_kol_en_az(int taraf);
 int ayar_kol_en_cok(int taraf);
 void ayar_kol_araligi_yaz(int taraf, int en_az, int en_cok);
 void ayar_kol_ters_yaz(bool ters);
 void ayar_surus_ters_yaz(bool ters);
+void ayar_donus_ters_yaz(bool ters);
 
 void ayar_tekerlek_kip_yaz(int kip);
 void ayar_kol_kip_yaz(int kip);

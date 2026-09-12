@@ -555,6 +555,16 @@ Yazılımdaki karşılığı tek işlem: **joystick'in `y`'sini ters çevirmek**
 için bu ayar ona hiç dokunmuyor. Özerk jestler de etkilenmiyor —
 onların ileri/geri bileşeni yapısal olarak sıfır.
 
+**İkizi de var: "Sağ/sol yönünü ters çevir"** (`donus_ters`, `x`'i
+çeviriyor). İkisi **birbirinden bağımsız**, çünkü bir gövdede yalnızca
+ileri/geri, başkasında yalnızca dönüş, üçüncüsünde ikisi birden ters
+bağlanmış olabilir.
+
+⚠️ **`donus_ters` özerk jestlere uygulanmıyor ve bu bir eksiklik
+değil:** 3.5.27'den beri her jest zaten yazı turayla aynalanıyor
+(`jest_ayna`), yani jestin dönüş yönü ZATEN rastgele. Düzeltilecek bir
+şey yok; ayar yalnızca çocuğun parmağının altındaki çubuk için.
+
 🔴 **Pati SESLE uyutulmuyor — tek yol sessizlik.** 3.5.0'da iki yol
 eklenmişti (modelin `uyku` araç alanı ve çocuğun dökümünde kalıp
 araması) ve **3.5.7'de ikisi de kaldırıldı.** Kullanıcının şikâyeti:

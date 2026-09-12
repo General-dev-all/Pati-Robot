@@ -436,6 +436,8 @@ esp_err_t ayar_isle(httpd_req_t* r)
         ayar_kol_ters_yaz(json_sayi(k, "deger", 0) != 0);
     } else if (alan == "surus_ters") {
         ayar_surus_ters_yaz(json_sayi(k, "deger", 0) != 0);
+    } else if (alan == "donus_ters") {
+        ayar_donus_ters_yaz(json_sayi(k, "deger", 0) != 0);
     } else if (alan == "soz_kesme") {
         ayar_soz_kesme_yaz(json_sayi(k, "deger", 0) != 0);
     } else if (alan == "vad") {

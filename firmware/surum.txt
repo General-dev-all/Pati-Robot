@@ -1,2 +1,2 @@
-3.5.29
-Onemli bir duzeltme. Pati bazen 'sikici' gibi duyulan, cocuga soylenmeyecek bir kelime soyluyordu. Sebep Pati'nin konusmasi degil, ona verilen talimat metniydi: o metinde Turkce noktasiz i harfleri kullanilmamisti ve boyle yazilinca kelime bambaska bir sey oluyor. Pati de yanlis yazimi oradan ogreni
+3.5.30
+Panele ikinci bir yon ayari eklendi: Sag/sol yonunu ters cevir. Cubugu saga ittiginizde Pati sola donuyorsa bunu acin. Bir onceki ileri/geri ayarinin ikizi ve ikisi birbirinden bagimsiz calisiyor, cunku bir govdede yalnizca ileri/geri, baskasinda yalnizca donus ters baglanmis olabilir. Varsayilan kapali ve fabrika ayarlarina donunce silinmiyor. Pati'nin konusurken kendi yaptigi donuslere dokunmuyor; onlar zaten her seferinde rastgele yone basliyor.

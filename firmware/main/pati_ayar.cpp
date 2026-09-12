@@ -116,8 +116,10 @@ const char* const KOL_AD_TERS = "kol_ters";
 // DONDURMUYOR. Yani robotu baska bir cocuga verirken sifirlamak, hiz
 // sinirini de sifirlamiyor — panelden elle bakilmali.
 const char* const AD_SURUS_TERS = "surus_ters";
+const char* const AD_DONUS_TERS = "donus_ters";
 const char* const AD_BEDEN_HIZ  = "beden_hiz";
 bool g_surus_ters = false;
+bool g_donus_ters = false;
 
 const char* const KOL_AD_AZ[2]  = {"kol_sol_az",  "kol_sag_az"};
 const char* const KOL_AD_COK[2] = {"kol_sol_cok", "kol_sag_cok"};
@@ -238,6 +240,7 @@ esp_err_t ayar_baslat()
         int t = 0;
         if (kalici_sayi_oku(KOL_AD_TERS, t)) g_kol_ters = (t != 0);
         if (kalici_sayi_oku(AD_SURUS_TERS, t)) g_surus_ters = (t != 0);
+        if (kalici_sayi_oku(AD_DONUS_TERS, t)) g_donus_ters = (t != 0);
         if (kalici_sayi_oku(AD_BEDEN_HIZ, t)) {
             g_beden_hiz = std::clamp(t, BEDEN_HIZ_EN_AZ, BEDEN_HIZ_EN_FAZLA);
         }
@@ -268,6 +271,7 @@ int ayar_tekerlek_kip() { return g_tekerlek_kip; }
 
 bool ayar_kol_ters() { return g_kol_ters; }
 bool ayar_surus_ters() { return g_surus_ters; }
+bool ayar_donus_ters() { return g_donus_ters; }
 
 void ayar_surus_ters_yaz(bool ters)
 {
@@ -277,6 +281,16 @@ void ayar_surus_ters_yaz(bool ters)
     // pati_ayar.hpp'de, ayar_surus_ters()'in yaninda.
     kalici_sayi_yaz(AD_SURUS_TERS, ters ? 1 : 0);
     ESP_LOGI(ETIKET, "surus yonu: %s", ters ? "TERS" : "normal");
+}
+
+void ayar_donus_ters_yaz(bool ters)
+{
+    if (ters == g_donus_ters) return;
+    g_donus_ters = ters;
+    // surus_ters ile AYNI kalici bolumde: ikisi de bu govdenin nasil
+    // kablolandigini anlatiyor, bir tercih degil.
+    kalici_sayi_yaz(AD_DONUS_TERS, ters ? 1 : 0);
+    ESP_LOGI(ETIKET, "donus yonu: %s", ters ? "TERS" : "normal");
 }
 
 void ayar_kol_ters_yaz(bool ters)
@@ -481,7 +495,7 @@ std::string ayar_json()
                   "\"uyku\":%d,\"parlaklik\":%d,"
                   "\"konusma\":{\"soz_kesme\":%s,\"vad\":%d,\"yuz\":%s},"
                   "\"kumanda\":{\"hiz\":%d,\"tekerlek\":%d,\"kol\":%d,"
-                  "\"kol_ters\":%s,\"surus_ters\":%s,"
+                  "\"kol_ters\":%s,\"surus_ters\":%s,\"donus_ters\":%s,"
                   "\"kol_sol_az\":%d,\"kol_sol_cok\":%d,"
                   "\"kol_sag_az\":%d,\"kol_sag_cok\":%d}",
                   ses_seviyesi(), SES_SEVIYESI_EN_AZ, SES_SEVIYESI_EN_FAZLA,
@@ -491,6 +505,7 @@ std::string ayar_json()
                   g_beden_hiz, g_tekerlek_kip, g_kol_kip,
                   g_kol_ters ? "true" : "false",
                   g_surus_ters ? "true" : "false",
+                  g_donus_ters ? "true" : "false",
                   g_kol_az[0], g_kol_cok[0], g_kol_az[1], g_kol_cok[1]);
     return b;
 }

@@ -1128,8 +1128,12 @@ void beden_surus(int x, int y)
     //
     // Ozerk jestler buradan GECMIYOR (jest_donus ayri) ve gecmesine de
     // gerek yok: onlarin ileri/geri bileseni yapisal olarak sifir.
+    // Sagi/solu cevirme de AYNI bogazda ve birbirinden bagimsiz: bir
+    // govde yalnizca ileri/geri, baskasi yalnizca donus, ucuncusu ikisi
+    // birden ters baglanmis olabilir. Uc hal de tek satirla anlatiliyor.
     const int gy = ayar_surus_ters() ? -y : y;
-    const Surus m = surus_karistir(x, gy, ayar_beden_hiz());
+    const int gx = ayar_donus_ters() ? -x : x;
+    const Surus m = surus_karistir(gx, gy, ayar_beden_hiz());
     g_sol.store(m.sol, std::memory_order_relaxed);
     g_sag.store(m.sag, std::memory_order_relaxed);
     g_surus_us.store(esp_timer_get_time(), std::memory_order_relaxed);
