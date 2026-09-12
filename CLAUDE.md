@@ -510,7 +510,20 @@ birini unutmaya davetiye olurdu. Kırpma **yazarken** yapılıyor,
 okurken değil — okurken olsaydı jestin "hedefe vardı mı" karşılaştırması
 hiç tutmaz ve jest ilerlemezdi.
 
-🔴 **Kol aralıkları `ayar_sifirla()` ile SİLİNMİYOR.** Ayrı flash
+🔴 **İkinci gövdede servolar TERS takılı.** "Kolunu kaldır" deyince kol
+aşağı iniyordu. Panelde **"Kol yönünü ters çevir"** anahtarı var,
+varsayılan kapalı.
+
+⚠️ Çevirme **mantıksal yüzdede** yapılıyor (`pati_beden.cpp` ·
+`kol_aci`, tek boğaz), açıda değil. Sebep: kol aralıkları da yüzde
+uzayında ve orada kırpılıyor — çevirme çıkışta olsaydı **kırpma bir uca
+bakarken servo öbür uca giderdi** ve aralık koruması ters çalışırdı.
+
+⚠️ Pati hangi gövdede olduğunu **bilmiyor**; hem bu ayar hem kol
+aralıkları tek kopya. Gövde değiştirirken ikisini de elle ayarlamak
+gerekebilir (`BEDEN.md`).
+
+🔴 **Kol aralıkları VE kol yönü `ayar_sifirla()` ile SİLİNMİYOR.** Ayrı flash
 bölümünde (`anahtar`) duruyorlar; `partitions.csv` o bölümü zaten tam
 bu iş için tanımlamış. Kullanıcının gerekçesi: *"tekrar ayarlanması
 unutulursa bir yerlere çarpıp servo bozulabilir."*

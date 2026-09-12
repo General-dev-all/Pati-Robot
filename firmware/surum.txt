@@ -1,2 +1,2 @@
-3.5.13
-Panelde iki ayar kaldirildi, davranislari her zaman acik. Pati kapaliyken sarja takildiginda bir an yanip kendini geri kapatiyor ve sarj olmaya devam ediyor. Powerbank'li govde icin Pati bostayken 13 saniyede bir kollarini cok az oynatiyor; boylece powerbank kendini kapatmiyor. Ayarlamaniz gereken b
+3.5.14
+Panele "Kol yonunu ters cevir" ayari eklendi. Ikinci govdede servolar ters takili oldugu icin "kolunu kaldir" deyince kol asagi iniyordu; bu ayar yonu yazilimdan duzeltiyor. Varsayilan kapali, yani ilk govdede hicbir sey degismiyor. Kol araliklari gibi bu ayar da "fabrika ayarlarina don" dendiginde SILINMEZ: unutulup yeniden ayarlanmazsa kol ters yone gidip bir yere carpabilir.

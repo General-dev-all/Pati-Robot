@@ -123,6 +123,7 @@ const D = {
   // Konusma ayarlari. Soz kesme VARSAYILAN KAPALI: kulakliksizken
   // Pati kendi sozunu kesiyor (yasandi, uydurma degil).
   sozKesme: false,
+  kolTers: false,
   vad: '',                   // '' = Google varsayilani
   yuz: true,
   cocuk: { ...ORNEK.cocuk },
@@ -603,6 +604,22 @@ function kumandaKur() {
     });
   });
 
+  // Kol yonu — kalici depoda, fabrika ayarlarindan etkilenmiyor.
+  {
+    const k = $('#kolTers');
+    if (k) {
+      k.addEventListener('change', (e) => {
+        D.kolTers = e.target.checked;
+        fetch('/api/ayar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ alan: 'kol_ters', deger: D.kolTers ? 1 : 0 }),
+        }).then(() => tost(D.kolTers ? 'Kol yönü ters ✓' : 'Kol yönü normal ✓'))
+          .catch(() => {});
+      });
+    }
+  }
+
   // KOL ARALIKLARI — iki cubuk TEK istekte gidiyor.
   //
   // Ayri ayri gonderilseydi arada `en_az > en_cok` olan bir an olusur
@@ -729,6 +746,14 @@ function bedenYaz(beden, kumanda) {
       h.value = g;
       hizYaz(g);
     }
+    {
+      const k = $('#kolTers');
+      if (k && document.activeElement !== k) {
+        D.kolTers = !!kumanda.kol_ters;
+        k.checked = D.kolTers;
+      }
+    }
+
     [['#kKolSolAz', '#vKolSolAz', kumanda.kol_sol_az],
      ['#kKolSolCok', '#vKolSolCok', kumanda.kol_sol_cok],
      ['#kKolSagAz', '#vKolSagAz', kumanda.kol_sag_az],

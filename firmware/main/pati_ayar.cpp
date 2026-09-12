@@ -73,6 +73,9 @@ int g_kol_az[2]  = {KOL_SOL_VARSAYILAN_AZ,  KOL_SAG_VARSAYILAN_AZ};
 int g_kol_cok[2] = {KOL_SOL_VARSAYILAN_COK, KOL_SAG_VARSAYILAN_COK};
 
 // Kalici depodaki adlar. Kisa: NVS anahtari en fazla 15 karakter.
+bool g_kol_ters = false;
+const char* const KOL_AD_TERS = "kol_ters";
+
 const char* const KOL_AD_AZ[2]  = {"kol_sol_az",  "kol_sag_az"};
 const char* const KOL_AD_COK[2] = {"kol_sol_cok", "kol_sag_cok"};
 int g_kol_kip = KIP_ACIK;
@@ -185,6 +188,13 @@ esp_err_t ayar_baslat()
         if (kalici_sayi_oku(KOL_AD_COK[i], t)) g_kol_cok[i] = std::clamp(t, 0, 100);
         if (g_kol_az[i] > g_kol_cok[i]) std::swap(g_kol_az[i], g_kol_cok[i]);
     }
+    {
+        // Kol yonu de AYNI kalici bolumde — gerekcesi pati_ayar.hpp'de,
+        // ayar_kol_ters()'in yaninda: kaybolursa kol ters yone gider ve
+        // bir yere carpar.
+        int t = 0;
+        if (kalici_sayi_oku(KOL_AD_TERS, t)) g_kol_ters = (t != 0);
+    }
     nvs_close(h);
 
     ESP_LOGI(ETIKET, "ses=%s hiz=%.2f uyku=%d dk soz_kesme=%d vad=%d yuz=%d "
@@ -207,6 +217,18 @@ bool ayar_yuz_araci() { return g_yuz; }
 // erisimi olurdu — CLAUDE.md'deki sicak dongu tuzaginin ta kendisi.
 int ayar_beden_hiz() { return g_beden_hiz; }
 int ayar_tekerlek_kip() { return g_tekerlek_kip; }
+
+bool ayar_kol_ters() { return g_kol_ters; }
+
+void ayar_kol_ters_yaz(bool ters)
+{
+    if (ters == g_kol_ters) return;
+    g_kol_ters = ters;
+    // KALICI DEPOYA — ayar_sifirla() buraya dokunmuyor. Gerekcesi
+    // pati_ayar.hpp'de ayar_kol_ters()'in yaninda.
+    kalici_sayi_yaz(KOL_AD_TERS, ters ? 1 : 0);
+    ESP_LOGI(ETIKET, "kol yonu: %s", ters ? "TERS" : "normal");
+}
 
 int ayar_kol_en_az(int taraf)
 {
@@ -355,10 +377,15 @@ void ayar_sifirla()
         nvs_commit(h);
         nvs_close(h);
     }
-    // ⚠️ KOL ARALIKLARI BILEREK SILINMIYOR. Baska bolumdeler ve oraya
-    // hic dokunmuyoruz: kaybolmalarinin bedeli servonun bir yere
-    // carpip bozulmasi (pati_ayar.hpp · ayar_kol_en_az).
-    ESP_LOGW(ETIKET, "ayarlar sifirlandi (kol araliklari korundu)");
+    // ⚠️ KOL ARALIKLARI VE KOL YONU BILEREK SILINMIYOR. Baska
+    // bolumdeler ve oraya hic dokunmuyoruz: kaybolmalarinin bedeli
+    // servonun bir yere carpip bozulmasi (pati_ayar.hpp ·
+    // ayar_kol_en_az ve ayar_kol_ters).
+    //
+    // Iki bagimsiz koruma var ve ikisi de bilincli: yukaridaki dongu
+    // adi sayilan anahtarlari siliyor (kol_ters orada YOK), ve o
+    // anahtarlar zaten baska bir flash bolumunde duruyor.
+    ESP_LOGW(ETIKET, "ayarlar sifirlandi (kol araliklari ve yonu korundu)");
 }
 
 bool ayar_yenileme_gerekli() { return g_yenileme.load(); }
@@ -380,6 +407,7 @@ std::string ayar_json()
                   "\"uyku\":%d,"
                   "\"konusma\":{\"soz_kesme\":%s,\"vad\":%d,\"yuz\":%s},"
                   "\"kumanda\":{\"hiz\":%d,\"tekerlek\":%d,\"kol\":%d,"
+                  "\"kol_ters\":%s,"
                   "\"kol_sol_az\":%d,\"kol_sol_cok\":%d,"
                   "\"kol_sag_az\":%d,\"kol_sag_cok\":%d}",
                   ses_seviyesi(), SES_SEVIYESI_EN_AZ, SES_SEVIYESI_EN_FAZLA,
@@ -387,6 +415,7 @@ std::string ayar_json()
                   g_soz_kesme ? "true" : "false", g_vad_ms,
                   g_yuz ? "true" : "false",
                   g_beden_hiz, g_tekerlek_kip, g_kol_kip,
+                  g_kol_ters ? "true" : "false",
                   g_kol_az[0], g_kol_cok[0], g_kol_az[1], g_kol_cok[1]);
     return b;
 }

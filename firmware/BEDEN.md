@@ -886,3 +886,50 @@ teşhis konunca çözüm ilk denemede çalıştı.
 başarısız ölçüm varken bile o ölçümlerin *neyi* elediği ayrı ayrı
 sorulmalı. "Süre yetersiz" ile "güç yetersiz" farklı şeyler ve ikisi
 aynı belirtiyi veriyordu.
+
+### 🔴 Kol yönü — ikinci gövdede servolar ters takılı
+
+Kullanıcının şikâyeti (12.09.2026): powerbank'li gövdede *"kolunu
+kaldır"* deyince kol **aşağı** iniyor. Servolar ters monte edilmiş.
+
+Panelde **"Kol yönünü ters çevir"** anahtarı var, **varsayılan kapalı**
+(ilk gövdenin davranışı).
+
+⚠️ **Çevirme MANTIKSAL YÜZDEDE yapılıyor**, açı ya da darbe
+genişliğinde değil — `pati_beden.cpp` · `kol_aci()`, tek boğaz.
+
+Sebep önemli: kol aralıkları da yüzde uzayında tanımlı ve
+`kol_hedef_yaz` orada kırpıyor. Çevirme çıkış tarafında olsaydı,
+**kırpma bir uca bakarken servo öbür uca giderdi** — yani aralık
+koruması ters çalışır ve kol tam da çarpmaması gereken yere giderdi.
+
+Böylece yüzde her zaman aynı şeyi anlatıyor (0 = aşağı, 100 = yukarı)
+ve fiziksel yön tek satırda dönüyor.
+
+⚠️ `kol_aci()` **bütün** `kol_derece10` çağrılarının yerini aldı. Biri
+atlanırsa "hedefe vardı mı" karşılaştırması çevrilmiş değerle
+çevrilmemişi kıyaslar ve **jest hiç ilerlemez**.
+
+🔴 **Ayar `ayar_sifirla()` ile SİLİNMİYOR** — kol aralıklarıyla aynı
+gerekçe, kullanıcının kendi sözleriyle: *"çocuk fabrika ayarlarına
+dön'e basarsa ve yönleri değiştirmeyi unutsa kollar bir yere
+çarpabilir."*
+
+İki bağımsız koruma var:
+
+| | |
+|---|---|
+| `ayar_sifirla()` | adı sayılan anahtarları siliyor; `kol_ters` o listede **yok** |
+| Depo | `kalici_sayi_yaz` **ayrı flash bölümüne** yazıyor (`nvs_open_from_partition`) |
+
+⚠️ **Fabrika sıfırlama gerçek kartta ÇALIŞTIRILMADI**, çünkü
+`POST /api/fabrika` içinde `ag_unut()` var ve wifi bilgisini siler.
+Koruma kod okunarak doğrulandı, ölçümle değil. İkisi de yapısal
+olduğu için güvenilir, ama not düşülüyor.
+
+### ⚠️ Kol aralıkları iki gövde arasında PAYLAŞILIYOR
+
+Pati hangi gövdede olduğunu bilmiyor; aralıklar tek kopya ve kalıcı
+depoda. İkinci gövdenin mekanik sınırları farklıysa (kol farklı yere
+çarpıyorsa) gövde değiştirirken **aralıkların da ayarlanması gerekir.**
+Bu ölçülmedi — ikinci gövdede kolun neye çarptığı henüz bakılmadı.

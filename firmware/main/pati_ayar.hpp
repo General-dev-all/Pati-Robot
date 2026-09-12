@@ -122,9 +122,24 @@ void ayar_beden_hiz_yaz(int yuzde);
 // unutulursa bir yerlere carpip servo bozulabilir."
 //
 // `taraf`: 0 sol, 1 sag.
+// 🔴 KOL YONU TERS MI — ikinci gövdede servolar ters takili.
+//
+// Kullanicinin sikayeti (12.09.2026): powerbank'li gövdede "kolunu
+// kaldir" deyince kol ASAGI iniyor. Servolar ters monte edilmis.
+//
+// ⚠️ BU AYAR KALICI DEPODA ve `ayar_sifirla()` ONA DOKUNMUYOR — kol
+// araliklariyla ayni gerekce, kullanicinin kendi sozleriyle: "cocuk
+// fabrika ayarlarina don'e basarsa ve yonleri degistirmeyi unutsa
+// kollar bir yere carpabilir." Kaybolmasi DONANIMA ZARAR VEREN bir
+// sayi, o yuzden oraya konuldu.
+//
+// Varsayilan false = eski gövdenin davranisi, hicbir sey degismiyor.
+bool ayar_kol_ters();
+
 int ayar_kol_en_az(int taraf);
 int ayar_kol_en_cok(int taraf);
 void ayar_kol_araligi_yaz(int taraf, int en_az, int en_cok);
+void ayar_kol_ters_yaz(bool ters);
 
 void ayar_tekerlek_kip_yaz(int kip);
 void ayar_kol_kip_yaz(int kip);

@@ -233,6 +233,30 @@ constexpr gpio_num_t KOL_PIN[2] = {PATI_BEDEN_KOL_SOL, PATI_BEDEN_KOL_SAG};
 // Donanima yazan iki fonksiyon — dongunun tek donanim temasi
 // ---------------------------------------------------------------------------
 
+// 🔴 YUZDE -> ACI, TEK BOGAZ. Ters cevirme YALNIZCA burada oluyor.
+//
+// Kullanicinin ikinci gövdesinde (powerbank'li) servolar ters takili:
+// "kolunu kaldir" deyince kol asagi iniyordu. Panelden acilan
+// `ayar_kol_ters()` bunu duzeltiyor.
+//
+// ⚠️ CEVIRME MANTIKSAL YUZDEDE YAPILIYOR, aci ya da darbe genisliginde
+// degil. Sebep: kol araliklari (mekanik sinir) da yuzde uzayinda
+// tanimli ve `kol_hedef_yaz` orada kirpiyor. Cevirme cikis tarafinda
+// olsaydi, kirpma bir uca bakarken servo obur uca giderdi — yani
+// aralik korumasi TERS calisirdi ve kol tam da carpmamasi gereken
+// yere giderdi.
+//
+// Boylece yuzde her zaman ayni seyi anlatiyor (0 = asagi, 100 = yukari)
+// ve fiziksel yon tek satirda donuyor.
+//
+// ⚠️ BU ISLEV pati_beden.cpp'deki TUM kol_derece10 cagrilarinin yerini
+// aliyor. Biri atlanirsa "hedefe vardi mi" karsilastirmasi cevrilmis
+// deger ile cevrilmemisi kiyaslar ve jest hic ilerlemez.
+int kol_aci(int yuzde, bool sag)
+{
+    return kol_derece10(ayar_kol_ters() ? 100 - yuzde : yuzde, sag);
+}
+
 void kanal_duty(ledc_channel_t k, int duty)
 {
     ledc_set_duty(LEDC_LOW_SPEED_MODE, k, static_cast<std::uint32_t>(duty));
@@ -314,7 +338,7 @@ void beden_gorevi(void*)
 {
     // Kollarin gercek konumu ve zamanlamasi GOREVE OZEL — paylasilmiyor,
     // dolayisiyla kilit de gerekmiyor.
-    int su_an10[2] = {kol_derece10(0, false), kol_derece10(0, true)};
+    int su_an10[2] = {kol_aci(0, false), kol_aci(0, true)};
     std::int64_t vardi_us[2] = {0, 0};
     bool darbe_acik[2] = {false, false};
 
@@ -644,8 +668,8 @@ void beden_gorevi(void*)
             // hareket etmesin" kurali korunuyor.
             const bool vardi =
                 (k.teker != 0)
-                || ((su_an10[0] == kol_derece10(g_kol_hedef[0].load(), false))
-                    && (su_an10[1] == kol_derece10(g_kol_hedef[1].load(), true)));
+                || ((su_an10[0] == kol_aci(g_kol_hedef[0].load(), false))
+                    && (su_an10[1] == kol_aci(g_kol_hedef[1].load(), true)));
 
             if (vardi) {
                 if (kare_bekle_bitis == 0) {
@@ -687,7 +711,7 @@ void beden_gorevi(void*)
         const bool kol_dursun = (jest_teker != 0);
         for (int i = 0; i < 2; ++i) {
             const int hedef10 =
-                kol_derece10(g_kol_hedef[i].load(std::memory_order_relaxed),
+                kol_aci(g_kol_hedef[i].load(std::memory_order_relaxed),
                                i == 1);
             if (kol_dursun) {
                 continue;
