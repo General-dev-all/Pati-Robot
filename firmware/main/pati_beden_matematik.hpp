@@ -592,12 +592,19 @@ inline constexpr Kare JEST_ZIPLA[] = {
 // ⚠️ 3.5.19'a kadar kol kareleri donuslerin ARASINDAYDI ve jestin
 // ritmini bozan sey oydu (yukaridaki kol karesi uyarisi). Artik dort
 // donus kesintisiz, kollar once ve sonra.
+//
+// 🔴 DORT VURUS AYNI UZUNLUKTA DEGIL: 300, 300, 380, 380. Ayni
+// uzunlukta dort salinim "dans" degil "titre" gibi okunuyor — ritim,
+// tekrar degil DEGISIM demek. Iki kisa vurusun ardindan iki genis
+// savurma, bir dans olcusunun en basit hali.
+//
+// Toplam 1360 ms, butce 1400 (JEST_TEKER_EN_COK_MS).
 inline constexpr Kare JEST_DANS[] = {
     {75, 75,   0, 110},
-    {-1, -1,  75, 320}, {-1, -1, 0, 40},
-    {-1, -1, -75, 320}, {-1, -1, 0, 40},
-    {-1, -1,  75, 320}, {-1, -1, 0, 40},
-    {-1, -1, -75, 320}, {-1, -1, 0, 40},
+    {-1, -1,  75, 300}, {-1, -1, 0, 40},
+    {-1, -1, -75, 300}, {-1, -1, 0, 40},
+    {-1, -1,  75, 380}, {-1, -1, 0, 40},
+    {-1, -1, -75, 380}, {-1, -1, 0, 40},
     {20, 20,   0, 110},
     {95, 95,   0, 130},
     {30, 30,   0, 110},

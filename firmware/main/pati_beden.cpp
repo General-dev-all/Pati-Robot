@@ -243,6 +243,11 @@ std::atomic<std::uint32_t> g_kol_elle{0};          // elle mudahale sayaci
 // delinirdi. Tek yazmada tasinmasi bunu imkansiz kiliyor.
 constexpr int JEST_KAYNAK_CARPAN = 256;
 std::atomic<int> g_jest_istek{-1};
+
+// 🔴 SU AN BIR JEST AKIYOR MU — beden gorevi yaziyor, sohbet gorevi
+// okuyor. Tek sebebi asagidaki "selam ezmesin" korumasi; baska kimse
+// bakmiyor ve bakmamali (akan jestin KENDISI goreve ozel, paylasilmiyor).
+std::atomic<bool> g_jest_akiyor{false};
 std::atomic<bool> g_konusuyor{false};
 
 TaskHandle_t g_gorev = nullptr;
@@ -754,6 +759,9 @@ void beden_gorevi(void*)
         // yapisi geregi olusamiyor.
         jest_teker = (akan != nullptr) ? akan->kare[kare_no].teker : 0;
 
+        // Sohbet gorevi "uzerine yazayim mi" diye buna bakiyor.
+        g_jest_akiyor.store(akan != nullptr, std::memory_order_relaxed);
+
         // ---- KOL HAREKETI -----------------------------------------------
         constexpr int ADIM10 = KOL_HIZ_DERECE_SN * DONGU_MESGUL_MS / 100;
         bool kol_oynuyor = false;
@@ -1022,6 +1030,31 @@ void beden_konusma_bildir(bool konusuyor)
     if (konusuyor && !onceki) {
         // Kollar acik degilse konusma basinda da bir sey yapmiyor.
         if (ayar_kol_kip() != KIP_ACIK) {
+            uyandir();
+            return;
+        }
+        // 🔴 AKAN YA DA BEKLEYEN BIR JEST VARSA SELAM YAZILMAZ.
+        //
+        // 13.09.2026'da kullanicinin bulduğu hata: cocuk "dans et"
+        // diyor, Pati "evet dans ediyorum" diyor ama YALNIZCA BIR KERE
+        // saga donup el sallamaya basliyor.
+        //
+        // Sebep buydu: model once araci cagiriyor (hareket: dans), jest
+        // basliyor; birkac yuz milisaniye sonra sesi geliyor ve o an
+        // burasi kosulsuz "selam" yaziyordu. Jest baslatma blogu her
+        // istegi ONCELIKLI sayiyor (cocugun dugmesi beklememelı), yani
+        // dans daha ilk donusunun sonuna varmadan selam'la eziliyordu.
+        //
+        // ⚠️ BELIRTISI TAM BIR "JEST TABLOSU YANLIS" GORUNTUSU VERIYOR:
+        // tabloda dort donus yaziyor, robotta bir tane oluyor. Tabloyu
+        // buyutmek hicbir sey degistirmez — nitekim denendi.
+        //
+        // Selam en dusuk oncelikli istek: cocugun ya da modelin ACIKCA
+        // istedigi bir jest varken araya girmiyor. Ters sira zararsiz:
+        // once selam baslar, sonra dans istegi gelir ve selami ezer —
+        // acik istek kazanmali, zaten kural bu.
+        if (g_jest_akiyor.load(std::memory_order_relaxed)
+            || g_jest_istek.load(std::memory_order_relaxed) >= 0) {
             uyandir();
             return;
         }
