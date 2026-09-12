@@ -565,9 +565,10 @@ tepeye) sürtünmeyi kırıyor, sonra **gitme tabanı** (%17) devreye
 giriyor. Joystick tepkisi ayrıca **karesel**: yarım itişte hızın dörtte
 biri. Darbe, yukarıdaki kurala bilinçli ve **onayı alınmış** istisna.
 
-🔴 **Bunun sonucu: her tekerlek karesi en az 260 ms olmak zorunda.**
+🔴 **Bunun sonucu: her tekerlek karesi en az 300 ms olmak zorunda.**
 Darbe 180 ms sürüyor, rampanın ondan sonra tablodaki değere inmesi
-~80 ms alıyor. Daha kısa bir kare **tamamen darbenin içinde** geçiyor:
+40–100 ms alıyor (hız tavanına göre; en uzunu tavan %40'ta). Daha kısa
+bir kare **tamamen darbenin içinde** geçiyor:
 tabloda ne yazarsa yazsın motor %85'te dönüyor ve robot daha dönmeye
 başlamadan kare bitiyor. Belirtisi 12.09.2026'da görüldü — ikinci
 gövdede *"dans et ve özellikle kıkırda Pati'yi ileri kaydırıyor"*, oysa
@@ -581,7 +582,7 @@ Kareler 320–360 ms'ye çıkarıldı ve jest başına kalkış 4 → 2 indi
 (`hayir` hariç; orada salınım *sayısı* anlamın kendisi). Toplam dönüş
 süresi neredeyse aynı, sarsıntı yarısı. ⚠️ **Bir jest az dönüyorsa
 çözüm `teker` değerini büyütmek değil, `bekle_ms`'i uzatmaktır** — ilk
-260 ms zaten darbeye ait.
+220–280 ms zaten darbeye ait.
 
 ⚠️ Kaymayı **sıfırlamak** yazılımın elinde değil: bunun için dönüşe
 geri hareket karıştırmak, yani `sol + sag != 0` gerekirdi. O eşitlik

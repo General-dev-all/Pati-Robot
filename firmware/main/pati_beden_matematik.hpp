@@ -373,18 +373,25 @@ inline Surus surus_karistir(int x, int y, int tavan)
 // parmak var ve cocuk bakiyor); Pati'nin kendi karari asamiyor.
 inline constexpr int JEST_DONUS_EN_COK = 60;
 
-// 🔴 HER TEKERLEK KARESI EN AZ 260 ms — DARBEDEN UZUN OLMAK ZORUNDA.
+// 🔴 HER TEKERLEK KARESI EN AZ 300 ms — DARBEDEN UZUN OLMAK ZORUNDA.
 //
 // Her tekerlek karesi DURURKEN basliyor, yani MOTOR_KALKIS_DUTY (%85)
 // devreye giriyor ve MOTOR_KALKIS_MS (180 ms) boyunca suruyor (tepeye
-// 100 ms'de cikiyor). Darbe bitince rampa hedefe iniyor: %85'ten
-// tablodaki degere (tavan %70'te ~%42) inis MOTOR_INIS_ADIM ile 4 tik,
-// yani ~80 ms. Demek ki bir karenin ILK 260 ms'si darbe ve inistir;
-// tablodaki sayi ancak ondan SONRA motora gidiyor.
+// 100 ms'de cikiyor). Darbe bitince rampa %85'ten tablodaki degere
+// iniyor; inis MOTOR_INIS_ADIM (15/tik, 20 ms) ile:
 //
-// 12.09.2026'ya kadar kareler 120-220 ms'ydi, yani HICBIR kare o 260
-// ms'yi gormuyordu: tabloda 50 yazsa da motor kare boyunca ~%85'te
-// doniyordu ve tablodaki sayinin hicbir etkisi yoktu.
+//   teker 60, tavan %100 -> hedef %60   2 tik    40 ms
+//   teker 60, tavan  %70 -> hedef %42   3 tik    60 ms
+//   teker 60, tavan  %40 -> hedef %24   5 tik   100 ms
+//
+// Yani bir karenin ILK 220-280 ms'si darbe ve inistir — ust ucu
+// ebeveyn hiz kaydiricisini en dibe cektiginde goruluyor. Tablodaki
+// sayi ancak ondan SONRA motora gidiyor. Kural 300 ms, cunku en kotu
+// hal 280 ve arada pay kalmali.
+//
+// 12.09.2026'ya kadar kareler 120-220 ms'ydi, yani HICBIR kare o esigi
+// gormuyordu: tabloda 50 yazsa da motor kare boyunca ~%85'te doniyordu
+// ve tablodaki sayinin hicbir etkisi yoktu.
 //
 // ⚠️ BEDELI GORULEBILIR BIR BELIRTIYDI. Kullanicinin ikinci
 // (powerbank'li) gövdesinde "dans et" ve OZELLIKLE "kikirda" Pati'yi
@@ -401,8 +408,8 @@ inline constexpr int JEST_DONUS_EN_COK = 60;
 //     yani sarsinti sayisi yariya iniyor.
 //
 // 🔴 SAYIYI DEGIL KAREYI AYARLA. Bir jest az donuyorsa cozum
-// `teker` degerini buyutmek degil, `bekle_ms`'i uzatmaktir — ilk 260 ms
-// zaten darbeye ait ve orada tablodaki sayinin hukmu yok.
+// `teker` degerini buyutmek degil, `bekle_ms`'i uzatmaktir — ilk
+// 220-280 ms zaten darbeye ait ve orada tablodaki sayinin hukmu yok.
 //
 // Dusme riski degismiyor: darbe de iki tekerlege ters isaretle gidiyor,
 // yer degistirme yapisal olarak yine sifir. AA hattindaki akim tepesi
@@ -477,8 +484,8 @@ inline constexpr Kare JEST_DUSUN[]   = {{50, 0, 0, 420}, {0, 0, 0, 0}};
 // Sevinc: saga don, dur, sola don, dur, iki kol yukari.
 // Eski `sevinc` donusunun yerine geciyor — ayni fikir, artik jest.
 //
-// Kareler 200 -> 340 ms: 260 ms kuralinin ustunde, yani donusun son
-// ~80 ms'si tablodaki hizda gecıyor ve savrulma degil DONUS gorunuyor.
+// Kareler 200 -> 340 ms: 300 ms kuralinin ustunde, yani donusun son
+// bolumu tablodaki hizda geciyor ve savrulma degil DONUS gorunuyor.
 inline constexpr Kare JEST_SEVIN[] = {
     {-1, -1,  60, 340}, {-1, -1, 0, 70},
     {-1, -1, -60, 340}, {-1, -1, 0, 70},

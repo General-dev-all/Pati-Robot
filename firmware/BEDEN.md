@@ -269,7 +269,7 @@ karesinin tek bir `teker` alanı var, dolayısıyla ileri giden bir jest
 Ayrıca bir jestin toplam tekerlek süresi **900 ms**'yi aşamıyor.
 
 🔴 **Dördüncü bir kural 12.09.2026'da eklendi: her tekerlek karesi en az
-260 ms.** Gerekçesi ve ölçümü aşağıda ("İleri kayma").
+300 ms.** Gerekçesi ve ölçümü aşağıda ("İleri kayma").
 
 | Jest | Tekerlek | Kalkış | Ne anlatıyor |
 |---|---|---|---|
@@ -1077,11 +1077,21 @@ muhtemelen destek noktası değiştiği için eski gövdede görünmüyordu.
 
 Her tekerlek karesi motor DURURKEN başlıyor, yani her kare bir **kalkış
 darbesi** (%85, 180 ms) demek. Darbe bitince rampa tablodaki değere
-iniyor (~80 ms). Yani bir karenin **ilk 260 ms'si** darbe ve iniştir.
+iniyor — `MOTOR_INIS_ADIM` 15/tik ve tik 20 ms:
 
-Eski kareler 120–220 ms'ydi: **hiçbiri o 260 ms'yi görmüyordu.** Robot
-daha dönmeye başlamadan kare bitiyor, geriye yalnızca darbenin
-sarsıntısı kalıyor — ve jest başına dört kare, dört sarsıntı.
+| `teker` | hız tavanı | hedef | iniş |
+|---|---|---|---|
+| 60 | %100 | %60 | 40 ms |
+| 60 | %70 (varsayılan) | %42 | 60 ms |
+| 60 | %40 (en düşük) | %24 | 100 ms |
+
+Yani bir karenin **ilk 220–280 ms'si** darbe ve iniştir; üst uç,
+ebeveyn hız kaydırıcısını en dibe çektiğinde görülüyor. Kural **300 ms**
+çünkü en kötü hâl 280 ve arada pay kalmalı.
+
+Eski kareler 120–220 ms'ydi: **hiçbiri o eşiği görmüyordu.** Robot daha
+dönmeye başlamadan kare bitiyor, geriye yalnızca darbenin sarsıntısı
+kalıyor — ve jest başına dört kare, dört sarsıntı.
 
 Bu, kullanıcının *"özellikle kıkırdada"* gözlemiyle birebir uyuşuyor:
 `titre`'nin kareleri 120 ms ile tablonun **en kısası**ydı, yani dönüş
@@ -1089,9 +1099,11 @@ oranı en düşük, sarsıntı oranı en yüksek jest oydu.
 
 ### Yapılan
 
-1. **Her tekerlek karesi ≥ 260 ms** (fiilen 320–360 ms). Karenin son
+1. **Her tekerlek karesi ≥ 300 ms** (fiilen 320–360 ms). Karenin son
    bölümünde artık gerçek dönüş var, üstelik tablodaki sayı ilk kez
-   motora ulaşıyor.
+   motora ulaşıyor. ⚠️ `hayir`'in 200–240 ms'lik kareleri bu kuralın
+   altında kalıyor — bilerek, çünkü orada salınım sayısı anlamın
+   kendisi.
 2. **Jest başına kalkış 4 → 2** (`hayir` hariç). Toplam dönüş süresi
    neredeyse aynı kaldı, sarsıntı sayısı yarıya indi.
 3. Boşalan görünürlük bütçesi **sıklığa** gitti (9 sn / 1/2), ama
