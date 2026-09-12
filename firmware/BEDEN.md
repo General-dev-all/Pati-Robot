@@ -1067,6 +1067,31 @@ kapatma ve o yol zaten kapalı. Yapılacaksa dikkat — uyanışta
 
 ---
 
+## ✅ İleri kayma — ÇÖZÜLDÜ (13.09.2026, mekanik)
+
+**Kullanıcı ön tekerlekleri dönebilen (caster / "sarhoş") tekerlekle
+değiştirdi ve kayma bitti.**
+
+🔴 **Bu aynı zamanda teşhisin doğrulanması.** Sebep aşağıda fotoğraftan
+çıkarılmıştı: sabit akslı ön tekerlekler gövdeyi bir rayın üstüne
+koyuyor — ileri-geri serbest, dönmeye karşı katı — ve dönüşe
+çevrilemeyen kuvvet direnç görmediği tek eksene kaçıyor. Dönebilen bir
+tekerlek o rayı ortadan kaldırıyor.
+
+⚠️ **Yazılımın yapamayacağı şey gerçekten yapılamazdı** ve bu bölümün
+asıl değeri orada: üç sürüm boyunca jest tablosu küçültülüp büyütüldü,
+hiçbiri kaymayı değiştirmedi. Doğru teşhis mekaniğe yol gösterdi;
+yazılımda aranmaya devam edilse hâlâ açık olurdu.
+
+**Sonucu:** tekerlek jestlerinin sıklığı 3.5.25'te rahatça artırıldı
+(`TEKER_KALKIS_ARA_US`). Boşluk yine de sıfırlanmadı — Pati'de uçurum
+sensörü yok ve sürekli kıpırdayan bir robot huzursuz görünüyor.
+
+Aşağıdaki bölüm teşhisin nasıl yapıldığını tutuyor; benzer bir belirti
+çıkarsa yöntem hâlâ geçerli.
+
+---
+
 ## 🔴 İleri kayma — "dans et" ve özellikle "kıkırda" (12.09.2026)
 
 Kullanıcının şikâyeti: *"eski patide yoktu ama bu pati örneğin dans et
@@ -1204,12 +1229,14 @@ dönmeye daha çok direniyor ve artan kuvvet ileri eksene kaçıyor.
 Üçüncüsü en ayırt edici olanı, çünkü yalnızca tek bir değişkeni
 değiştiriyor.
 
-#### Mekanik çözüm
+#### ✅ Mekanik çözüm — UYGULANDI VE İŞE YARADI
 
 Serbest tekerleklerin yerine **dönebilen** bir destek: küçük bir
 bilyeli caster, mobilya kaydırıcısı ya da yuvarlak pürüzsüz bir ayak.
 Dönemeyen bir tekerlek yerinde dönüşe katılamaz — ne kadar iyi
 yapılmış olursa olsun.
+
+**13.09.2026: kullanıcı bunu yaptı ("sarhoş teker") ve kayma bitti.**
 
 #### 🔴 Yazılım önce YANLIŞ değişkeni büyüttü — 3.5.19
 

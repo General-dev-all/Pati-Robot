@@ -584,10 +584,19 @@ süresi neredeyse aynı, sarsıntı yarısı. ⚠️ **Bir jest az dönüyorsa
 çözüm `teker` değerini büyütmek değil, `bekle_ms`'i uzatmaktır** — ilk
 220–280 ms zaten darbeye ait.
 
-⚠️ Kaymayı **sıfırlamak** yazılımın elinde değil: bunun için dönüşe
-geri hareket karıştırmak, yani `sol + sag != 0` gerekirdi. O eşitlik
-Pati'nin masadan düşmemesinin tek yapısal garantisi. Hipotezin nasıl
-ölçüleceği `BEDEN.md` · "İleri kayma".
+✅ **Kayma 13.09.2026'da ÇÖZÜLDÜ ve sebebi yazılım değildi.** İkinci
+gövdede dört tekerlek vardı ve öndeki ikisi **sabit akslı**; sabit bir
+tekerlek kendi ekseninde dirençsiz yuvarlanıp yana kaymaya direniyor,
+yani gövdeyi bir rayın üstüne koyuyor. Dönüşe çevrilemeyen kuvvet
+direnç görmediği tek eksene — ileri — kaçıyordu. Kullanıcı ön
+tekerlekleri **dönebilen (caster)** tekerlekle değiştirdi, kayma bitti.
+
+🔴 **Ders: üç sürüm boyunca jest tablosu küçültülüp büyütüldü ve
+hiçbiri kaymayı değiştirmedi.** Kaymayı *sıfırlamak* zaten yazılımın
+elinde değildi — bunun için `sol + sag != 0` gerekirdi ve o eşitlik
+Pati'nin masadan düşmemesinin tek yapısal garantisi. Doğru teşhis
+mekaniğe yol gösterdi; yazılımda aranmaya devam edilseydi iş hâlâ açık
+olurdu. Ayrıntı ve yöntem: `BEDEN.md` · "İleri kayma".
 
 🔴 **Ölü adam zamanlayıcısı pazarlıksız.** Komut gelmeden 600 ms geçerse
 motorlar duruyor. Panel dokunma sürerken 150 ms'de bir gönderiyor.

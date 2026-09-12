@@ -789,6 +789,30 @@ inline constexpr Jest JESTLER[] = {
 };
 inline constexpr int JEST_ADET = sizeof(JESTLER) / sizeof(JESTLER[0]);
 
+// 🔴 BIR JESTIN KAC KALKIS ICERDIGI — SURUNMENIN OLCUSU.
+//
+// Tekerlek surunmesi her KALKIS DARBESINDE olusuyor, donusun kendisinde
+// degil. Yani iki jesti kiyaslarken dogru sayi "kac saniye dondu" degil,
+// "kac kere durup yeniden kalkti".
+//
+// Tablodaki fark buyuk: yaramaz 2 kalkis, dans 4. Ikisine ayni bosluk
+// vermek, ucuz olani gereksiz yere cezalandirmak demekti.
+//
+// Kalkis = motor DURURKEN donmeye baslamak. Ust uste iki donus karesi
+// (arada sifir karesi olmadan) tek kalkistir — su anki tabloda boyle
+// bir cift yok ama kural gelecekteki bir tablo icin de dogru olmali.
+inline int jest_kalkis_sayisi(const Jest& g)
+{
+    int n = 0;
+    bool duruyordu = true;
+    for (int i = 0; i < g.adet; ++i) {
+        const bool donuyor = (g.kare[i].teker != 0);
+        if (donuyor && duruyordu) ++n;
+        duruyordu = !donuyor;
+    }
+    return n;
+}
+
 // std::strcmp derleme zamaninda kullanilamiyor; jest numaralari ise
 // sabit olmali (pati_beden.cpp "selam"i numarayla istiyor). Elle
 // yazilan bir numara, tabloya bir satir eklenince sessizce baska bir

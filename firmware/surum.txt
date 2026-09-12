@@ -1,2 +1,2 @@
-3.5.24
-Pati cok daha canli. Kollari artik tek hizda degil: bazi hareketler firlar gibi hizli, bazilari cekinir gibi yavas. Ayni kol hareketi hizli yapilinca sasirmis, yavas yapilinca utanmis gorunuyor. Dort yeni hareket geldi: Evet de, Sasir, Utan ve Yaramazlik. Bir de Pati artik BEDENINI YUZUNE UYDURUYOR;
+3.5.25
+Pati konusurken tekerleklerini artik daha sik kullaniyor, kabaca yuzde kirk uc. Bunu yapabilmemizin sebebi yeni govdedeki ileri kayma sorununun cozulmus olmasi. Ayrica hareketler artik kendi maliyetini oduyor: kisa bir hareketten sonra Pati daha cabuk, uzun bir danstan sonra daha gec kipirdaniyor. Eskiden ikisi de ayni suredir bekliyordu. Pati yine yalnizca oldugu yerde doner, kendi karariyla asla ilerlemez.

@@ -607,8 +607,19 @@ void jest_tablosu()
         }
         kontrol((g.ruh & ~RUH_HEPSI) == 0, "ruh kumesinde tanimsiz bit var");
 
-        std::printf("    %-14s %2d kare · teker %3d ms · net donus %d%s\n",
-                    g.ad, g.adet, teker_ms, net_donus,
+        // \U0001f534 KALKIS SAYISI — surunmenin olcusu ve artik tekerlek
+        // boslugunu belirleyen sayi (pati_beden.cpp). Elle sayilan bir
+        // sey degil, tablodan cikiyor; yanlis sayarsa bir jest hak
+        // ettiginden sik ya da seyrek oynar ve sebebi gorunmez olur.
+        const int kalkis = jest_kalkis_sayisi(g);
+        kontrol(kalkis == 0 || g.teker_var,
+                "tekerleksiz jestte kalkis sayiliyor");
+        kontrol(!g.teker_var || kalkis > 0,
+                "tekerlekli jestte hic kalkis yok");
+
+        std::printf("    %-14s %2d kare · teker %4d ms · %d kalkis · "
+                    "net donus %d%s\n",
+                    g.ad, g.adet, teker_ms, kalkis, net_donus,
                     g.teker_var ? "  [tekerlekli]" : "");
     }
 
