@@ -428,7 +428,13 @@ void ses_hattini_dene()
         }
     }
 
-    ESP_LOGI(ETIKET, "ses seviyesi baslangic: %.0f%%",
+    // ⚠️ BU SATIR AYARLAR OKUNMADAN ONCE KOSUYOR, yani derleme
+    // varsayilanini yaziyor — ebeveynin sectigi degeri DEGIL. Adi
+    // acikca "varsayilan": eskiden "baslangic" yaziyordu ve kayitli
+    // seviye gibi okunuyordu. Gercek deger ayar_baslat()'in ozet
+    // satirinda (pati_ayar.cpp).
+    ESP_LOGI(ETIKET, "ses seviyesi varsayilani: %.0f%% (kayitli deger "
+                     "ayar_baslat sonrasi)",
              static_cast<double>(pati::ses_seviyesi()) * 100.0);
 }
 

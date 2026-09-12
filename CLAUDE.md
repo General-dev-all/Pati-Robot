@@ -533,15 +533,32 @@ Kullanıcının gerekçesi: *"tekrar ayarlanması unutulursa bir yerlere
 kablolandığını anlatan ölçüm.** Kaybolursa kol bir yere çarpar ya da
 çocuk çubuğu ileri itip Pati'yi geri sürer.
 
-⚠️ **`beden_hiz` (hız sınırı) bilinçli bir istisna** — 13.09.2026,
-kullanıcının açık isteği. O bir donanım ölçümü değil, ebeveynin
-tercihi. Bedeli tek yönlü ve panelde yazıyor: fabrika sıfırlaması artık
-hız sınırını varsayılana (70, panelde %50) **döndürmüyor.**
+⚠️ **Üç bilinçli istisna: `beden_hiz`, ses seviyesi, ekran
+parlaklığı** — hepsi 13.09.2026, kullanıcının açık isteğiyle. Bunlar
+donanım ölçümü değil, **ebeveynin tercihi**; yukarıdaki kuralın
+dışındalar. Bedel tek yönlü ve panelde yazıyor: fabrika sıfırlaması
+artık bu üçünü varsayılana **döndürmüyor**, yani robot başka bir
+çocuğa verilirken panelden elle bakılmalı.
 
-**⚠️ Onun dışında oraya keyfî ayar konmaz** — kaybolması donanıma zarar
-veren ya da gövdenin kablolamasını anlatan sayılar. Normal ayarlar
-sıfırlanabiliyor ve sıfırlamanın bir anlamı kalmalı
-(`pati_anahtar.hpp` · `kalici_sayi_oku`).
+🔴 **Sınır burada ve kayması kolay.** O bölüm *"kaybolması pahalıya
+patlayan sayılar"* için; *"kullanıcının sevdiği sayılar"* için değil.
+Yeni bir ayarı oraya koymadan önce sorulacak soru hep aynı —
+**kaybolursa ne olur?** Cevap "ebeveyn tekrar ayarlar" ise oraya ait
+değildir. Üç istisna zaten listeyi yediye çıkardı; dördüncüsünde
+"fabrika ayarlarına dön" düğmesinin ne anlama geldiğini kimse
+söyleyemez (`pati_anahtar.hpp` · `kalici_sayi_oku`).
+
+🔴 **Ses seviyesi aslında hiç saklanmıyordu** ve bu, şikâyetten daha
+büyük bir kusurdu. Kullanıcı "fabrika ayarlarına dönünce kayboluyor"
+dedi; bakıldığında değer yalnızca RAM'deydi (`pati_ses.cpp` ·
+`g_seviye`) ve **her açılışta tavana** dönüyordu. Sıfırlamaya gerek
+yoktu, fişi çekmek yetiyordu.
+
+⚠️ **Fark edilmemesinin sebebi de öğretici:** Pati brownout'tan zaten
+kendiliğinden yeniden başlıyor (`PIL.md`), yani ayar "bazen"
+kayboluyordu. Aralıklı bir belirti, bir hatayı **yok değil rastgele**
+gösteriyor — bu depoda ikinci kez (`memory` · aralıklı arızada tek
+ölçüm elemez).
 
 🔴 **İkinci gövdede joystick'in ileri/geri yönü de ters.** Çubuğu ileri
 itince Pati geri gidiyor — **ama sağa-sola dönüş doğru.** O ayrıntı

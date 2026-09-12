@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cmath>     // std::abs(float) — seviye karsilastirmasi
 #include <cstdio>
 #include <cstring>
 #include <utility>
@@ -118,6 +119,24 @@ const char* const KOL_AD_TERS = "kol_ters";
 const char* const AD_SURUS_TERS = "surus_ters";
 const char* const AD_DONUS_TERS = "donus_ters";
 const char* const AD_BEDEN_HIZ  = "beden_hiz";
+
+// 🔴 SES SEVIYESI VE PARLAKLIK DA KALICI BOLUMDE — 13.09.2026,
+// kullanicinin acik istegi: "fabrika ayarlarina don'e bassam da
+// yaptigim ayar kalsin."
+//
+// ⚠️ IKISI DE `beden_hiz` ILE AYNI SINIFTAN: donanim olcumu DEGIL,
+// ebeveynin tercihi. Yani "yalnizca kaybolmasi donanima zarar veren
+// sayilar" kuralinin disindalar ve kurali bir kez daha deliyorlar.
+// Bedeli tek yonlu ve panelde yazili: fabrika sifirlamasi artik sesi
+// ve parlakligi varsayilana DONDURMUYOR.
+//
+// 🔴 Sinir su: bu bolum "kaybolmasi pahaliya patlayan sayilar"
+// icin, "kullanicinin sevdigi sayilar" icin DEGIL. Buraya yeni bir
+// ayar koymadan once sorulacak soru hala ayni — kaybolursa ne olur?
+// Cevap "ebeveyn tekrar ayarlar" ise oraya ait degildir; yoksa
+// sifirlamanin hicbir anlami kalmaz.
+const char* const AD_SES_SEVIYE = "ses_seviye";   // BINDE (0.65 -> 650)
+const char* const AD_PARLAKLIK  = "parlaklik";
 bool g_surus_ters = false;
 bool g_donus_ters = false;
 
@@ -194,9 +213,14 @@ esp_err_t ayar_baslat()
         g_hiz = std::clamp(static_cast<float>(v) / 100.0f,
                            HIZ_EN_AZ, HIZ_EN_FAZLA);
     }
+    // ⚠️ PARLAKLIK ARTIK BURAYA YAZILMIYOR, yalnizca ESKI kayitlar
+    // icin okunuyor. Asil yeri kalici bolum (asagida); bu satirlar
+    // 3.5.30 ve oncesinden gelen cihazlarin ayarini tasimak icin var.
+    bool parlaklik_eski_kayit = false;
     if (nvs_get_i32(h, "parlaklik", &v) == ESP_OK) {
         g_parlaklik = std::clamp(static_cast<int>(v), PARLAKLIK_EN_AZ,
                                  PARLAKLIK_EN_FAZLA);
+        parlaklik_eski_kayit = true;
     }
     if (nvs_get_i32(h, "uyku_dk", &v) == ESP_OK) {
         g_uyku_dk = std::clamp(static_cast<int>(v), UYKU_EN_AZ, UYKU_EN_FAZLA);
@@ -244,14 +268,55 @@ esp_err_t ayar_baslat()
         if (kalici_sayi_oku(AD_BEDEN_HIZ, t)) {
             g_beden_hiz = std::clamp(t, BEDEN_HIZ_EN_AZ, BEDEN_HIZ_EN_FAZLA);
         }
+
+        // 🔴 SES SEVIYESI. Burada yalnizca okunmuyor, UYGULANIYOR
+        // da: seviyenin saklandigi yer zaten ses katmanindaki global
+        // (pati_ses.cpp · g_seviye), ayri bir uygulama adimi yok.
+        //
+        // ⚠️ Donanim sirasi onemsiz: ses_seviyesi_ayarla() yalnizca
+        // bir float kirpip yaziyor, I2S'e ya da kodege dokunmuyor.
+        // Kirpma da orada — flash'tan bozuk bir sayi gelse bile
+        // sinirin disina cikamiyor.
+        if (kalici_sayi_oku(AD_SES_SEVIYE, t)) {
+            ses_seviyesi_ayarla(static_cast<float>(t) / 1000.0f);
+        }
+
+        // 🔴 PARLAKLIK — ve ESKI KAYITTAN GECIS.
+        //
+        // 3.5.30'a kadar normal NVS'teydi, yani ayar_sifirla() onu
+        // goturuyordu. Guncellemeden sonra ebeveynin sectigi deger
+        // sessizce %25'e donseydi, tam da duzeltmeye calistigimiz sey
+        // kullaniciya bir kez daha yasanirdi.
+        //
+        // Eski kayit bir kez tasiniyor ve KAYNAGINDAN SILINIYOR:
+        // degerin iki evi olursa hangisinin gecerli oldugu ileride
+        // kimse icin belli olmaz.
+        if (kalici_sayi_oku(AD_PARLAKLIK, t)) {
+            g_parlaklik = std::clamp(t, PARLAKLIK_EN_AZ, PARLAKLIK_EN_FAZLA);
+        } else if (parlaklik_eski_kayit) {
+            kalici_sayi_yaz(AD_PARLAKLIK, g_parlaklik);
+            const nvs_handle_t hy = ac(NVS_READWRITE);
+            if (hy != 0) {
+                nvs_erase_key(hy, "parlaklik");
+                nvs_commit(hy);
+                nvs_close(hy);
+            }
+            ESP_LOGI(ETIKET, "parlaklik kalici bolume tasindi: %%%d",
+                     g_parlaklik);
+        }
     }
     nvs_close(h);
 
-    ESP_LOGI(ETIKET, "ses=%s hiz=%.2f uyku=%d dk soz_kesme=%d vad=%d yuz=%d "
-                     "beden_hiz=%d tekerlek=%d kol=%d",
-             g_ses_adi.c_str(), g_hiz, g_uyku_dk, g_soz_kesme ? 1 : 0,
-             g_vad_ms, g_yuz ? 1 : 0, g_beden_hiz, g_tekerlek_kip,
-             g_kol_kip);
+    // ⚠️ SEVIYE VE PARLAKLIK DA BU SATIRDA. app_main daha once
+    // "ses seviyesi baslangic" diye bir satir basiyor ama o, ayarlar
+    // OKUNMADAN once kosuyor — yani derleme varsayilanini yaziyor.
+    // Ebeveynin sectigi degeri gosteren tek satir bu.
+    ESP_LOGI(ETIKET, "ses=%s seviye=%.2f hiz=%.2f uyku=%d dk soz_kesme=%d "
+                     "vad=%d yuz=%d parlaklik=%d beden_hiz=%d tekerlek=%d "
+                     "kol=%d",
+             g_ses_adi.c_str(), static_cast<double>(ses_seviyesi()), g_hiz,
+             g_uyku_dk, g_soz_kesme ? 1 : 0, g_vad_ms, g_yuz ? 1 : 0,
+             g_parlaklik, g_beden_hiz, g_tekerlek_kip, g_kol_kip);
     return ESP_OK;
 }
 
@@ -356,10 +421,28 @@ void ayar_hiz_yaz(float hiz)
     ESP_LOGI(ETIKET, "tizlik: %.2fx (tur sonunda gecerli)", y);
 }
 
+void ayar_ses_seviye_yaz(float seviye)
+{
+    const float onceki = ses_seviyesi();
+    const float y = ses_seviyesi_ayarla(seviye);   // sinirlar ses katmaninda
+
+    // ⚠️ DEGISMEDIYSE YAZMIYORUZ. Panel kaydiriciyi surukleme
+    // boyunca gonderiyor (250 ms geciktirmeli — pati.js ·
+    // gonderSeviye) ve ayni degeri birden cok kez gonderebiliyor;
+    // her birini flash'a yazmak bedava degil. Esik yarim adim:
+    // kaydiricinin adimi 0.05.
+    if (std::abs(y - onceki) < 0.025f) return;
+
+    kalici_sayi_yaz(AD_SES_SEVIYE, static_cast<int>(y * 1000.0f + 0.5f));
+    ESP_LOGI(ETIKET, "ses seviyesi: %.2f", static_cast<double>(y));
+}
+
 void ayar_parlaklik_yaz(int yuzde)
 {
     g_parlaklik = std::clamp(yuzde, PARLAKLIK_EN_AZ, PARLAKLIK_EN_FAZLA);
-    i32_yaz("parlaklik", g_parlaklik);
+    // ⚠️ KALICI bolume — fabrika sifirlamasi bunu artik silmiyor.
+    // Gerekcesi ve bedeli AD_PARLAKLIK'in taniminda yazili.
+    kalici_sayi_yaz(AD_PARLAKLIK, g_parlaklik);
     // HEMEN uygula: yalnizca kaydetmek, ebeveynin kaydirdigi cubugun
     // hicbir sey yapmamasi demek olurdu — ki bu isin tamami zaten
     // "degisiyor mu, degismiyor mu" sorusundan cikti.
@@ -455,8 +538,11 @@ void ayar_sifirla()
 {
     const nvs_handle_t h = ac(NVS_READWRITE);
     if (h != 0) {
+        // 🔴 "parlaklik" BU LISTEDE YOK ve olmamali: artik kalici
+        // bolumde duruyor (AD_PARLAKLIK). Adini burada birakmak,
+        // silinmeyen bir seyin silindigini dusundururdu — eski kayit
+        // zaten acilistaki gecis sirasinda temizleniyor.
         for (const char* a : {"ses_adi", "hiz_yuz", "uyku_dk", "soz_kesme",
-                              "parlaklik",
 
                               "vad_ms", "yuz", "tekerlek",
                               "kol", "hareket", "sevinc"}) {
@@ -473,7 +559,9 @@ void ayar_sifirla()
     // Iki bagimsiz koruma var ve ikisi de bilincli: yukaridaki dongu
     // adi sayilan anahtarlari siliyor (kol_ters orada YOK), ve o
     // anahtarlar zaten baska bir flash bolumunde duruyor.
-    ESP_LOGW(ETIKET, "ayarlar sifirlandi (kol araliklari ve yonu korundu)");
+    ESP_LOGW(ETIKET, "ayarlar sifirlandi (kol araliklari ve yonu, surus "
+                     "yonu, hiz siniri, ses seviyesi ve parlaklik "
+                     "korundu)");
 }
 
 bool ayar_yenileme_gerekli() { return g_yenileme.load(); }

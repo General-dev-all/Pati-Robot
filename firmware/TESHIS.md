@@ -9,6 +9,84 @@ teşhis yapıldı. Yanlış teşhisler de yazılı: aynı tuzağa tekrar düşü
 
 ---
 
+
+## 🔴 13.09.2026 — "ayarım kayboluyor": ses seviyesi hiç saklanmıyordu
+
+**Belirti (kullanıcının sözü):** *"Ses seviyesi ve parlaklık ayarını
+yaptıktan sonra fabrika ayarlarına dön deyince o yaptığım ayarlar
+varsayılan değere dönüyor."*
+
+**Parlaklık için doğruydu**, ses için **eksikti ve gerçek durum daha
+kötüydü**: ses seviyesinin NVS'te hiçbir anahtarı yoktu. Panel değeri
+gönderiyor, `ses_seviyesi_ayarla()` onu bir global'e yazıyor ve orada
+bitiyordu. Her açılışta `SES_SEVIYESI_BASLANGIC`'a (0.70 = panelde
+%100) dönüyordu.
+
+### Neden aylarca görülmedi
+
+Belirti **fabrika sıfırlamasına bağlı görünüyordu ama değildi** — her
+yeniden başlatmada oluyordu. Pati ise brownout yüzünden zaten
+kendiliğinden yeniden başlıyor (`PIL.md`). Yani ayar rastgele
+aralıklarla kayboluyordu ve "bazen" olan bir şey, sebebi olmayan bir
+şey gibi okunuyor.
+
+⚠️ **Aranan yer de yanlıştı:** "hangi kod ayarı siliyor" diye
+bakılsaydı hiçbir şey bulunamazdı. Doğru soru **"bu değeri kim
+yazıyor"** idi ve cevabı *hiç kimse*ydi. Bir değerin kaybolduğunu
+görünce önce **saklandığını doğrula**; silen kodu aramak, var
+olduğunu varsaymak demek.
+
+### Doğrulama yolu
+
+Seri logda `ayar_baslat` özet satırı artık `seviye=` ve `parlaklik=`
+de yazıyor. Panelden bir değer seçip cihazı yeniden başlatın: o satır
+seçtiğiniz değeri göstermiyorsa yazma yolu kopmuştur.
+
+⚠️ `app_main`'in bastığı **"ses seviyesi varsayilani"** satırı
+ayarlar okunmadan önce koşuyor — derleme varsayılanını yazıyor, kayıtlı
+değeri değil. O satıra bakıp "ayar kaydedilmemiş" demek yanlış olur.
+
+### Çözüm
+
+İkisi de `anahtar` bölümüne taşındı (`pati_ayar.cpp` · `AD_SES_SEVIYE`,
+`AD_PARLAKLIK`). Parlaklığın eski normal-NVS kaydı açılışta bir kez
+taşınıp **kaynağından siliniyor**: bir değerin iki evi olursa
+hangisinin geçerli olduğu ileride kimse için belli olmaz.
+
+---
+
+## 🔴 13.09.2026 — telefonda düğmeler tıklanmıyordu: çift dokunuşla zoom
+
+**Belirti (kullanıcının sözü):** *"Sol kol sağ kol artırma azaltma
+butonu, Selam ver, Alkışla, Zıpla gibi butonlar dokunmatik ekranda
+tıklanmıyor; zoom in oluyor, zoom out yapınca tekrar tıklanabilir
+oluyor. Joystick'te sorun yok."*
+
+**Sebep:** `touch-action` belirtilmemiş bir ögede mobil tarayıcı **çift
+dokunuşla zoom**'u açık tutuyor; her dokunuşu ~300 ms bekletip ikinci
+dokunuşu kolluyor ve o pencerede gelen ikinci basış tıklama değil
+**yakınlaştırma** üretiyor.
+
+🔴 **Teşhisin kanıtı şikâyetin içindeydi:** joystick çalışıyordu ve
+`touch-action` tanımlayan **tek** öge oydu (`.joystick`, `none`). Soru
+"hangi ögede sorun var" değil **"hangi ögede bu satır yok"** diye
+sorulunca tek sebebe iniyor.
+
+**İkinci, besleyici sebep:** jest düğmeleri (`.ince`, ~26 px yüksek)
+aynı sayfadaki kol düğmeleri için yazılmış *"52 px, telefonlarda rahat
+isabet eden en küçük ölçü"* kuralının yarısındaydı. Isabetsiz dokunuş
+ikinci denemeyi, ikinci deneme de zoom'u davet ediyordu.
+
+**Çözüm:** kontrollere `touch-action: manipulation` (kaydırma ve
+parmakla büyütme kalıyor, yalnızca çift dokunuşla zoom gidiyor) ve
+`@media (pointer: coarse)` altında jest düğmelerine 42 px taban
+yükseklik.
+
+⚠️ **`user-scalable=no` YAZILMADI ve yazılmamalı.** Sorun büyütmek
+değil, büyütmenin dokunmayı çalmasıydı; büyütmeyi kapatmak paneldeki
+küçük açıklama yazılarını okuyamayan bir ebeveyni cezalandırırdı.
+
+
 ## Önce: nereden bakılır
 
 İki pencere var ve **ikisi de gerekli.**

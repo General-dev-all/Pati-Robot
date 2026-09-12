@@ -109,6 +109,23 @@ void ayar_ses_adi_yaz(const std::string& ad);
 void ayar_hiz_yaz(float hiz);
 void ayar_uyku_yaz(int dakika);
 void ayar_parlaklik_yaz(int yuzde);
+
+// 🔴 SES SEVIYESI — ARTIK KALICI. 13.09.2026'ya kadar HIC
+// SAKLANMIYORDU.
+//
+// Kullanicinin sikayeti "fabrika ayarlarina donunce ses ayarim
+// kayboluyor"du; bakildiginda durum daha kotu cikti: seviye yalnizca
+// RAM'de duruyordu (pati_ses.cpp · g_seviye) ve HER ACILISTA
+// SES_SEVIYESI_BASLANGIC'a, yani tavana donuyordu. Fabrika sifirlamasi
+// gerekmiyordu — fisi cekmek yetiyordu.
+//
+// ⚠️ Bunun neden fark edilmedigi de anlamli: Pati brownout'tan zaten
+// kendi kendine yeniden basliyor (PIL.md), yani ayar "bazen"
+// kayboluyordu ve sebebi rastgele gorunuyordu.
+//
+// Deger BINDE olarak saklaniyor (0.65 -> 650): NVS'te float yok.
+// Sinirlar ses katmaninda kaliyor, burada tekrarlanmiyor.
+void ayar_ses_seviye_yaz(float seviye);
 void ayar_soz_kesme_yaz(bool acik);
 void ayar_vad_yaz(int ms);
 void ayar_yuz_yaz(bool acik);

@@ -419,7 +419,12 @@ esp_err_t ayar_isle(httpd_req_t* r)
 
     if (alan == "seviye") {
         // Sinirlar ses katmaninda; panel gonderse bile disina cikmiyor.
-        ses_seviyesi_ayarla(static_cast<float>(json_sayi(k, "deger", 0.85)));
+        //
+        // 🔴 ses_seviyesi_ayarla() DEGIL: o yalnizca RAM'e yaziyor
+        // ve 3.5.30'a kadar buradaki cagri oydu — ebeveynin sectigi
+        // seviye her acilista kayboluyordu. ayar_ses_seviye_yaz()
+        // hem uyguluyor hem kalici bolume yaziyor.
+        ayar_ses_seviye_yaz(static_cast<float>(json_sayi(k, "deger", 0.85)));
     } else if (alan == "hiz") {
         ayar_hiz_yaz(static_cast<float>(json_sayi(k, "deger", 1.30)));
         // HEMEN uygula. Ayari yalnizca kaydetmek, ebeveynin kaydirdigi

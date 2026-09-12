@@ -242,6 +242,39 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 button:active { transform: scale(.985); }
+
+/* 🔴 TELEFONDA DUGMELER TIKLANMIYORDU — SEBEP CIFT DOKUNUSLA ZOOM.
+ *
+ * Kullanicinin bildirdigi belirti (13.09.2026): telefondan panele
+ * girince jest dugmeleri ("Selam ver", "Zipla", "Sasir"...) ve kol
+ * ok dugmeleri tiklanmiyor; ekran onun yerine yakinlasiyor, uzaklasinca
+ * yine calisiyor.
+ *
+ * Sebep tarayicinin varsayilani: `touch-action` belirtilmemis bir ogede
+ * mobil tarayici CIFT DOKUNUSLA ZOOM'u acik tutuyor. Yani her dokunusu
+ * ~300 ms bekletiyor ("ikinci dokunus gelecek mi?") ve o pencerede ikinci
+ * kez basilirsa tiklama degil YAKINLASMA uretiyor. Ust uste jest
+ * denemek tam da bu — bir cocugun (ya da sabirsiz bir parmagin) yapacagi
+ * ilk sey.
+ *
+ * 🔴 TESHISIN KANITI SAYFANIN KENDISINDE DURUYORDU: joystick
+ * calisiyordu ve `touch-action` tanimlayan TEK oge oydu (.joystick,
+ * `none`). Yani soru "hangi ogede sorun var" degil, "hangi ogede bu
+ * satir yok" olunca tek bir sebebe iniyor — tahmine gerek kalmadi.
+ *
+ * `manipulation` = kaydirma ve PARMAKLA BUYUTME kaliyor, yalnizca cift
+ * dokunusla zoom gidiyor.
+ *
+ * ⚠️ VIEWPORT'A `user-scalable=no` YAZILMADI ve yazilmamali. Sorun
+ * buyutmek degil, buyutmenin dokunmayi CALMASIYDI; buyutmeyi tumden
+ * kapatmak paneldeki kucuk aciklama yazilarini okuyamayan bir ebeveyni
+ * cezalandirirdi. Hedefe en dar mudahale bu satir. */
+button,
+label,
+select,
+input,
+.anahtar,
+.kd { touch-action: manipulation; }
 button:disabled { opacity: .45; cursor: default; }
 button.genis { width: 100%; margin-top: 14px; }
 button.ince { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
@@ -620,6 +653,22 @@ button.tehlike { color: var(--kalir); border-color: rgba(248, 81, 73, .5); }
   .joystick { width: 128px; height: 128px; }
   .joy-topuz { width: 50px; height: 50px; margin: -25px 0 0 -25px; }
   .kol-dugme { width: 46px; }
+}
+
+/* ⚠️ IKINCI SEBEP: JEST DUGMELERI PARMAK ICIN KUCUKTU.
+   `.ince` masaustu icin olculmus bir boy (6 px ic kenar, 12 px yazi —
+   yaklasik 26 px yuksek). Bu kartin hemen yukarisinda kol dugmeleri
+   icin yazilmis kural sunu diyor: "52 px, telefonlarda rahat isabet
+   eden en kucuk olcu". Jest dugmeleri o olcunun yarisindaydi.
+
+   Isabetsiz bir dokunus, tekrar denemeyi — yani ikinci dokunusu —
+   davet ediyordu; ustteki zoom hatasini tetikleyen sey de tam olarak
+   oydu. Iki kusur birbirini besliyordu.
+
+   Yalnizca DOKUNMATIKTE buyuyor (`pointer: coarse`): masaustunde on
+   dort dugmenin hepsini buyutmek karti gereksiz yere sisirirdi. */
+@media (pointer: coarse) {
+  .jestler button { min-height: 42px; padding: 10px 14px; font-size: 13px; }
 }
 
 /* Hiz sinirinin GERCEK degeri. Panel 0-100 gosteriyor, cihaz 40-100
