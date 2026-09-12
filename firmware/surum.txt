@@ -1,2 +1,2 @@
 3.5.31
-Ses seviyesi ve ekran parlakligi artik kalici: fabrika ayarlarina donunce silinmiyorlar. Ses tarafinda daha buyuk bir kusur da bu arada cikti; seviye aslinda hic saklanmiyordu ve her acilista en yuksege donuyordu, artik sectiginiz degerde kaliyor. Ayrica telefondan panele girince jest ve kol dugmelerinin tiklanmamasi duzeltildi: ekran dokununca yakinlasiyor ve dokunusu yutuyordu.
+Ses seviyesi ve ekran parlakligi artik kalici: fabrika ayarlarina donunce silinmiyorlar. Ses tarafinda daha buyuk bir kusur da bu arada cikti; seviye aslinda hic saklanmiyordu ve her acilista en yuksege donuyordu, artik sectiginiz degerde kaliyor. Ayrica telefondan panele girince jest ve kol dugmele
