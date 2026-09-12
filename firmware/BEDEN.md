@@ -290,25 +290,33 @@ seçilmediği için sürünme birikecek sıklıkta değil.
 #### Sıklık — seyreklik bir süs değil
 
 Sırası gelen jestin tekerlekli olma ihtimali **yarı yarıya**, ve iki
-tekerlekli jest arasında **en az 9 saniye** var. Yerinde dönüş yer
+tekerlekli jest arasında **en az 12 saniye** var. Yerinde dönüş yer
 değiştirmiyor ama tekerlek kayması **ikinci dereceden** bir sürünme
 bırakıyor; boşluk o milimetrelerin birikmesine izin vermiyor. Sürekli
 kıpırdayan bir robot ayrıca sevimli değil, huzursuz görünüyor.
 
 ⚠️ **Biriken şey süre değil, kalkış sayısı** — sürünme kalkış
-darbesinde oluyor, dönüşün kendisinde değil. 12.09.2026'da jest başına
-kalkış dörtten ikiye indiği için boşluk 12 → 9 saniyeye, kura 1/3 →
-1/2'ye çekilebildi. Pati daha sık dönüyor ama dakikadaki kalkış sayısı
-yine de düşüyor:
+darbesinde oluyor, dönüşün kendisinde değil. 12.09.2026'da `titre` ve
+`dans` dört kalkıştan ikiye indiği için kura 1/3 → 1/2'ye çekilebildi:
 
-| | Jest arası | Kalkış/jest | Kalkış/sn |
-|---|---|---|---|
-| eski | ~27 sn | 4 | 0,148 |
-| yeni | ~19 sn | 2 | **0,105** |
+| | Jest arası | Kalkış/jest | Kalkış/sn | Dönüş/sn |
+|---|---|---|---|---|
+| eski (12 sn, 1/3) | ~24,6 sn | 2,67 | 0,108 | 18 ms |
+| yeni (12 sn, 1/2) | ~19,6 sn | 2,00 | **0,102** | **35 ms** |
 
-Sayılar tablodan hesap (jest arası ortalama 5 sn × kura + boşluk),
-gerçek kartta ölçülmedi. Ölçülmesi gereken şey bu sayılar değil,
-**sürünmenin kendisi** — aşağıdaki yöntem.
+Pati ~%28 daha sık dönüyor, dönüş süresi neredeyse iki katına çıkıyor,
+ama dakikadaki kalkış sayısı biraz düşüyor.
+
+🔴 **12 saniye duruyor ve bilerek duruyor.** İlk hesapta 9 saniyeye
+indirilmişti; sayılar yeniden yapılınca 9 sn ile kalkış/sn'nin
+*düşmediği*, ~%10 **arttığı** çıktı — çünkü ilk hesap "eski: jest
+başına 4 kalkış" varsaymıştı, oysa kendiliğinden seçilen üç tekerlekli
+jestin ortalaması 2,67'ydi. Bir güvenlik sınırı ölçülmemiş bir
+gerekçeyle gevşetilmez.
+
+Sayılar tablodan hesap (boşluk + kalan bekleme ortalaması 2,6 sn +
+(kura−1) × 5 sn), gerçek kartta ölçülmedi. Ölçülmesi gereken şey bu
+sayılar değil, **sürünmenin kendisi** — aşağıdaki yöntem.
 
 Konuşma **başında** tekerlek yok, bilerek: her cümlenin başında dönmek
 hem sıkıcı hem gereksiz motor kalkışı olurdu.
@@ -1106,8 +1114,9 @@ oranı en düşük, sarsıntı oranı en yüksek jest oydu.
    kendisi.
 2. **Jest başına kalkış 4 → 2** (`hayir` hariç). Toplam dönüş süresi
    neredeyse aynı kaldı, sarsıntı sayısı yarıya indi.
-3. Boşalan görünürlük bütçesi **sıklığa** gitti (9 sn / 1/2), ama
-   dakikadaki kalkış sayısı yine de düştü.
+3. Boşalan görünürlük bütçesi **sıklığa** gitti (kura 1/3 → 1/2; 12
+   saniyelik boşluk **değişmedi**), ama dakikadaki kalkış sayısı yine
+   de biraz düştü.
 
 ### 🔴 Ölçülecek — tahmin değil
 

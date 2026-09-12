@@ -120,19 +120,30 @@ constexpr std::int64_t OLU_ADAM_US = 600000;   // 600 ms
 //
 // ⚠️ BIRIKEN SEY SURE DEGIL, KALKIS SAYISI. Surunme her KALKIS
 // darbesinde oluyor (pati_beden_matematik.hpp · "HER TEKERLEK KARESI EN
-// AZ 260 ms"); donusun kendisi yer degistirmiyor. 12.09.2026'da jest
-// tablosu jest basina DORT kalkistan IKI'ye indi, yani ayni surede
-// yarisi kadar surunme birakiyor. Bu yuzden bosluk 12 -> 9 saniyeye,
-// kura 1/3 -> 1/2'ye cekilebildi: Pati daha sik doniyor ama dakikadaki
-// kalkis sayisi YINE DE dusuyor.
+// AZ 300 ms"); donusun kendisi yer degistirmiyor.
 //
-//   eski:  ~27 sn'de bir jest x 4 kalkis = 0,148 kalkis/sn
-//   yeni:  ~19 sn'de bir jest x 2 kalkis = 0,105 kalkis/sn
+// 12.09.2026'da jest tablosunda titre ve dans DORT kalkistan IKI'ye
+// indi (sevin ve bak zaten ikiydi), ve kareler 320-360 ms'ye uzadi.
+// Bu, KURA'yi 1/3'ten 1/2'ye cekmeye yer acti:
 //
-// (Iki sayi da tablodan hesap: jest arasi ortalama 5 sn, kura, ve
-// buradaki bosluk. Gercek kartta olculmedi — olculecek olan sey
-// surunmenin kendisi, BEDEN.md.)
-constexpr std::int64_t TEKER_ARA_EN_AZ_US = 9000000;    // 9 sn
+//                        jest arasi   kalkis/jest   kalkis/sn   donus/sn
+//   eski (12 sn, 1/3)      ~24,6 sn       2,67        0,108      18 ms
+//   yeni (12 sn, 1/2)      ~19,6 sn       2,00        0,102      35 ms
+//
+// Yani Pati ~%28 daha sik doniyor ve donus suresi neredeyse IKI KATINA
+// cikiyor, ama dakikadaki kalkis sayisi biraz DUSUYOR — surunmenin
+// olcusu oydu.
+//
+// 🔴 12 SANIYE DURUYOR VE BILEREK DURUYOR. Ilk hesapta 9 saniyeye
+// indirilmisti; sayilar yeniden yapilinca 9 sn ile kalkis/sn'nin
+// DUSMEDIGI, ~%10 ARTTIGI cikti. Bu bir guvenlik siniri ve olculmemis
+// bir gerekceyle gevsetilmez. Onu indirmek icin once surunme
+// olculmeli (BEDEN.md · "Ileri kayma").
+//
+// (Jest arasi hesabi: bosluk + kalan bekleme ortalamasi 2,6 sn +
+// (kura-1) x 5 sn. Kalkis/jest, kendiliginden secilebilen uc
+// tekerlekli jestin ortalamasi. Gercek kartta olculmedi.)
+constexpr std::int64_t TEKER_ARA_EN_AZ_US = 12000000;   // 12 sn
 
 // Sirasi gelen jestin tekerlekli olma ihtimali: yari yariya. Kalan
 // seferde yalnizca kollar oynuyor.
