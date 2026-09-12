@@ -1,2 +1,2 @@
 3.5.18
-Kucuk bir ayar duzeltmesi. Bir onceki guncellemede Pati'nin donusleri hem uzatilmis hem de sikliklastirilmisti. Hesabi yeniden yapinca iki donus arasindaki en az bekleme suresini kisaltmanin gerekmedigi goruldu; o sure eski haline, 12 saniyeye dondu. Pati yine eskisinden daha sik ve cok daha belirgin doniyor, ama iki donus arasinda yeterli boslugu biraktigi icin zamanla yerinden kaymasi daha az oluyor.
+Kucuk bir ayar duzeltmesi. Bir onceki guncellemede Pati'nin donusleri hem uzatilmis hem de sikliklastirilmisti. Hesabi yeniden yapinca iki donus arasindaki en az bekleme suresini kisaltmanin gerekmedigi goruldu; o sure eski haline, 12 saniyeye dondu. Pati yine eskisinden daha sik ve cok daha belirgi
