@@ -1,2 +1,2 @@
 3.5.15
-Paneldeki kol dugmeleri artik sizin ayarladiginiz siniri asmiyor. Onceden sol kolun tavanini yuzde 70 yapsaniz bile yukari dugmesine basmaya devam edince panel yuzde 100 yaziyordu; kol gercekte 70'te duruyordu, yani panel yanlis soyluyordu. Kolun gittigi yer degismedi, yalnizca gosterge duzeldi. "Dinlen" de artik tabani asagi degil, ayarladiginiz en dusuk degere indiriyor.
+Paneldeki kol dugmeleri artik sizin ayarladiginiz siniri asmiyor. Onceden sol kolun tavanini yuzde 70 yapsaniz bile yukari dugmesine basmaya devam edince panel yuzde 100 yaziyordu; kol gercekte 70'te duruyordu, yani panel yanlis soyluyordu. Kolun gittigi yer degismedi, yalnizca gosterge duzeldi. "Di
