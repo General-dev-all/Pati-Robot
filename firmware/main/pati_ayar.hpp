@@ -47,6 +47,13 @@ esp_err_t ayar_baslat();
 const std::string& ayar_ses_adi();
 float ayar_hiz();
 int ayar_uyku_dk();
+
+// Ekran arka isigi, YUZDE (PARLAKLIK_EN_AZ..100).
+//
+// Float degil yuzde: panel yuzde gosteriyor, NVS tam sayi tutuyor ve
+// aradaki her donusum bir yuvarlama hatasi yeri. Tek yerde bolunuyor
+// (app_main).
+int ayar_parlaklik();
 bool ayar_soz_kesme();
 
 int ayar_vad_ms();          // 0 = Google varsayilani
@@ -101,6 +108,7 @@ int ayar_kol_kip();
 void ayar_ses_adi_yaz(const std::string& ad);
 void ayar_hiz_yaz(float hiz);
 void ayar_uyku_yaz(int dakika);
+void ayar_parlaklik_yaz(int yuzde);
 void ayar_soz_kesme_yaz(bool acik);
 void ayar_vad_yaz(int ms);
 void ayar_yuz_yaz(bool acik);

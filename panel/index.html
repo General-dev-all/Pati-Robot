@@ -374,6 +374,24 @@
          ücret dakikayla işliyor ve en büyük kalem sohbet değil boşta
          beklemek. Uyandırma ölçüldü: 617 ms. -->
     <section class="kart">
+      <h2>Ekran</h2>
+      <label class="kd">
+        <span class="kd-ust"><span>Parlaklık</span><b id="vParlaklik">—</b></span>
+        <!-- Taban %5, sıfır değil: sönük bir ekran çocuğa "Pati bozuldu"
+             diye okunuyor. Cihaz da aynı tabanı uyguluyor
+             (pati_ekran.cpp · PARLAKLIK_TABAN) — ikisi ayrışırsa panel
+             seçilebilen bir değer gösterir ve cihaz onu sessizce
+             yükseltir. -->
+        <input id="kParlaklik" type="range" min="5" max="100" step="5">
+      </label>
+      <p class="ip">
+        Düşük parlaklık <b>pili uzatır</b>. Kaydırıcıyı bırakınca
+        <b>anında</b> uygulanıyor — ekranda değişmiyorsa arka ışıkta
+        sorun var demektir.
+      </p>
+    </section>
+
+    <section class="kart">
       <h2>Uyku</h2>
       <label class="kd">
         <span class="kd-ust"><span>Sessizlikten sonra uyu</span><b id="vUyku">—</b></span>

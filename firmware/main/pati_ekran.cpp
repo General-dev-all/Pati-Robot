@@ -226,11 +226,26 @@ void ekran_arka_isik(bool ac)
     isik_uygula();
 }
 
+// 🔴 TABAN %5 — TAHMIN DEGIL, OLCUM (13.09.2026).
+//
+// Eski taban 0,15'ti ve gerekcesi tahmindi: "daha asagisi kararan degil
+// KAPANAN bir ekran gibi gorunur". Olculdu ve yanlis cikti: %4'te
+// gozler hala rahatca goruluyor (kullanicinin gozlemi, gercek kartta).
+//
+// Yine de sifir degil. Sonuk bir ekran cocuga "Pati bozuldu" diye
+// okunuyor ve panelde %0 secebilmek, ebeveyne robotu bozuk gosteren bir
+// dugme vermek olurdu. %5 goruluyor ama gozu yormuyor.
+//
+// ⚠️ Bu sayi pati_ayar.cpp'deki PARLAKLIK_EN_AZ ile ESLESMELI.
+// Ayrisirlarsa panel secilebilen bir deger gosterir, cihaz onu sessizce
+// yukseltir ve kimse fark etmez — bu depoda tam olarak bu hata daha
+// once ses tavaninda yasandi (CLAUDE.md).
+inline constexpr float PARLAKLIK_TABAN = 0.05f;
+
 float ekran_parlaklik_ayarla(float yeni)
 {
-    // 0.15 taban: daha asagisi kararan degil, KAPANAN bir ekran gibi
-    // gorunuyor ve cocuk Pati'yi bozuk sanir.
-    g_parlaklik = (yeni < 0.15f) ? 0.15f : (yeni > 1.0f ? 1.0f : yeni);
+    g_parlaklik = (yeni < PARLAKLIK_TABAN) ? PARLAKLIK_TABAN
+                                           : (yeni > 1.0f ? 1.0f : yeni);
     isik_uygula();
     return g_parlaklik;
 }

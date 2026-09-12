@@ -139,20 +139,16 @@ void guc_kipi_uygula(pati::GucKaynagi kaynak)
     // ⚠️ Bu da olculmus bir kazanc DEGIL. Arka isik surekli bir yuk,
     // yani taban akimi dusuruyor; brownout'u yapan TEPE akimi
     // dusurdugu iddia edilmiyor.
-    // 🔴 13.09.2026: 0.25 -> 0.15, YANI TABAN. Kullanicinin istegi:
-    // "olabilecek en dusuge getir, uygulanip uygulanmadigini anlarim
-    // oyle." 0.15 `ekran_parlaklik_ayarla`'nin kirptigi alt sinir;
-    // altina inmek kararan degil KAPANAN bir ekran gibi gorunuyor.
+    // 🔴 BURADAKI DEGER YALNIZCA ILK ANLAR ICIN.
     //
-    // ⚠️ BU AYNI ZAMANDA BIR OLCUM. Ekran gorunur sekilde kisilmazsa
-    // sebep parlaklik degeri degil, arka isik PWM'idir: LEDC
-    // kurulamazsa isik_uygula() duz GPIO'ya dusuyor ve ekran TAM
-    // parlak calisiyor (pati_ekran.cpp). O durumda buradaki sayinin
-    // hicbir etkisi olmuyor ve tek kanit acilis logudur
-    // ("arka isik PWM kurulamadi").
+    // Gercek deger NVS'te ve `ayar_baslat()` cok daha sonra kosuyor
+    // (bu dosyanin sonlarinda). Arka isik ise gozler acilirken
+    // yakiliyor, yani ARADA. O aralikta ne yazarsa o gorunuyor.
     //
-    // Karanlik gelirse geri alinacak yer burasi — tek satir.
-    pati::ekran_parlaklik_ayarla(0.15f);
+    // ⚠️ BU YUZDEN MUHAFAZAKAR: %25. Buraya %100 yazmak, ebeveyn
+    // %5 secmis olsa bile her acilista kisa bir TAM PARLAK cakma
+    // demekti — karanlik bir odada uyandirici bir sey.
+    pati::ekran_parlaklik_ayarla(0.25f);
 
     // ---- WIFI VERICI GUCU: DENENDI VE GERI ALINDI ------------------------
     //
@@ -648,6 +644,12 @@ extern "C" void app_main()
     // hoparlor_baslat() bundan once kosuyor ve NVS'teki degeri henuz
     // bilmiyor. Pati'nin afacan sesi buna bagli — bkz. pati_ses.hpp.
     pati::hoparlor_hiz_ayarla(pati::ayar_hiz());
+
+    // Ekran parlakligi da ayni sebeple burada: yukaridaki cagri yalnizca
+    // acilisin ilk anlarini kapsiyordu, ebeveynin sectigi deger ancak
+    // simdi biliniyor.
+    pati::ekran_parlaklik_ayarla(
+        static_cast<float>(pati::ayar_parlaklik()) / 100.0f);
 
     pati::kullanim_baslat();
     if (pati::ag_baslat() != ESP_OK) {

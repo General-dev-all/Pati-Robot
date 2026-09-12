@@ -12,6 +12,7 @@
 #include <nvs.h>
 
 #include "pati_anahtar.hpp"
+#include "pati_ekran.hpp"
 #include "pati_ses.hpp"
 
 namespace pati {
@@ -45,12 +46,33 @@ constexpr int VAD_EN_FAZLA = 2000;
 //
 // Varsayilan bilincli olarak tam guc DEGIL: masada oynanacak bir robot
 // icin tam guc fazla. Ebeveyn isterse yukseltiyor.
+constexpr int PARLAKLIK_EN_AZ = 5;
+constexpr int PARLAKLIK_EN_FAZLA = 100;
+
 constexpr int BEDEN_HIZ_EN_AZ = HIZ_TAVAN_EN_AZ;
 constexpr int BEDEN_HIZ_EN_FAZLA = HIZ_TAVAN_EN_COK;
 
 std::string g_ses_adi;
 float g_hiz = 1.30f;
 int g_uyku_dk = 4;
+
+// 🔴 EKRAN PARLAKLIGI — 13.09.2026'DA AYAR OLDU.
+//
+// Oncesinde app_main'de sabit bir sayiydi ve kullanici uc kez "kistik
+// ama fark etmiyorum" dedi. Sorunun yazilimda olmadigi A/B testiyle
+// kanitlandi (%4 ile %100 yuklenip karsilastirildi, fark bariz):
+// arka isik PWM'i calisiyor, gozun ayirt edemedigi sey 0,45 -> 0,35 ->
+// 0,25 adimlarinin KUCUKLUGUYDU.
+//
+// Bundan sonra deger tahmin edilmiyor, ebeveyn seciyor. Ayni zamanda
+// bir teshis araci: kaydiriciyi ucdan uca gezdirmek arka isigin
+// calisip calismadigini bes saniyede gosteriyor.
+//
+// ⚠️ Taban %5, cunku 13.09.2026'da olculdu: %4'te gozler HALA
+// goruluyor (kullanicinin gozlemi). Eski taban 0,15'ti ve tahmine
+// dayaniyordu. Yine de sifir degil — sonuk ekran cocuga "bozuldu"
+// diye okunuyor.
+int g_parlaklik = 25;
 bool g_soz_kesme = false;
 // Kablo takilinca acik kalsin mi. Varsayilan HAYIR: kullanicinin
 // istegi "kapaliyken sarja takinca acilmasin" (12.09.2026).
@@ -149,6 +171,10 @@ esp_err_t ayar_baslat()
         g_hiz = std::clamp(static_cast<float>(v) / 100.0f,
                            HIZ_EN_AZ, HIZ_EN_FAZLA);
     }
+    if (nvs_get_i32(h, "parlaklik", &v) == ESP_OK) {
+        g_parlaklik = std::clamp(static_cast<int>(v), PARLAKLIK_EN_AZ,
+                                 PARLAKLIK_EN_FAZLA);
+    }
     if (nvs_get_i32(h, "uyku_dk", &v) == ESP_OK) {
         g_uyku_dk = std::clamp(static_cast<int>(v), UYKU_EN_AZ, UYKU_EN_FAZLA);
     }
@@ -208,6 +234,7 @@ esp_err_t ayar_baslat()
 const std::string& ayar_ses_adi() { return g_ses_adi; }
 float ayar_hiz() { return g_hiz; }
 int ayar_uyku_dk() { return g_uyku_dk; }
+int ayar_parlaklik() { return g_parlaklik; }
 bool ayar_soz_kesme() { return g_soz_kesme; }
 int ayar_vad_ms() { return g_vad_ms; }
 bool ayar_yuz_araci() { return g_yuz; }
@@ -281,6 +308,17 @@ void ayar_hiz_yaz(float hiz)
     // aynı cümlenin ortasında Pati'nin tınısı değişmesin.
     g_yenileme.store(true);
     ESP_LOGI(ETIKET, "tizlik: %.2fx (tur sonunda gecerli)", y);
+}
+
+void ayar_parlaklik_yaz(int yuzde)
+{
+    g_parlaklik = std::clamp(yuzde, PARLAKLIK_EN_AZ, PARLAKLIK_EN_FAZLA);
+    i32_yaz("parlaklik", g_parlaklik);
+    // HEMEN uygula: yalnizca kaydetmek, ebeveynin kaydirdigi cubugun
+    // hicbir sey yapmamasi demek olurdu — ki bu isin tamami zaten
+    // "degisiyor mu, degismiyor mu" sorusundan cikti.
+    ekran_parlaklik_ayarla(static_cast<float>(g_parlaklik) / 100.0f);
+    ESP_LOGI(ETIKET, "parlaklik: %%%d", g_parlaklik);
 }
 
 void ayar_uyku_yaz(int dakika)
@@ -369,6 +407,7 @@ void ayar_sifirla()
     const nvs_handle_t h = ac(NVS_READWRITE);
     if (h != 0) {
         for (const char* a : {"ses_adi", "hiz_yuz", "uyku_dk", "soz_kesme",
+                              "parlaklik",
 
                               "vad_ms", "yuz", "beden_hiz", "tekerlek",
                               "kol", "hareket", "sevinc"}) {
@@ -404,14 +443,14 @@ std::string ayar_json()
     std::snprintf(b, sizeof(b),
                   "\"ses\":{\"seviye\":%.3f,\"en_az\":%.2f,\"en_fazla\":%.2f,"
                   "\"hiz\":%.2f,\"ses_adi\":\"%s\"},"
-                  "\"uyku\":%d,"
+                  "\"uyku\":%d,\"parlaklik\":%d,"
                   "\"konusma\":{\"soz_kesme\":%s,\"vad\":%d,\"yuz\":%s},"
                   "\"kumanda\":{\"hiz\":%d,\"tekerlek\":%d,\"kol\":%d,"
                   "\"kol_ters\":%s,"
                   "\"kol_sol_az\":%d,\"kol_sol_cok\":%d,"
                   "\"kol_sag_az\":%d,\"kol_sag_cok\":%d}",
                   ses_seviyesi(), SES_SEVIYESI_EN_AZ, SES_SEVIYESI_EN_FAZLA,
-                  g_hiz, g_ses_adi.c_str(), g_uyku_dk,
+                  g_hiz, g_ses_adi.c_str(), g_uyku_dk, g_parlaklik,
                   g_soz_kesme ? "true" : "false", g_vad_ms,
                   g_yuz ? "true" : "false",
                   g_beden_hiz, g_tekerlek_kip, g_kol_kip,

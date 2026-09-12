@@ -1,2 +1,2 @@
-3.5.21
-Bir onceki guncellemede yanlis bir secim yapilmisti: Pati'nin her hareketteki donus sayisi dortten ikiye indirilmisti ve bu, hareketleri daha cansiz gosterdi. Geri alindi ve daha da ileri gotuduldu. Dans, kikirdama, sevinme ve hayir deme artik DORT donusten olusuyor, donusler pes pese geliyor (arala
+3.5.22
+Panele EKRAN PARLAKLIGI kaydiricisi eklendi. Artik parlakligi kendiniz ayarliyorsunuz ve kaydiriciyi biraktiginiz anda ekranda uygulaniyor. Dusuk parlaklik pili uzatir; en dusuk kademe yuzde 5, sifir degil, cunku sonuk bir ekran cocuga Pati bozulmus gibi gorunuyor. Sectiginiz deger kalici, guncellemelerde silinmiyor. Onceden parlaklik yazilimda sabitti ve degisip degismedigini anlamanin bir yolu yoktu; artik kaydiriciyi uctan uca gezdirmek bunu bes saniyede gosteriyor.

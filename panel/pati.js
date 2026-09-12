@@ -448,6 +448,11 @@ function gercektenGosterilene(r) {
   return Math.round((y - HIZ_TABAN) * 100 / (100 - HIZ_TABAN));
 }
 
+function parlaklikYaz(yuzde) {
+  const g = document.getElementById('vParlaklik');
+  if (g) g.textContent = `%${yuzde}`;
+}
+
 function hizYaz(gosterilen) {
   const g = document.getElementById('vBedenHiz');
   const r = document.getElementById('vBedenGercek');
@@ -627,6 +632,27 @@ function kumandaKur() {
         }),
       }).catch(() => {});
     });
+  }
+
+  {
+    const par = $('#kParlaklik');
+    if (par) {
+      par.addEventListener('input', () => {
+        parlaklikYaz(parseInt(par.value, 10));
+      });
+      // Kaydirici BIRAKILINCA yaziliyor, her pikselde degil: /api/ayar
+      // NVS'e (flash) yaziyor.
+      par.addEventListener('change', () => {
+        fetch('/api/ayar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            alan: 'parlaklik',
+            deger: parseInt(par.value, 10),
+          }),
+        }).catch(() => {});
+      });
+    }
   }
 
   [['#kipTekerlek', 'tekerlek'], ['#kipKol', 'kol']].forEach(([sec, alan]) => {
@@ -842,6 +868,13 @@ function durumu_uygula(d) {
     }
     mesaj({ tip: 'sesler', liste: D.sesler, secili: d.ses.ses_adi,
             hiz: d.ses.hiz });
+  }
+  if (typeof d.parlaklik === 'number') {
+    const p = document.getElementById('kParlaklik');
+    if (p && document.activeElement !== p) {
+      p.value = d.parlaklik;
+      parlaklikYaz(d.parlaklik);
+    }
   }
   if (typeof d.uyku === 'number') {
     mesaj({ tip: 'uyku', dakika: d.uyku });
