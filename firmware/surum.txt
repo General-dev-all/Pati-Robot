@@ -1,2 +1,2 @@
-3.5.25
-Pati konusurken tekerleklerini artik daha sik kullaniyor, kabaca yuzde kirk uc. Bunu yapabilmemizin sebebi yeni govdedeki ileri kayma sorununun cozulmus olmasi. Ayrica hareketler artik kendi maliyetini oduyor: kisa bir hareketten sonra Pati daha cabuk, uzun bir danstan sonra daha gec kipirdaniyor. E
+3.5.26
+Pati neredeyse her cevabinda saga sola donuyordu; bu duzeltildi. Sebep su: iki donus arasindaki bekleme suresi Pati SUSARKEN de isliyordu, oysa hareket ancak konusurken baslayabiliyor. Yani cocuk konusurken sayac doluyor ve Pati agzini actigi anda donus hazir oluyordu. Artik bekleme sure degil HAREKET sayiyor: iki donus arasinda gercekten alti hareket geciyor, yaklasik uc dort cevapta bir. Ayrica ayni donus hareketi pes pese gelmiyor. Kol hareketleri aynen devam ediyor - Pati'nin canliligi zaten oradan geliyor, donus artik bir vurgu.

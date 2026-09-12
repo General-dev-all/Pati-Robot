@@ -123,52 +123,63 @@ constexpr std::int64_t OLU_ADAM_US = 600000;   // 600 ms
 // 🔴 ILERI KAYMA COZULDU — 13.09.2026, MEKANIK.
 //
 // Kullanici on tekerlekleri DONEBILEN (caster / "sarhos") tekerlekle
-// degistirdi ve kayma bitti. Bu ayni zamanda tesihisin dogrulanmasi:
-// sebep sabit akslı on tekerleklerdi (BEDEN.md · "govdede DORT
-// tekerlek var"). Yazilim tarafinda yapilabilecek bir sey yoktu,
-// dogru teshis mekanige yol gosterdi.
+// degistirdi ve kayma bitti. Bu ayni zamanda teshisin dogrulanmasi:
+// sebep sabit aksli on tekerleklerdi (BEDEN.md · "govdede DORT
+// tekerlek var").
 //
-// ⚠️ BU BOSLUK YINE DE SIFIRLANMIYOR, iki sebebi kaldi:
+// ⚠️ AMA SEYREKLIK KURALI KALKMADI, cunku gerekcesi degisti:
+//
 //   1. Pati'de UCURUM SENSORU YOK. Kayma cozuldu ama sifirlandigi
 //      olculmedi; masa kenari hala geri alinamaz bir sey.
-//   2. Surekli kipirdayan bir robot sevimli degil, huzursuz gorunuyor.
-//      Bu estetik bir sinir ve kayma cozulse de gecerli.
+//   2. 🔴 TEKERLEK JESTLERININ CESITLILIGI YAPISAL OLARAK DUSUK.
+//      sol + sag == 0 oldugu icin Pati'nin yapabildigi TEK sey saga-sola
+//      donmek. Tablodaki alti tekerlekli jest birbirinden yalnizca
+//      tempo ve kol isiyle ayriliyor; goze hepsi "yine saga sola dondu"
+//      gibi geliyor.
 //
-// 🔴 BOSLUK JEST BASINA DEGIL, KALKIS BASINA.
+//      Kullanicinin sozu (13.09.2026): "her cevap verirken ayni hareketi
+//      yapsin, saga sola donsun demedim." Cozum cesitlilik eklemek
+//      DEGIL — eklenemiyor — bu jestleri SEYREK ve ANLAMLI birakmak.
+//      Cesitlilik kollarda; tekerlek bir noktalama isareti.
+
+// 🔴 ASIL SINIR: KAC JEST GECTI — KAC SANIYE DEGIL.
 //
-// Surunme her kalkis darbesinde olusuyordu, oysa bosluk kurali JEST
-// sayiyordu: iki kalkisli `yaramaz` ile dort kalkisli `dans` ayni cezayi
-// oduyordu. Yanlis seyin fiyatlandigi her yerde oldugu gibi sonucu da
-// yanlisti — ucuz jestler gereksiz yere seyrek oynuyordu.
+// 3.5.25'te sinir yalnizca ZAMANDI ve bu olculebilir bir hataydi:
+// bekleme suresi Pati SUSARKEN de isliyor, oysa jest ancak Pati
+// KONUSURKEN baslayabiliyor. Cocuk konusurken ve model dusunurken gecen
+// sure sayaci dolduruyor, Pati agzini actigi anda tekerlek kurasi zaten
+// hazir oluyordu. Sonucu kullanici gordu: "neredeyse her konusmasinda
+// saga sola donuyor."
+//
+// Sayac artik JEST sayiyor. Jestler yalnizca konusurken olusuyor, yani
+// bu sayac sessizlikte DOLMUYOR — aradaki sessizlik ne kadar uzun
+// olursa olsun, iki tekerlek jesti arasinda gercekten alti jest var.
+//
+// Kabaca cevap basina iki jest oluyor (konusma basindaki selam + bir
+// tane daha), yani tekerlek ucuncu-dorduncu cevapta bir geliyor.
+constexpr int TEKER_JEST_ARASI = 6;
+
+// 🔴 ZAMAN SINIRI DURUYOR AMA ARTIK IKINCIL.
+//
+// Tek basina yetmedigi olculdu (yukarida), ama kaldirilamaz da: tek
+// sinir jest sayisi olsaydi, Pati'nin cok hizli ust uste konustugu bir
+// anda alti jest birkac saniyede gecerdi.
+//
+// Bekleme jestin KALKIS sayisiyla orantili: surunme kalkis darbesinde
+// olusuyor, donusun kendisinde degil. Iki kalkisli `yaramaz` ile dort
+// kalkisli `dans`a ayni cezayi vermek, ucuz olani gereksiz yere
+// cezalandirmak olurdu.
 //
 //     bekleme = kalkis_sayisi x TEKER_KALKIS_ARA_US   (taban: EN_AZ)
 //
-//   yaramaz / bak_etrafina / firildak   2 kalkis  ->  4,0 sn (taban)
-//   sevin / titre / dans                4 kalkis  ->  6,8 sn
+//   yaramaz / bak_etrafina / firildak   2 kalkis  ->  8 sn (taban)
+//   sevin / titre / dans                4 kalkis  -> 12 sn
 //
-// Kullanicinin istegi "biraz teker sikligini da artirabilirsin, karari
-// sana birakiyorum" idi. Kayma cozuldugu icin artis rahatca verildi:
-//
-//                        ortalama bosluk   jest arasi   kalkis/sn
-//   3.5.24 (10 sn sabit)      10,0 sn        ~15,4 sn     0,195
-//   3.5.25 (kalkis basina)     5,4 sn        ~10,8 sn     0,278
-//
-// Yani Pati konusurken kabaca %43 daha sik doniyor.
-//
-// 🔴 MUTLAK TABAN AYRI DURUYOR VE ORANTILI KURALDAN BAGIMSIZ.
-// Orantili kural tek basina yeterli degil: gelecekte tek kalkisli bir
-// jest yazilirsa bosluk 1,7 saniyeye duserdi ve Pati neredeyse surekli
-// donerdi. Taban bunu YAPISAL olarak engelliyor — tabloyu yazanin
-// hatirlamasi gerekmiyor.
-//
-// GERI ALMA YOLU TEK SATIR: TEKER_KALKIS_ARA_US'u buyut.
-//
-// (Jest arasi hesabi: bosluk + kalan bekleme ortalamasi 1,9 sn +
-// (kura-1) x jest arasi ortalamasi 3,5 sn. Kalkis/jest, kendiliginden
-// secilebilen alti tekerlekli jestin ortalamasi: 3,0. Gercek kartta
-// olculmedi.)
-constexpr std::int64_t TEKER_KALKIS_ARA_US = 1700000;   // kalkis basina
-constexpr std::int64_t TEKER_ARA_EN_AZ_US  = 4000000;   // mutlak taban
+// 🔴 MUTLAK TABAN ORANTILI KURALDAN BAGIMSIZ. Gelecekte tek kalkisli
+// bir jest yazilirsa bosluk 3 saniyeye duserdi; taban bunu YAPISAL
+// olarak engelliyor, tabloyu yazanin hatirlamasi gerekmiyor.
+constexpr std::int64_t TEKER_KALKIS_ARA_US = 3000000;   // kalkis basina
+constexpr std::int64_t TEKER_ARA_EN_AZ_US  = 8000000;   // mutlak taban
 
 constexpr std::uint32_t TEKER_KURA = 2;
 
@@ -447,6 +458,13 @@ void beden_gorevi(void*)
     // Bir sonraki tekerlekli jeste kadar beklenecek sure. Akan jestin
     // KALKIS sayisina gore yaziliyor; ilk deger ortalama bir jest.
     std::int64_t teker_bekleme_us = 3 * TEKER_KALKIS_ARA_US;
+    // Son tekerlekli jestten bu yana kac jest oynadi. SESSIZLIKTE
+    // DOLMUYOR — asil sinir bu.
+    int teker_sonrasi_jest = TEKER_JEST_ARASI;
+    // En son oynayan TEKERLEKLI jest. Ust uste ayni donusun gelmemesi
+    // icin ayri tutuluyor: `son_jest` araya giren kol jestleriyle
+    // temizleniyor ve ayni tekerlek jesti pekala tekrar secilebiliyordu.
+    int son_teker_jest = -1;
 
     // Akan jesti KIM istedi. Kip kontrolu buna bakiyor: "sadece
     // kumandadan" kipinde panelin dugmesi calisiyor, Pati'nin kendi
@@ -685,9 +703,13 @@ void beden_gorevi(void*)
             // bindirirdi.
             if (JESTLER[istek].teker_var) {
                 son_teker_us = simdi;
+                son_teker_jest = istek;
+                teker_sonrasi_jest = 0;
                 teker_bekleme_us = std::max(
                     jest_kalkis_sayisi(JESTLER[istek]) * TEKER_KALKIS_ARA_US,
                     TEKER_ARA_EN_AZ_US);
+            } else {
+                ++teker_sonrasi_jest;
             }
             kare_no = 0;
             kare_bekle_bitis = 0;
@@ -707,6 +729,7 @@ void beden_gorevi(void*)
             // kipinin tamami bu satirda: Pati kendi kendine secmiyor.
             const bool teker_uygun =
                 tekerlek_kip == KIP_ACIK
+                && teker_sonrasi_jest >= TEKER_JEST_ARASI
                 && simdi - son_teker_us >= teker_bekleme_us;
             const bool teker_turu =
                 teker_uygun && (esp_random() % TEKER_KURA) == 0;
@@ -741,6 +764,12 @@ void beden_gorevi(void*)
                         if (!JESTLER[s].kendiliginden) continue;
                         if (JESTLER[s].teker_var != teker_turu) continue;
                         if (s == son_jest) continue;  // ust uste ayni olmasin
+                        // \U0001f534 AYNI TEKERLEK JESTI PES PESE GELMESIN.
+                        // `son_jest` araya giren kol jestleriyle
+                        // temizleniyor, yani "dans, selam, dans" mumkun
+                        // oluyordu ve tekerlek jestleri zaten birbirine
+                        // benzedigi icin bu en cok goze batan tekrar.
+                        if (JESTLER[s].teker_var && s == son_teker_jest) continue;
                         if (tur == 0 && (JESTLER[s].ruh & ruh) == 0) continue;
                         aday = s;
                     }
@@ -752,9 +781,13 @@ void beden_gorevi(void*)
                 son_jest = aday;
                 if (JESTLER[aday].teker_var) {
                     son_teker_us = simdi;
+                    son_teker_jest = aday;
+                    teker_sonrasi_jest = 0;
                     teker_bekleme_us = std::max(
                         jest_kalkis_sayisi(JESTLER[aday]) * TEKER_KALKIS_ARA_US,
                         TEKER_ARA_EN_AZ_US);
+                } else {
+                    ++teker_sonrasi_jest;
                 }
                 kare_no = 0;
                 kare_bekle_bitis = 0;
