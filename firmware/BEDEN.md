@@ -271,17 +271,30 @@ Ayrıca bir jestin toplam tekerlek süresi **900 ms**'yi aşamıyor.
 🔴 **Dördüncü bir kural 12.09.2026'da eklendi: her tekerlek karesi en az
 300 ms.** Gerekçesi ve ölçümü aşağıda ("İleri kayma").
 
+Dönüş hızının üst sınırı **%75** (`JEST_DONUS_EN_COK`); çocuğun
+joystick'i hâlâ %100'e çıkabiliyor. Yükselen şey darbe değil,
+darbeden *sonraki* sürekli dönüş — tepe akımı değişmiyor.
+
 | Jest | Tekerlek | Kalkış | Ne anlatıyor |
 |---|---|---|---|
 | `dinlen` `selam` `iki_kol` `alkis` `dusun` | — | — | yalnızca kol |
-| `sevin` | 2 × 340 ms | 2 | sağa dön, sola dön, iki kol yukarı |
-| `titre` | 2 × 320 ms | 2 | iki yana geniş salınım + kol zıplaması — kıkırdama |
+| `zipla` | — | — | kollarla hızlı zıplama — **kayma maliyeti sıfır** |
+| `sevin` | 2 × 440 ms | 2 | sağa dön, sola dön, kollarla kutlama |
+| `titre` | 2 × 420 ms | 2 | iki yana geniş salınım + kol zıplaması — kıkırdama |
 | `hayir` | 240·240·200·200 | **4** | sönen sağ-sol: **kafa sallayıp "hayır" demek** |
-| `bak_etrafina` | 2 × 360 ms | 2 | yavaş dön, **dur ve bak** (380 ms), geri dön |
-| `dans` | 2 × 360 ms | 2 | kol ve dönüş sırayla, koreografi |
+| `bak_etrafina` | 2 × 440 ms | 2 | yavaş dön, **dur ve bak** (400 ms), geri dön |
+| `firildak` | 2 × 440 ms | 2 | tek büyük savurma — **en yüksek dönüş/kalkış oranı** |
+| `dans` | 2 × 440 ms | 2 | kol ve dönüş sırayla, koreografi |
 
-`hayir` ve `dans` **kendiliğinden seçilmiyor** — yalnızca istenince.
-Biri anlam taşıyor (rastgele "hayır" demek tuhaf olurdu), diğeri uzun.
+Yön değiştirme boşluğu **40–45 ms** (kullanıcı: *"2 motor arası biraz
+zaman fazla gibi"*). Sıfırlanamaz — motoru doğrudan ters çevirmek en
+kötü akım tepesi — ama 3.5.16'ya kadar zaten 50–60 ms'ydi.
+⚠️ İleri kayma bundan etkilenirse ilk büyütülecek yer burası.
+
+Yalnızca `hayir` **kendiliğinden seçilmiyor**: rastgele "hayır" demek
+tuhaf olurdu, anlam taşıyor. `dans` 13.09.2026'da kendiliğinden
+seçilebilir oldu — "uzun" diye dışarıda bırakılmıştı, ama istenen
+canlılık tam olarak o.
 
 ⚠️ **`hayir` dört kalkışla tek istisna.** İki salınım "hayır" değil
 "etrafına baktı" demek olur; anlam salınım *sayısında*. Kendiliğinden
@@ -1147,6 +1160,59 @@ garantisi ve konak testi her girdide tarıyor. Ölçülmemiş bir telafi
 sayısı uğruna o garantiyi delmek, kaymadan çok daha pahalı bir hata
 olur.
 
-Kalan donanım yolları (kullanıcıya bırakıldı): tekerlek lastiğini daha
-kaygan/daha tutucu bir şeyle değiştirmek, ya da destek noktasını iki
-yönde eşit davranan bir bilyeye çevirmek.
+### 🔴 13.09.2026 — fotoğraf: gövdede DÖRT tekerlek var
+
+Kullanıcı 3.5.18'de *"hâlen biraz öne doğru kayıyor"* dedi ve gövdenin
+fotoğrafını gönderdi. Fotoğraf belgede olmayan bir şey gösterdi:
+
+| | |
+|---|---|
+| **2 tahrikli** | siyah lastik, sarı göbek — TT redüktörlü motorlar |
+| **2 serbest** | beyaz, 3B basılmış, **dişli sırtlı**, sabit akslı |
+
+⚠️ **Serbest tekerlekler döner tabla (caster) DEĞİL** — sabit akslı ve
+sırtlı. Bu, kaymanın en güçlü açıklaması:
+
+**Sabit bir tekerlek kendi ekseninde neredeyse dirençsiz yuvarlanır,
+yana kaymaya ise direnir.** İki tanesi birden, gövdeyi bir **rayın**
+üstüne koymak demek: ileri-geri serbest, dönmeye karşı katı.
+
+Pati yerinde dönerken dört tekerleğin dördü de yana sürtünmek zorunda.
+Dönmeye çeviremediği her kuvvet, direnç görmediği tek eksene — **ileri
+ya da geriye** — çıkıyor. Yana giden hareket sürtünmeyle hemen sönüyor,
+ileri giden hareket ise yuvarlanıp gidiyor.
+
+🔴 **Kullanıcının kendi sorusunun cevabı burada:** *"tekerler eskiye
+göre daha kalın ve yol tutuşu daha yüksek, ondan mı?"* — evet, çok
+muhtemel. Ama asıl suçlu tahrikli tekerlekler değil, **serbest
+olanlar**: tutuş arttıkça yana sürtünme direnci artıyor, yani gövde
+dönmeye daha çok direniyor ve artan kuvvet ileri eksene kaçıyor.
+
+#### Üç ölçüm — hiçbiri alet istemiyor
+
+| Deney | Ne gösterir |
+|---|---|
+| **Elle çevir:** Pati'yi masada tutup yerinde döndürmeye çalış | Direniyor ve öne yürümek istiyorsa sebep gövdenin kendisi, motorlar değil |
+| **Kaygan zemin:** "dans et"i cam / kitap kapağı / plastik dosya üstünde çalıştır | Kayma kaybolursa sebep **tutuş** |
+| **Sadece serbest tekerleri kaydır:** o ikisinin altına bant/koli bandı şeridi koy, tekrar dene | Kayma azalırsa sebep **serbest tekerlekler** |
+
+Üçüncüsü en ayırt edici olanı, çünkü yalnızca tek bir değişkeni
+değiştiriyor.
+
+#### Mekanik çözüm
+
+Serbest tekerleklerin yerine **dönebilen** bir destek: küçük bir
+bilyeli caster, mobilya kaydırıcısı ya da yuvarlak pürüzsüz bir ayak.
+Dönemeyen bir tekerlek yerinde dönüşe katılamaz — ne kadar iyi
+yapılmış olursa olsun.
+
+#### Yazılım ne yaptı
+
+Kaymayı sıfırlayamadığı için **hareket/kayma oranını** en büyük yapmaya
+çalıştı:
+
+- Kalkış başına dönüş 320–360 → **440 ms**, dönüş hızı 60 → **75**
+- Dakikadaki kalkış sayısı **sabit tutuldu** (`TEKER_ARA_EN_AZ_US`
+  12 → 14 sn, jest arası 3–7 → 2–5 sn ile birlikte)
+- Yeni canlılığın tamamı **kollardan** geldi: `zipla` jesti, daha sık
+  jest, `dans`ın kendiliğinden seçilmesi — kolun kayma maliyeti sıfır

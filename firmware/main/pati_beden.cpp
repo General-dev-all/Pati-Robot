@@ -127,23 +127,26 @@ constexpr std::int64_t OLU_ADAM_US = 600000;   // 600 ms
 // Bu, KURA'yi 1/3'ten 1/2'ye cekmeye yer acti:
 //
 //                        jest arasi   kalkis/jest   kalkis/sn   donus/sn
-//   eski (12 sn, 1/3)      ~24,6 sn       2,67        0,108      18 ms
-//   yeni (12 sn, 1/2)      ~19,6 sn       2,00        0,102      35 ms
+//   3.5.16 (12 sn, 1/3)    ~24,6 sn       2,67        0,108      18 ms
+//   3.5.18 (12 sn, 1/2)    ~19,6 sn       2,00        0,102      35 ms
+//   3.5.19 (14 sn, 1/2)    ~19,4 sn       2,00        0,103      45 ms
 //
-// Yani Pati ~%28 daha sik doniyor ve donus suresi neredeyse IKI KATINA
-// cikiyor, ama dakikadaki kalkis sayisi biraz DUSUYOR — surunmenin
-// olcusu oydu.
+// 🔴 14 SANIYE BIR GERILEME DEGIL. 3.5.19'da jest arasi bekleme
+// 3-7'den 2-5 saniyeye indi (kollar daha canli olsun diye) ve bu,
+// bosluk dolar dolmaz tekerlekli jestin daha CABUK secilmesi demek.
+// Bosluk 12'de kalsaydi tekerlekli jest ~17,4 saniyede bire cikardi,
+// yani dakikadaki kalkis sayisi ~%13 ARTARDI. 14 saniye tam olarak o
+// farki geri veriyor: tekerlekli jestin sikligi 3.5.18'deki gibi,
+// donus suresi ise %30 daha uzun.
 //
-// 🔴 12 SANIYE DURUYOR VE BILEREK DURUYOR. Ilk hesapta 9 saniyeye
-// indirilmisti; sayilar yeniden yapilinca 9 sn ile kalkis/sn'nin
-// DUSMEDIGI, ~%10 ARTTIGI cikti. Bu bir guvenlik siniri ve olculmemis
-// bir gerekceyle gevsetilmez. Onu indirmek icin once surunme
-// olculmeli (BEDEN.md · "Ileri kayma").
+// Yani canlilik artisi KOLLARDAN geliyor — kolun ileri kayma maliyeti
+// sifir. Tekerlegin dakikadaki payi olculene kadar sabit tutuluyor
+// (BEDEN.md · "Ileri kayma").
 //
-// (Jest arasi hesabi: bosluk + kalan bekleme ortalamasi 2,6 sn +
-// (kura-1) x 5 sn. Kalkis/jest, kendiliginden secilebilen uc
-// tekerlekli jestin ortalamasi. Gercek kartta olculmedi.)
-constexpr std::int64_t TEKER_ARA_EN_AZ_US = 12000000;   // 12 sn
+// (Jest arasi hesabi: bosluk + kalan bekleme ortalamasi + (kura-1) x
+// jest arasi ortalamasi. Kalkis/jest, kendiliginden secilebilen
+// tekerlekli jestlerin ortalamasi. Gercek kartta olculmedi.)
+constexpr std::int64_t TEKER_ARA_EN_AZ_US = 14000000;   // 14 sn
 
 // Sirasi gelen jestin tekerlekli olma ihtimali: yari yariya. Kalan
 // seferde yalnizca kollar oynuyor.
@@ -204,8 +207,14 @@ constexpr std::int64_t ALGILA_KARARLI_US = 1000000;   // 1 sn
 //
 // SABIT ARALIK OLMAZ: iki cumlede fark ediliyor ve kol mekanik
 // gorunuyor. Rastgelelik burada susleme degil, canlilik.
-constexpr std::int64_t JEST_ARA_EN_AZ_US  = 3000000;
-constexpr std::int64_t JEST_ARA_EN_COK_US = 7000000;
+//
+// 13.09.2026'da 3-7 -> 2-5 saniye. Kullanicinin istegi "daha enerjik,
+// daha hareketli olsun" ve bu araliği kisaltmak canliligin EN UCUZ
+// yolu: jestlerin cogu yalnizca kol oynatiyor ve kolun ileri kayma
+// maliyeti yok. Tekerlegin payi ayrica sabitleniyor
+// (TEKER_ARA_EN_AZ_US, yukarida).
+constexpr std::int64_t JEST_ARA_EN_AZ_US  = 2000000;
+constexpr std::int64_t JEST_ARA_EN_COK_US = 5000000;
 
 // Jest tablosu pati_beden_matematik.hpp'de: saf veri, IDF'e dokunmuyor
 // ve icindeki bir hatanin bedeli donanima odeniyor. Konak testi orada

@@ -1,2 +1,2 @@
-3.5.18
-Kucuk bir ayar duzeltmesi. Bir onceki guncellemede Pati'nin donusleri hem uzatilmis hem de sikliklastirilmisti. Hesabi yeniden yapinca iki donus arasindaki en az bekleme suresini kisaltmanin gerekmedigi goruldu; o sure eski haline, 12 saniyeye dondu. Pati yine eskisinden daha sik ve cok daha belirgi
+3.5.19
+Pati artik cok daha hareketli. Donusleri hem uzadi hem hizlandi, iki donus arasindaki duraklama kisaldi, yani hareketler daha seri ve daha enerjik. Iki yeni hareket var: Ziplama (kollarini hizli hizla indirip kaldirir) ve Firildak (kendi etrafinda buyuk bir savurma yapar). Dans artik konusma sirasinda kendiliginden de geliyor. Konusurken yaptigi hareketlerin arasi kisaldi, ama TEKERLEKLI hareketlerin sikligi bilerek ayni birakildi: yeni canlilik kollardan geliyor, cunku kol hareketi Pati'yi yerinden oynatmiyor. Pati yine yalnizca oldugu yerde doner, kendi karariyla asla ilerlemez.
