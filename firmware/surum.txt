@@ -1,2 +1,2 @@
-3.5.23
-Dans hatasi duzeltildi. Cocuk 'dans et' deyince Pati dans ettigini soyluyor ama sadece bir kere saga donup el sallamaya basliyordu. Sebep suydu: Pati konusmaya basladigi an otomatik olarak el sallamaya geciyordu ve bu, o sirada baslamis olan dansi eziyordu. Artik konusma basindaki el sallama, devam 
+3.5.24
+Pati cok daha canli. Kollari artik tek hizda degil: bazi hareketler firlar gibi hizli, bazilari cekinir gibi yavas. Ayni kol hareketi hizli yapilinca sasirmis, yavas yapilinca utanmis gorunuyor. Dort yeni hareket geldi: Evet de, Sasir, Utan ve Yaramazlik. Bir de Pati artik BEDENINI YUZUNE UYDURUYOR; gozleri saskinken alkislamiyor, uzgunken firil firil donmuyor. Tekerlek kullanma sikligi bilerek AYNI birakildi - yeni canlilik kollardan geliyor, cunku kol hareketi Pati'yi yerinden oynatmiyor. Pati yine yalnizca oldugu yerde doner.

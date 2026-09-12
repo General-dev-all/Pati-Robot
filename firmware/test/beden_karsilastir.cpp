@@ -550,6 +550,22 @@ void jest_tablosu()
             kontrol(std::abs(kare.teker) <= JEST_DONUS_EN_COK,
                     "kare donus sinirini asiyor");
 
+            // \U0001f534 KOL HIZI TANIMLI UC DEGERDEN BIRI OLMALI.
+            // kol_hiz_derece_sn tanimadigi degeri sessizce NORMAL
+            // sayiyor, yani tablodaki bir yazim hatasi "jest niye
+            // yavas oynuyor" diye aranirdi.
+            kontrol(kare.hiz == KOL_NORMAL || kare.hiz == KOL_HIZLI
+                        || kare.hiz == KOL_YAVAS,
+                    "kol hizi tanimsiz");
+
+            // Tekerlek karesi kol oynatmiyor, dolayisiyla hizinin bir
+            // anlami da yok. Sifirdan farkliysa tabloyu yazan kisi
+            // orada bir sey olacagini saniyor demektir.
+            if (kare.teker != 0) {
+                kontrol(kare.hiz == KOL_NORMAL,
+                        "tekerlek karesine kol hizi yazilmis (etkisi yok)");
+            }
+
             if (kare.teker == 0) {
                 onceki_isaret = 0;   // sifir karesi: yon serbest
                 continue;
@@ -581,6 +597,15 @@ void jest_tablosu()
         // muaf yapardi.
         kontrol(g.teker_var == teker_gorundu,
                 "teker_var alani karelerle uyusmuyor");
+
+        // \U0001f534 KENDILIGINDEN SECILEN HER JESTIN BIR RUH KUMESI OLMALI.
+        // Sifir birakmak, jesti hicbir ruh halinde SECILMEZ yapardi
+        // (ilk tur onu hep eler) ve belirtisi "bu jest hic olmuyor"
+        // olurdu — tabloda gorunur ama calismaz.
+        if (g.kendiliginden) {
+            kontrol(g.ruh != 0, "kendiliginden jestin ruh kumesi bos");
+        }
+        kontrol((g.ruh & ~RUH_HEPSI) == 0, "ruh kumesinde tanimsiz bit var");
 
         std::printf("    %-14s %2d kare · teker %3d ms · net donus %d%s\n",
                     g.ad, g.adet, teker_ms, net_donus,
@@ -656,6 +681,71 @@ void jest_tablosu()
                 "(%d tekerlekli)\n", ad_adet, tek_adet);
 }
 
+
+// ---------------------------------------------------------------------------
+// 8) RUH HALI ESLEMESI
+// ---------------------------------------------------------------------------
+//
+// Gozlerin ifade adlari uretilen tablodan geliyor (pati_goz_uretilmis.h),
+// ruh kumeleri ise elle yazildi. Ayrisirlarsa belirtisi SESSIZ olur:
+// Pati o ifadedeyken yalnizca ikinci turdan jest secer, yani beden yuze
+// uymaz ve kimse bunu bir eslesme hatasi diye okumaz.
+void ruh_eslemesi()
+{
+    std::printf("\n  8) RUH HALI ESLEMESI\n");
+
+    struct Ornek { const char* ifade; std::uint8_t bekle; };
+    const Ornek ornekler[] = {
+        {"mutlu", RUH_NESE},   {"cok_mutlu", RUH_NESE},
+        {"afacan", RUH_NESE},  {"haylaz", RUH_NESE},
+        {"saskin", RUH_MERAK}, {"anlamadim", RUH_MERAK},
+        {"dusunuyor", RUH_MERAK},
+        {"uzgun", RUH_DUSUK},  {"kizgin", RUH_DUSUK},
+        {"somurtkan", RUH_DUSUK}, {"uykulu", RUH_DUSUK},
+        {"notr", RUH_SAKIN},   {"konusuyor", RUH_SAKIN},
+        {"dinliyor", RUH_SAKIN}, {"bos", RUH_SAKIN},
+    };
+    for (const Ornek& o : ornekler) {
+        kontrol(ruh_no(o.ifade) == o.bekle, "ifade yanlis ruha eslendi");
+        if (ruh_no(o.ifade) != o.bekle) {
+            std::printf("      %s -> %d (beklenen %d)\n", o.ifade,
+                        ruh_no(o.ifade), o.bekle);
+        }
+    }
+
+    // Tanimadigi ad SAKIN donmeli: yeni bir ifade eklenip burasi
+    // unutulursa Pati jestsiz kalmamali.
+    kontrol(ruh_no("boyle_bir_ifade_yok") == RUH_SAKIN,
+            "bilinmeyen ifade SAKIN donmuyor");
+    kontrol(ruh_no(nullptr) == RUH_SAKIN, "nullptr ifade SAKIN donmuyor");
+
+    // \U0001f534 HER RUH HALINDE SECILEBILIR BIR JEST OLMALI.
+    //
+    // Ikinci tur (ruhsuz arama) zaten kurtariyor, ama bir ruh halinde
+    // HIC jest olmamasi tasarim hatasidir: o ifade boyunca beden her
+    // zaman "ruha uymayan" bir jest oynar.
+    for (std::uint8_t r : {RUH_NESE, RUH_SAKIN, RUH_MERAK, RUH_DUSUK}) {
+        int kol = 0, teker = 0;
+        for (int j = 0; j < JEST_ADET; ++j) {
+            if (!JESTLER[j].kendiliginden) continue;
+            if ((JESTLER[j].ruh & r) == 0) continue;
+            if (JESTLER[j].teker_var) ++teker; else ++kol;
+        }
+        std::printf("    ruh %2d -> %d kol jesti, %d tekerlekli\n", r, kol,
+                    teker);
+        // Kol jesti SART: tekerlek kurasi tutmadiginda ya da tekerlek
+        // kipi kapaliyken yalnizca kol jestleri aranıyor.
+        kontrol(kol > 0, "bu ruh halinde hic kol jesti yok");
+
+        // 🔴 TEKERLEKLI JEST DE SART. Tekerlek turu SECILDIKTEN
+        // sonra yalnizca tekerlekli jestlere bakiliyor; bu ruh halinde
+        // hic yoksa ikinci tur devreye girip RUHA UYMAYAN birini
+        // seciyor. Belirtisi en kotu haliyle su: uzgun bakan Pati
+        // neseyle firil firil donuyor.
+        kontrol(teker > 0, "bu ruh halinde hic tekerlekli jest yok");
+    }
+}
+
 }  // namespace
 
 int main()
@@ -673,6 +763,7 @@ int main()
     kol_araligi();
     ozerk_donus();
     jest_tablosu();
+    ruh_eslemesi();
 
     std::printf("\n  ------------------------------------------------------\n");
     if (g_hata == 0) {

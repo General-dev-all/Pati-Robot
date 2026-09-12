@@ -78,7 +78,11 @@ HAREKETLER = [
     "hayir",         # kucuk sag-sol: kafa sallayip "hayir" demek
     "bak_etrafina",  # yavas don, dur, geri don
     "titre",         # iki yana genis salinim: kikirdama
+    "yaramaz",       # asimetrik kollar + sinsi bir donus
     "zipla",         # kollarla hizli ziplama (yalnizca kol)
+    "evet",          # hayir'in karsiligi: kollar hizli iner kalkar
+    "sasir",         # kollar firlar, donar, yavasca iner
+    "utan",          # kollar yavasca iner ve kapanir
     "selam",         # el sallar (yalnizca kol)
     "alkis",         # alkislar (yalnizca kol)
     "iki_kol",       # iki kol yukari (yalnizca kol)
@@ -92,7 +96,7 @@ HAREKETLER = [
 # yoksa Pati "dans ediyorum!" der, tekerlekler donmez ve cocuk robotun
 # bozuldugunu dusunur.
 TEKERLEKLI = ["sevin", "dans", "firildak", "hayir", "bak_etrafina",
-              "titre"]
+              "titre", "yaramaz"]
 
 
 # Konusma akisina gore Python'un kendi surdugu durumlar. Bunlar
@@ -222,7 +226,11 @@ hareketi yaparsin:
   hayir         bir seye "hayir" derken, kafani sallar gibi
   bak_etrafina  merak edince, etrafi arastirirken
   titre         cok heyecanlanince, gulerken
+  yaramaz       yaramazlik yaparken, takilirken — en afacan halin
   zipla         sevincten ziplarsin — kollarin hizli hizla iner kalkar
+  evet          bir seye "evet" derken, kafani sallar gibi
+  sasir         sasirinca — kollarin firlar, sonra yavasca iner
+  utan          utaninca — kollarin yavasca iner ve kapanir
   selam         merhaba ya da gule gule derken
   alkis         cocugu tebrik ederken
   iki_kol       iki kolunu birden kaldirirsin — "yasasin!" derken
@@ -308,8 +316,9 @@ BEDEN_TEKERLEK_KAPALI_EKI = """
 
 ⚠ TEKERLEKLERINI SU AN SEN KULLANAMIYORSUN (anne ya da baba panelden
 oyle ayarlamis). Donen hareketleri SECME: sevin, dans, firildak,
-hayir, bak_etrafina, titre. Yalnizca kol hareketlerini kullan: zipla,
-selam, alkis, iki_kol, sag_kol, sol_kol, dinlen.
+hayir, bak_etrafina, titre, yaramaz. Yalnizca kol hareketlerini kullan:
+zipla, evet, sasir, utan, selam, alkis, iki_kol, sag_kol, sol_kol,
+dinlen.
 
 Cocuk "dans et" derse kizma ve suclama; kollarinla yap ve neseli ol,
 ornegin soyle de: Tekerleklerim su an kapali ama sana kollarimla dans
@@ -319,9 +328,9 @@ edeyim!"""
 BEDEN_KOL_KAPALI_EKI = """
 
 ⚠ KOLLARINI SU AN SEN KULLANAMIYORSUN (anne ya da baba panelden oyle
-ayarlamis). Kol hareketlerini SECME: zipla, selam, alkis, iki_kol,
-sag_kol, sol_kol, dinlen. Yalnizca donen hareketleri kullan: sevin,
-dans, firildak, hayir, bak_etrafina, titre.
+ayarlamis). Kol hareketlerini SECME: zipla, evet, sasir, utan, selam,
+alkis, iki_kol, sag_kol, sol_kol, dinlen. Yalnizca donen hareketleri
+kullan: sevin, dans, firildak, hayir, bak_etrafina, titre, yaramaz.
 
 Cocuk "kolunu kaldir" derse "kolum yok" DEME — kolun var, su an
 kapali. Durumu soyle ve baska bir sey oner, ornegin: Kollarim su an

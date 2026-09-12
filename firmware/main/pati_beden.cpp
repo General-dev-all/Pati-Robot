@@ -15,6 +15,7 @@
 
 #include "pati_ayar.hpp"
 #include "pati_beden_matematik.hpp"
+#include "pati_gozler.hpp"
 #include "pati_pinler.h"
 
 namespace pati {
@@ -47,9 +48,16 @@ constexpr int SERVO_HZ   = 50;
 constexpr int SERVO_BIT  = 14;                 // 16384 adim
 constexpr int SERVO_ADIM = 1 << SERVO_BIT;     // 20 ms / 16384 = 1,22 us
 
-// SG90 5 V'ta kabaca 600 derece/saniye. 400'de tutuluyor: hem kalkis
-// akimi dusuyor hem hareket "firlamis" degil "canli" gorunuyor.
-constexpr int KOL_HIZ_DERECE_SN = 400;
+// 🔴 KOL HIZI ARTIK TEK SAYI DEGIL, KARE BASINA.
+//
+// 13.09.2026'ya kadar burada tek bir sabit vardi (400 derece/sn) ve
+// butun jestler ayni tempoda oynuyordu. Kademeler ve gerekceleri
+// pati_beden_matematik.hpp'de (KOL_HIZ_NORMAL / HIZLI / YAVAS): ayni
+// kol hareketi hizli oynayinca "irkildi", yavas oynayinca "cekindi"
+// oluyor — tek hizda ikisi de "kol kaldirdi".
+//
+// Tik basina adim (onda bir derece) buradan cikiyor:
+//     adim10 = derece_sn * DONGU_MESGUL_MS / 100
 
 // 🔴 KOL HEDEFE VARINCA DARBE KESILIYOR — VIZILTI ICIN.
 //
@@ -401,6 +409,10 @@ void beden_gorevi(void*)
     std::int64_t kare_bekle_bitis = 0;
     std::uint32_t elle_gorulen = g_kol_elle.load();
 
+    // Akan karenin kol hizi (onda bir derece / tik). Kare uygulanirken
+    // yaziliyor; jest bitince normale donuyor.
+    int kol_adim10 = KOL_HIZ_NORMAL * DONGU_MESGUL_MS / 100;
+
     // Konusma jesti zamanlamasi.
     std::int64_t sonraki_jest_us = 0;
 
@@ -673,16 +685,39 @@ void beden_gorevi(void*)
             const bool teker_turu =
                 teker_uygun && (esp_random() % TEKER_KURA) == 0;
 
+            // 🔴 BEDEN YUZE UYSUN — ruh haline gore secim.
+            //
+            // 13.09.2026'ya kadar secim tamamen rastgeleydi: gozler
+            // "saskin" bakarken beden alkisliyor olabiliyordu. Iki ayri
+            // organin ayri kafada olmasi "canli" degil BOZUK gorunuyor.
+            //
+            // ⚠️ gozler_su_anki() TEK BIR ATOMIK OKUMA (pati_gozler.cpp),
+            // yani sicak donguye kilit/I2C sokmuyor — CLAUDE.md'deki
+            // kurala uyuyor. Maliyeti oldugu icin degil, OLCULDUGU icin
+            // yazildi.
+            const std::uint8_t ruh = ruh_no(gozler_su_anki());
+
             int aday = -1;
             // Tekerlek turu secilmediyse kol jesti aranacak; kollar
             // acik degilse aranacak bir sey yok.
             if (teker_turu || kol_kip == KIP_ACIK) {
-                for (int deneme = 0; deneme < 12 && aday < 0; ++deneme) {
-                    const int s = static_cast<int>(esp_random() % JEST_ADET);
-                    if (!JESTLER[s].kendiliginden) continue;
-                    if (JESTLER[s].teker_var != teker_turu) continue;
-                    if (s == son_jest) continue;   // ust uste ayni olmasin
-                    aday = s;
+                // IKI TUR: once ruha uyanlar, sonra hepsi.
+                //
+                // Ikinci tur SART. Bazi ruh hallerinde uygun jest
+                // sayisi bir ya da ikidir ve "ust uste ayni olmasin"
+                // kurali onlari da eleyebilir; tek turlu arama o anda
+                // Pati'yi sessizce hareketsiz birakirdi. Ruh bir
+                // TERCIH, filtre degil.
+                for (int tur = 0; tur < 2 && aday < 0; ++tur) {
+                    for (int deneme = 0; deneme < 12 && aday < 0; ++deneme) {
+                        const int s =
+                            static_cast<int>(esp_random() % JEST_ADET);
+                        if (!JESTLER[s].kendiliginden) continue;
+                        if (JESTLER[s].teker_var != teker_turu) continue;
+                        if (s == son_jest) continue;  // ust uste ayni olmasin
+                        if (tur == 0 && (JESTLER[s].ruh & ruh) == 0) continue;
+                        aday = s;
+                    }
                 }
             }
             if (aday >= 0) {
@@ -718,6 +753,13 @@ void beden_gorevi(void*)
                 // ⚠️ Tablo DEGISTIRILMEDI: sabitler konak testinin
                 // taradigi veri ve orada 0 hala 0. Ceviri yalnizca
                 // uygulama aninda.
+                if (k.sol >= 0 || k.sag >= 0) {
+                    // Karenin kendi hizi. Tekerlek karelerinde (sol/sag
+                    // -1) dokunulmuyor: orada kol zaten duruyor ve bir
+                    // sonraki kol karesinin hizini ezmemeli.
+                    kol_adim10 = kol_hiz_derece_sn(k.hiz)
+                                 * DONGU_MESGUL_MS / 100;
+                }
                 if (k.sol >= 0) {
                     kol_hedef_yaz(0, k.sol == 0 ? kol_dinlenme(0) : k.sol);
                 }
@@ -763,7 +805,12 @@ void beden_gorevi(void*)
         g_jest_akiyor.store(akan != nullptr, std::memory_order_relaxed);
 
         // ---- KOL HAREKETI -----------------------------------------------
-        constexpr int ADIM10 = KOL_HIZ_DERECE_SN * DONGU_MESGUL_MS / 100;
+        // Jest bittiginde normale don: panelin kol dugmeleri ve konusma
+        // sonu dinlenmesi jestin hizini miras almamali.
+        if (akan == nullptr) {
+            kol_adim10 = KOL_HIZ_NORMAL * DONGU_MESGUL_MS / 100;
+        }
+        const int ADIM10 = kol_adim10;
         bool kol_oynuyor = false;
         // 🔴 KOLLAR KAPALIYSA DINLENMEYE GIDIP SUSUYOR.
         //

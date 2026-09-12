@@ -99,6 +99,46 @@ inline int kol_sinirla(int yuzde, int en_az, int en_cok)
     return std::clamp(yuzde, a, b);
 }
 
+// ---------------------------------------------------------------------------
+// 🔴 KOL HIZI KARE BASINA — CANLILIGIN YARISI HIZ DEGISIMINDE
+// ---------------------------------------------------------------------------
+//
+// 13.09.2026'ya kadar butun kol hareketleri TEK hizdaydi (400 derece/sn)
+// ve jestler birbirine benziyordu. Kullanicinin istegi: "Pati biraz daha
+// afacan, hareketli olsun — Vector gibi."
+//
+// Vector'un ifadesinin buyuk kismi mesafeden degil HIZDAN geliyor: ayni
+// kol hareketi hizli yapilinca "irkildi", yavas yapilinca "cekindi"
+// oluyor. Tek hizda ikisi de "kol kaldirdi" oluyor.
+//
+// Uc kademe yetiyor ve tabloyu okunur birakiyor:
+//
+//   HIZLI  600  SG90'in kendi veri sayfasi hizi. Yazilim artik sinir
+//                degil; servo elinden geleni yapiyor. Sicrama, alkis,
+//                irkilme.
+//   NORMAL 400  eski tek hiz. "Canli ama firlamis degil" (06.09.2026).
+//   YAVAS  200  cekinme, dusunme, utanma. Ayni kare yavas oynayinca
+//                bambaska bir sey anlatiyor.
+//
+// ⚠️ HIZLI BIR MOTOR KURALI DELMIYOR. Kullanicinin "anlik tam guc
+// yapma" kurali DC motorlar icin ve sebebi kalkis akim tepesiydi. Servo
+// konum suruyor, stall degil; 600 zaten servonun kendi siniri, yani
+// ondan fazlasini istemiyoruz.
+inline constexpr std::uint8_t KOL_NORMAL = 0;
+inline constexpr std::uint8_t KOL_HIZLI  = 1;
+inline constexpr std::uint8_t KOL_YAVAS  = 2;
+
+inline constexpr int KOL_HIZ_NORMAL = 400;   // derece / saniye
+inline constexpr int KOL_HIZ_HIZLI  = 600;
+inline constexpr int KOL_HIZ_YAVAS  = 200;
+
+inline int kol_hiz_derece_sn(std::uint8_t h)
+{
+    return (h == KOL_HIZLI) ? KOL_HIZ_HIZLI
+           : (h == KOL_YAVAS) ? KOL_HIZ_YAVAS
+                              : KOL_HIZ_NORMAL;
+}
+
 // Kaldirma yuzdesini (0 = asagi, 100 = yukari) servo acisina cevirir.
 // Donen deger ONDA BIR DERECE — 20 ms'lik adimlarda sicrama gorunmesin
 // diye tam sayi cozunurlugu artiriliyor.
@@ -493,18 +533,102 @@ struct Kare {
     std::int8_t   sag;
     std::int8_t   teker;      // YERINDE donus: + saga, - sola, 0 = dur
     std::uint16_t bekle_ms;
+    std::uint8_t  hiz;        // KOL_NORMAL / KOL_HIZLI / KOL_YAVAS
 };
 
-inline constexpr Kare JEST_DINLEN[]  = {{0, 0, 0, 0}};
-inline constexpr Kare JEST_SELAM[]   = {{-1, 85, 0, 90}, {-1, 55, 0, 90},
-                                        {-1, 85, 0, 90}, {-1, 55, 0, 90},
-                                        {0, 0, 0, 0}};
-inline constexpr Kare JEST_IKI_KOL[] = {{95, 95, 0, 320}, {0, 0, 0, 0}};
-inline constexpr Kare JEST_ALKIS[]   = {{55, 55, 0, 60}, {30, 30, 0, 60},
-                                        {55, 55, 0, 60}, {30, 30, 0, 60},
-                                        {55, 55, 0, 60}, {0, 0, 0, 0}};
-inline constexpr Kare JEST_DUSUN[]   = {{50, 0, 0, 420}, {0, 0, 0, 0}};
+// 🔴 RUH HALI — BEDEN YUZE UYSUN
+//
+// 13.09.2026'ya kadar jest secimi tamamen rastgeleydi: Pati'nin gozleri
+// "saskin" bakarken bedeni alkislayabiliyordu. Iki ayri organin ayri
+// kafada olmasi, "canli" degil "bozuk" gorunuyor.
+//
+// Cozum ucuz: gozler_su_anki() TEK BIR ATOMIK OKUMA (pati_gozler.cpp),
+// yani sicak donguye kilit ya da I2C sokmuyor — CLAUDE.md'deki kurala
+// uyuyor.
+//
+// Dort kume yetiyor. Daha incesi (her ifadeye ayri liste) tabloyu
+// bakimsiz birakirdi: yeni bir ifade eklendiginde kimse buraya donmez.
+inline constexpr std::uint8_t RUH_NESE  = 1;   // mutlu, cok_mutlu, afacan, haylaz
+inline constexpr std::uint8_t RUH_SAKIN = 2;   // notr, konusuyor, dinliyor, bos
+inline constexpr std::uint8_t RUH_MERAK = 4;   // saskin, merakli, anlamadim, dusunuyor
+inline constexpr std::uint8_t RUH_DUSUK = 8;   // uzgun, kizgin, somurtkan, uykulu
+inline constexpr std::uint8_t RUH_HEPSI = 15;
 
+inline constexpr Kare JEST_DINLEN[] = {{0, 0, 0, 0, KOL_NORMAL}};
+
+// El sallama HIZLI: yavas bir el sallama "el kaldirdi" gibi duruyor.
+inline constexpr Kare JEST_SELAM[] = {
+    {-1, 85, 0, 70, KOL_HIZLI}, {-1, 55, 0, 70, KOL_HIZLI},
+    {-1, 85, 0, 70, KOL_HIZLI}, {-1, 55, 0, 70, KOL_HIZLI},
+    { 0,  0, 0,  0, KOL_NORMAL},
+};
+
+// "Yasasin!" — iki kol birden FIRLIYOR ve orada kaliyor. Hizli cikis +
+// uzun duraklama, sevincin en okunur hali.
+inline constexpr Kare JEST_IKI_KOL[] = {
+    {95, 95, 0, 320, KOL_HIZLI}, {0, 0, 0, 0, KOL_NORMAL},
+};
+
+// Alkis GERCEK bir tempo istiyor. 400 derece/sn'de el carpma "kol indirip
+// kaldirma" gibi duruyordu; 600'de alkis oluyor.
+inline constexpr Kare JEST_ALKIS[] = {
+    {55, 55, 0, 50, KOL_HIZLI}, {25, 25, 0, 50, KOL_HIZLI},
+    {55, 55, 0, 50, KOL_HIZLI}, {25, 25, 0, 50, KOL_HIZLI},
+    {55, 55, 0, 50, KOL_HIZLI}, { 0,  0, 0,  0, KOL_NORMAL},
+};
+
+// Dusunme YAVAS ve ASIMETRIK: tek kol yukarida, digeri asagida.
+// Tablodaki en eski asimetrik jest ve neden ise yaradigi belli —
+// asimetri "poz" demek, simetri "hareket".
+inline constexpr Kare JEST_DUSUN[] = {
+    {50, 0, 0, 420, KOL_YAVAS}, {0, 0, 0, 0, KOL_NORMAL},
+};
+
+// 🔴 EVET — hayir'in kol karsiligi. Bedenin ANLAM tasidigi ikinci
+// jesti: Pati bir seye evet derken bunu yapiyor.
+//
+// Tekerlek YOK ve bu bilincli: "evet" siklikla soyleniyor, tekerlekli
+// olsaydi ileri kaymanin en buyuk kaynagi olurdu (BEDEN.md).
+inline constexpr Kare JEST_EVET[] = {
+    {70, 70, 0, 60, KOL_HIZLI}, {25, 25, 0, 60, KOL_HIZLI},
+    {70, 70, 0, 60, KOL_HIZLI}, {25, 25, 0, 60, KOL_HIZLI},
+    {70, 70, 0, 60, KOL_HIZLI}, { 0,  0, 0,  0, KOL_NORMAL},
+};
+
+// 🔴 SASIRMA — tablodaki hiz degisiminin en net ornegi.
+//
+// Kollar YUKARI FIRLIYOR (600), orada DONUYOR (420 ms), sonra YAVASCA
+// iniyor (200). Uc kare, tek bir duygu. Ayni kareler tek hizda oynasa
+// "kollarini kaldirdi indirdi" olurdu; irkilmeyi yapan sey hizin
+// kendisi.
+inline constexpr Kare JEST_SASIR[] = {
+    {95, 95, 0, 420, KOL_HIZLI},
+    {40, 40, 0, 160, KOL_YAVAS},
+    { 0,  0, 0,   0, KOL_YAVAS},
+};
+
+// 🔴 UTANMA — tablonun tek bastan sona YAVAS jesti.
+//
+// Kollar asagi kapaniyor ve orada bekliyor. Hizli yapilsa "kollarini
+// indirdi" olurdu; cekingenligi yapan sey yavasligin kendisi.
+inline constexpr Kare JEST_UTAN[] = {
+    {15, 15, 0, 500, KOL_YAVAS},
+    {35, 35, 0, 220, KOL_YAVAS},
+    { 0,  0, 0,   0, KOL_YAVAS},
+};
+
+// Ziplama: hizli, tekrarli, tekerleksiz. Kolun ileri kayma maliyeti
+// sifir, yani canlilik buradan bedavaya geliyor.
+inline constexpr Kare JEST_ZIPLA[] = {
+    {85, 85, 0, 60, KOL_HIZLI}, {20, 20, 0, 60, KOL_HIZLI},
+    {85, 85, 0, 60, KOL_HIZLI}, {20, 20, 0, 60, KOL_HIZLI},
+    {85, 85, 0, 60, KOL_HIZLI}, { 0,  0, 0,  0, KOL_NORMAL},
+};
+
+// ---------------------------------------------------------------------------
+// Tekerlekli jestler
+// ---------------------------------------------------------------------------
+//
 // 🔴 JEST BASINA DORT HAREKET — KULLANICININ OLCUMU (13.09.2026)
 //
 // 3.5.19'da hareket sayisi 4'ten 2'ye indirilmisti (ileri kaymayi
@@ -517,8 +641,8 @@ inline constexpr Kare JEST_DUSUN[]   = {{50, 0, 0, 420}, {0, 0, 0, 0}};
 //
 // Uc kural birlikte tutuluyor:
 //
-//   1. DORT hareket (bak_etrafina ve firildak haric — onlarin kimligi
-//      zaten tek buyuk savurma).
+//   1. DORT hareket (bak_etrafina, firildak ve yaramaz haric — onlarin
+//      kimligi zaten baska).
 //   2. Her kare >= 280 ms, yani darbe (180) + rampa inisi (~60) bitince
 //      geriye gercek donus kaliyor. Bundan kisasi yalnizca sarsinti.
 //   3. Yon degistirme boslugu 40 ms — sifirlanamaz (motoru dogrudan
@@ -533,83 +657,83 @@ inline constexpr Kare JEST_DUSUN[]   = {{50, 0, 0, 420}, {0, 0, 0, 0}};
 
 // Sevinc: dort salinim, sonra kollarla kutlama.
 inline constexpr Kare JEST_SEVIN[] = {
-    {-1, -1,  75, 320}, {-1, -1, 0, 40},
-    {-1, -1, -75, 320}, {-1, -1, 0, 40},
-    {-1, -1,  75, 320}, {-1, -1, 0, 40},
-    {-1, -1, -75, 320}, {-1, -1, 0, 40},
-    {95, 95,   0, 180}, { 0,  0,  0,   0},
+    {-1, -1,  75, 320, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {-1, -1, -75, 320, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {-1, -1,  75, 320, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {-1, -1, -75, 320, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {95, 95,   0, 180, KOL_HIZLI},  { 0,  0, 0,  0, KOL_NORMAL},
 };
 
 // Kikirdama: tablonun en hizli dort salinimi, sonra kollarla ziplama.
 // 280 ms kuralin tam tabaninda — bilerek, cunku bu jestin kimligi HIZ.
 inline constexpr Kare JEST_TITRE[] = {
-    {-1, -1,  75, 280}, {-1, -1, 0, 40},
-    {-1, -1, -75, 280}, {-1, -1, 0, 40},
-    {-1, -1,  75, 280}, {-1, -1, 0, 40},
-    {-1, -1, -75, 280}, {-1, -1, 0, 40},
-    {70, 70,   0, 100}, { 0,  0,  0,   0},
+    {-1, -1,  75, 280, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {-1, -1, -75, 280, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {-1, -1,  75, 280, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {-1, -1, -75, 280, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {70, 70,   0, 100, KOL_HIZLI},  { 0,  0, 0,  0, KOL_NORMAL},
 };
 
-// "Hayir" — kafa sallamanin tekerlekli karsiligi. Bedenin ANLAM
-// tasidigi tek jest: Pati bir seye hayir derken bunu yapiyor.
-// Anlam salinim SAYISINDA, o yuzden dort.
+// "Hayir" — kafa sallamanin tekerlekli karsiligi. Anlam salinim
+// SAYISINDA, o yuzden dort.
 inline constexpr Kare JEST_HAYIR[] = {
-    {-1, -1, -70, 300}, {-1, -1, 0, 40},
-    {-1, -1,  70, 300}, {-1, -1, 0, 40},
-    {-1, -1, -70, 300}, {-1, -1, 0, 40},
-    {-1, -1,  70, 300}, {-1, -1, 0,  0},
+    {-1, -1, -70, 300, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {-1, -1,  70, 300, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {-1, -1, -70, 300, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {-1, -1,  70, 300, KOL_NORMAL}, {-1, -1, 0,  0, KOL_NORMAL},
 };
 
 // Merak: yavasca don, DUR VE BAK, sonra geri don.
 // Bu jestin kimligi BEKLEMEK; dort salinim kurali buraya uygulanmiyor,
 // yoksa "bak" degil "titre" olurdu.
 inline constexpr Kare JEST_BAK[] = {
-    {-1, -1,  70, 440}, {-1, -1, 0, 400},
-    {-1, -1, -70, 440}, {-1, -1, 0,   0},
+    {-1, -1,  70, 440, KOL_NORMAL}, {-1, -1, 0, 400, KOL_NORMAL},
+    {-1, -1, -70, 440, KOL_NORMAL}, {-1, -1, 0,   0, KOL_NORMAL},
 };
 
 // Firildak: tablonun en buyuk iki savurmasi. Kol yok.
-//
-// Tek kare 600 ms — darbe ve rampa bittikten sonra ~360 ms boyunca
-// tablodaki hizda donuyor, yani Pati gercekten kendi etrafinda
-// savruluyor. Dort kisa salinimin yapamadigi sey bu.
 inline constexpr Kare JEST_FIRILDAK[] = {
-    {-1, -1,  75, 600}, {-1, -1, 0, 40},
-    {-1, -1, -75, 600}, {-1, -1, 0,  0},
+    {-1, -1,  75, 600, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {-1, -1, -75, 600, KOL_NORMAL}, {-1, -1, 0,  0, KOL_NORMAL},
 };
 
-// Zipla: kollarla hizli ziplama. TEKERLEK YOK — ve bu bilincli.
-// Kol hareketinin ileri kayma maliyeti sifir, yani canlilik buradan
-// bedavaya geliyor.
-inline constexpr Kare JEST_ZIPLA[] = {
-    {85, 85, 0, 80}, {20, 20, 0, 80},
-    {85, 85, 0, 80}, {20, 20, 0, 80},
-    {85, 85, 0, 80}, { 0,  0, 0,  0},
+// 🔴 YARAMAZLIK — tablodaki en ASIMETRIK jest.
+//
+// Once kollar sirayla kalkiyor (biri yukarida biri asagida, hizli),
+// sonra kisa bir sinsi donus, sonra yine asimetrik bir poz. Simetrik
+// hicbir kare yok ve asil fikir bu: simetri "hareket" gorunuyor,
+// asimetri "niyet".
+//
+// Tekerlek payi bilerek KUCUK (2 x 300 ms): bu jest sik secilecek
+// (RUH_NESE) ve tekerlek her secimde ileri kayma birakiyor.
+inline constexpr Kare JEST_YARAMAZ[] = {
+    {70,  0,   0, 110, KOL_HIZLI},
+    { 0, 90,   0, 110, KOL_HIZLI},
+    {70,  0,   0, 110, KOL_HIZLI},
+    {-1, -1,  70, 300, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {-1, -1, -70, 300, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {30, 90,   0, 200, KOL_HIZLI},
+    { 0,  0,   0,   0, KOL_NORMAL},
 };
 
 // Dans: hazirlik — DORT SALINIM ust uste — kol koreografisi.
 //
-// ⚠️ 3.5.19'a kadar kol kareleri donuslerin ARASINDAYDI ve jestin
-// ritmini bozan sey oydu (yukaridaki kol karesi uyarisi). Artik dort
-// donus kesintisiz, kollar once ve sonra.
-//
 // 🔴 DORT VURUS AYNI UZUNLUKTA DEGIL: 300, 300, 380, 380. Ayni
 // uzunlukta dort salinim "dans" degil "titre" gibi okunuyor — ritim,
-// tekrar degil DEGISIM demek. Iki kisa vurusun ardindan iki genis
-// savurma, bir dans olcusunun en basit hali.
+// tekrar degil DEGISIM demek.
 //
 // Toplam 1360 ms, butce 1400 (JEST_TEKER_EN_COK_MS).
 inline constexpr Kare JEST_DANS[] = {
-    {75, 75,   0, 110},
-    {-1, -1,  75, 300}, {-1, -1, 0, 40},
-    {-1, -1, -75, 300}, {-1, -1, 0, 40},
-    {-1, -1,  75, 380}, {-1, -1, 0, 40},
-    {-1, -1, -75, 380}, {-1, -1, 0, 40},
-    {20, 20,   0, 110},
-    {95, 95,   0, 130},
-    {30, 30,   0, 110},
-    {95, 95,   0, 130},
-    { 0,  0,   0,   0},
+    {75, 75,   0, 110, KOL_HIZLI},
+    {-1, -1,  75, 300, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {-1, -1, -75, 300, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {-1, -1,  75, 380, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {-1, -1, -75, 380, KOL_NORMAL}, {-1, -1, 0, 40, KOL_NORMAL},
+    {20, 20,   0, 110, KOL_HIZLI},
+    {95, 95,   0, 130, KOL_HIZLI},
+    {30, 30,   0, 110, KOL_HIZLI},
+    {95, 95,   0, 130, KOL_HIZLI},
+    { 0,  0,   0,   0, KOL_NORMAL},
 };
 
 // Tek kol. Cocuk "sag kolunu kaldir" dedi diye var.
@@ -621,8 +745,10 @@ inline constexpr Kare JEST_DANS[] = {
 // Sifirinci kare digerini de acikca INDIRIYOR (-1 degil 0): "tek kolunu
 // kaldir" denince onceki jestten kalan oteki kolun havada kalmasi,
 // hareketi okunmaz yapardi.
-inline constexpr Kare JEST_SAG_KOL[] = {{0, 95, 0, 900}, {0, 0, 0, 0}};
-inline constexpr Kare JEST_SOL_KOL[] = {{95, 0, 0, 900}, {0, 0, 0, 0}};
+inline constexpr Kare JEST_SAG_KOL[] = {{0, 95, 0, 900, KOL_NORMAL},
+                                        {0,  0, 0,   0, KOL_NORMAL}};
+inline constexpr Kare JEST_SOL_KOL[] = {{95, 0, 0, 900, KOL_NORMAL},
+                                        { 0, 0, 0,   0, KOL_NORMAL}};
 
 struct Jest {
     const char*  ad;
@@ -630,6 +756,7 @@ struct Jest {
     std::uint8_t adet;
     bool         kendiliginden;   // konusurken secilebilir mi
     bool         teker_var;       // tekerlek kullaniyor mu
+    std::uint8_t ruh;             // hangi ruh hallerine yakisiyor
 };
 
 // `teker_var` elle YAZILMIYOR gibi gorunsun diye degil, gorunur olsun
@@ -637,20 +764,28 @@ struct Jest {
 // yanlis yazilamiyor. Yeni bir jest eklerken bu alani unutmak, testi
 // dusuren bir hata.
 inline constexpr Jest JESTLER[] = {
-    {"dinlen",       JEST_DINLEN,   1, false, false},
-    {"selam",        JEST_SELAM,    5, true,  false},
-    {"iki_kol",      JEST_IKI_KOL,  2, true,  false},
-    {"alkis",        JEST_ALKIS,    6, true,  false},
-    {"dusun",        JEST_DUSUN,    2, true,  false},
-    {"zipla",        JEST_ZIPLA,    6, true,  false},
-    {"sevin",        JEST_SEVIN,   10, true,  true},
-    {"titre",        JEST_TITRE,   10, true,  true},
-    {"hayir",        JEST_HAYIR,    8, false, true},
-    {"bak_etrafina", JEST_BAK,      4, true,  true},
-    {"firildak",     JEST_FIRILDAK, 4, true,  true},
-    {"dans",         JEST_DANS,    14, true,  true},
-    {"sag_kol",      JEST_SAG_KOL,  2, false, false},
-    {"sol_kol",      JEST_SOL_KOL,  2, false, false},
+    //  ad             kareler        adet kendi  teker  ruh
+    {"dinlen",       JEST_DINLEN,   1, false, false, RUH_HEPSI},
+    {"selam",        JEST_SELAM,    5, true,  false, RUH_SAKIN | RUH_NESE},
+    {"iki_kol",      JEST_IKI_KOL,  2, true,  false, RUH_NESE},
+    {"alkis",        JEST_ALKIS,    6, true,  false, RUH_NESE},
+    {"dusun",        JEST_DUSUN,    2, true,  false, RUH_MERAK | RUH_DUSUK
+                                                     | RUH_SAKIN},
+    {"zipla",        JEST_ZIPLA,    6, true,  false, RUH_NESE},
+    {"evet",         JEST_EVET,     6, true,  false, RUH_SAKIN | RUH_NESE
+                                                     | RUH_MERAK},
+    {"sasir",        JEST_SASIR,    3, true,  false, RUH_MERAK},
+    {"utan",         JEST_UTAN,     3, true,  false, RUH_DUSUK | RUH_MERAK},
+    {"sevin",        JEST_SEVIN,   10, true,  true,  RUH_NESE},
+    {"titre",        JEST_TITRE,   10, true,  true,  RUH_NESE},
+    {"hayir",        JEST_HAYIR,    8, false, true,  RUH_HEPSI},
+    {"bak_etrafina", JEST_BAK,      4, true,  true,  RUH_MERAK | RUH_SAKIN
+                                                     | RUH_DUSUK},
+    {"firildak",     JEST_FIRILDAK, 4, true,  true,  RUH_NESE},
+    {"yaramaz",      JEST_YARAMAZ,  9, true,  true,  RUH_NESE | RUH_SAKIN},
+    {"dans",         JEST_DANS,    14, true,  true,  RUH_NESE},
+    {"sag_kol",      JEST_SAG_KOL,  2, false, false, RUH_HEPSI},
+    {"sol_kol",      JEST_SOL_KOL,  2, false, false, RUH_HEPSI},
 };
 inline constexpr int JEST_ADET = sizeof(JESTLER) / sizeof(JESTLER[0]);
 
@@ -662,6 +797,24 @@ constexpr bool jest_adi_esit(const char* a, const char* b)
 {
     while (*a != '\0' && *a == *b) { ++a; ++b; }
     return *a == *b;
+}
+
+// Gozlerin ifadesinden ruh kumesine. Tanimadigi bir ad gelirse SAKIN
+// donuyor — yeni bir ifade eklenip burasi unutulursa Pati sessizce
+// sakinlesiyor, jestsiz kalmiyor.
+inline std::uint8_t ruh_no(const char* ifade)
+{
+    if (ifade == nullptr) return RUH_SAKIN;
+    for (const char* a : {"mutlu", "cok_mutlu", "afacan", "haylaz"}) {
+        if (jest_adi_esit(a, ifade)) return RUH_NESE;
+    }
+    for (const char* a : {"saskin", "meraklı", "anlamadim", "dusunuyor"}) {
+        if (jest_adi_esit(a, ifade)) return RUH_MERAK;
+    }
+    for (const char* a : {"uzgun", "kizgin", "somurtkan", "uykulu"}) {
+        if (jest_adi_esit(a, ifade)) return RUH_DUSUK;
+    }
+    return RUH_SAKIN;
 }
 
 constexpr int jest_no(const char* ad)
