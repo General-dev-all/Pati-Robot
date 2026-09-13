@@ -1118,3 +1118,39 @@ ve her gönderim ayrı bir 250-350 mA darbesi.
 yerde bırak, `api/durum` → `ag.rssi_dbm` oku. 10 dB'den fazla
 düzelirse gövde (metal kasalı powerbank ve Stick'in üstünden geçen
 şerit kablo) anteni gölgeliyor demektir.
+
+---
+
+## 🔴 13.09.2026 — BU BELGEDEKİ ÇÖKME SAYILARI KARIŞIK
+
+`guc.cokme` sayacı **brownout ile yazılım panic'ini ayırmıyor.** İkisini
+de sayıyor ve adı "çökme".
+
+O gün bulundu: Pati uykudayken uyandırılınca `ESP_RST_PANIC` atıyordu ve
+sebebi `pati_mik` görevinin yığınının taşmasıydı (`TESHIS.md` ·
+"uykudan uyanma çökertiyor"). Varsayılan uyku 4 dakika, yani çocuk dört
+dakika susup sonra konuştuğunda. **Aylarca brownout sanıldı.**
+
+⚠️ **Bu belgedeki bütün "çökme sıklığı" ölçümleri bu yüzden kirli**:
+"3.5.4'te 15 kat seyreldi", "21 dakikada 4 çökme" gibi sayılar iki ayrı
+arızanın toplamı olabilir. Hangi ölçümde ne kadarının gerilim, ne
+kadarının panic olduğu geriye dönük bilinemiyor.
+
+### Bundan sonra ayırt etmenin yolu — zaten vardı
+
+`api/durum` → **`guc.acilis`** ikisini ayrı yazıyor:
+
+| Değer | Anlamı |
+|---|---|
+| `brownout` | gerçekten gerilim düşüşü |
+| `cokme` | **ESP_RST_PANIC — yazılım hatası** |
+| `gorev_bekcisi` / `kesme_bekcisi` | görev takıldı |
+
+Alan aylardır oradaydı ve kimse bakmadı. **Yeni ölçümlerde `cokme`
+sayacı tek başına yeterli değil; her yeniden başlamada `acilis` de
+kaydedilmeli.**
+
+🔴 Ve yığın taşması bu belgedeki hiçbir varsayımla yakalanamazdı:
+belirtisi gerilim düşüşüne benziyor, pil seviyesinden bağımsız, USB'de
+de oluyor — yani "USB'de de oluyor, demek ki brownout değil" akıl
+yürütmesi bile onu işaret etmiyordu.

@@ -1566,7 +1566,33 @@ esp_err_t sohbet_baslat()
     // NEDEN GORESI BUYUTULDU, IS TASINMADI: uyandirmayi ses gorevine
     // devretmek olcuyu 100 ms'lik kuyruk beklemesi kadar geciktirirdi ve
     // uyanma zaten 617 ms. Cocugun bekledigi yerde gereksiz gecikme.
-    xTaskCreate(mik_gorevi, "pati_mik", 6144, nullptr, 4, nullptr);
+    // 🔴 6144'TEN 12288'E CIKARILDI — YINE AYNI GOREV, YINE AYNI SEBEP.
+    //
+    // 13.09.2026: Pati uykudayken herhangi bir sey onu uyandirdiginda
+    // panic atip yeniden basliyordu. Varsayilan uyku 4 dakika, yani
+    // cocuk dort dakika susup sonra konustugunda. AYLARDIR "brownout"
+    // SANILIYORDU; acilis sebebi aslinda ESP_RST_PANIC'ti.
+    //
+    //   Guru Meditation Error: StoreProhibited
+    //   mik_gorevi -> uyandir() -> GeminiLiveClient::start()
+    //     -> set_state() -> emit() -> olay_geldi() -> xQueueSend
+    //       -> xTaskRemoveFromEventList   <- COKME
+    //
+    // ⚠️ BU SEFER FreeRTOS "stack overflow" DEMEDI. Tasma bekciyi
+    // atlayip komsu bellegi bozdu ve cokme alakasiz gorunen bir yerde
+    // (kuyruk gonderimi) cikti. 01.09'daki tasma acikca yakalanmisti;
+    // bu sefer belirti onu hic andirmiyordu ve teshis gunlerce
+    // brownout'ta arandi.
+    //
+    // SEBEP AYNI: yigin hesabi gorevin kodunu degil CAGIRDIGI EN DERIN
+    // SEYI sayar. mik_gorevi "ses oku, gonder" diye olculmustu; oysa
+    // uyandir() icinde prompt_kur() 6 KB'lik sistem promptunu kuruyor
+    // ve g_istemci->start() TLS + WebSocket + cJSON zincirini aciyor.
+    // O zincir 01.09'dan sonra buyudu, olcu buyumedi.
+    //
+    // Yigin ACILISTA ayriliyor (o an ~272 KB bos dahili SRAM var), yani
+    // calisma anindaki dar paya dokunmuyor.
+    xTaskCreate(mik_gorevi, "pati_mik", 12288, nullptr, 4, nullptr);
 
     ESP_LOGI(ETIKET, "sohbet basladi — konusabilirsin");
     return ESP_OK;

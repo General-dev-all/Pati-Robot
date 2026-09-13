@@ -1,2 +1,2 @@
-3.5.48
-"Sesi puruzsuz cal" aciklamasina citirtinin ne zaman olustugu eklendi: Google yogun oldugunda.
+3.5.50
+Pati uykuya daldiktan sonra kendisiyle konusuldugunda kendini yeniden baslatiyordu; sessizlik dort dakikayi gectiginde olan buydu. Sebep bulundu ve duzeltildi. Aylardir pil dusuklugune baglanan yeniden baslamalarin bir kismi da buymus.

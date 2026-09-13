@@ -76,13 +76,42 @@ normal. Dışarıdan "Pati beni duymadı" gibi görünüyor.
 Panelden **uyku süresini 15 dakikaya** çıkarmak uyanma sayısını
 azaltıyor. Bedeli fatura: uykuda ücret işlemiyor.
 
-### 🔴 AÇIK — düzeltilmedi
+### ✅ ÇÖZÜLDÜ — `pati_mik` görevinin YIĞINI taşıyormuş
 
-Sebep `stop()`/`start()` çevriminin içinde ve bulunmadı. Aranacak yer:
-istemcinin kendi görev/kuyruk yaşam döngüsü (`gemini_live_client.cpp` ·
-`teardown()` ve gönderici görevi). Bir görev kuyrukta beklerken
-silinirse kuyrukta ölü bir TCB kalır ve bir sonraki `xQueueSend` tam
-böyle çöker — en güçlü şüphe bu, **ama doğrulanmadı.**
+Sebep istemcide değildi. **Mikrofon görevinin yığını yetmiyordu.**
+
+```
+xTaskCreate(mik_gorevi, "pati_mik", 6144, ...)   ->  12288
+```
+
+⚠️ **Aynı görev 01.09.2026'da bir kez daha taşmıştı** (3072 → 6144) ve
+o zaman FreeRTOS açıkça `***ERROR*** A stack overflow in task pati_mik`
+demişti. **Bu sefer demedi** — taşma bekçiyi atlayıp komşu belleği
+bozdu ve çökme alakasız görünen bir yerde (kuyruk gönderimi) çıktı.
+Belirti öncekini hiç andırmadığı için teşhis günlerce brownout'ta
+arandı.
+
+Sebep aynı: **yığın hesabı görevin kodunu değil, çağırdığı en derin
+şeyi sayar.** `mik_gorevi` "ses oku, gönder" diye ölçülmüştü; oysa
+`uyandir()` içinde `prompt_kur()` 6 KB'lik sistem promptunu kuruyor ve
+`g_istemci->start()` TLS + WebSocket + cJSON zincirini açıyor. O zincir
+01.09'dan sonra büyüdü, ölçü büyümedi.
+
+**Doğrulandı (3.5.50, gerçek cihaz):** uyku 1 dakikaya çekildi, Pati
+uyudu, uyandırıldı → `cokme` 116'da sabit, seri kayıtta panic yok.
+Düzeltmeden önce aynı test iki kez, iki kez de çökmüştü.
+
+### ⚠️ Yol üstünde düzeltilen ama SEBEP OLMAYAN şey
+
+`gemini_live_client.cpp · teardown()` gönderici görevi kapatırken
+`eTaskGetState()` ile **silinmiş bir görevin** durumuna bakıyordu
+(tanımsız davranış) ve 2 saniyede pes edip **kuyruğu silip istemciyi
+yok ediyordu** — görev hâlâ kullanıyor olabilecekken. Gerçek bir el
+sıkışmayla değiştirildi; zaman aşarsa artık siliyor değil **bilerek
+sızdırıyor** (sızıntı kötü, bellek bozulması felaket).
+
+Bu çökmeyi düzeltmedi — düzeltmeden sonra da aynı panic çıktı — ama
+kendi başına gerçek bir hataydı.
 
 
 ## 🔴 13.09.2026 — "bir gözü kısık, saatlerce öyle bakıyor": BEKÇİ KİLİTLENMESİ

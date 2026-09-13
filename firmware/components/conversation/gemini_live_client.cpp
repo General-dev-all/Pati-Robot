@@ -153,6 +153,7 @@ public:
             return tl::unexpected{ConversationError::OutOfMemory};
         }
         sender_should_exit_.store(false, std::memory_order_relaxed);
+        sender_done_.store(false, std::memory_order_relaxed);
         if (xTaskCreatePinnedToCoreWithCaps(&Impl::sender_trampoline, "gemini_tx",
                                             kSenderTaskStack, this, kSenderTaskPrio,
                                             &sender_task_, kSenderTaskCore,
@@ -320,15 +321,81 @@ private:
 
     void teardown()
     {
+        // 🔴 UYKUDAN UYANMA COKMESI BURADAYDI — 13.09.2026.
+        //
+        // Belirti: Pati uykudayken herhangi bir sey onu uyandirdiginda
+        // panic atip yeniden basliyordu. Varsayilan uyku 4 dakika, yani
+        // cocuk dort dakika susup sonra konustugunda. Aylarca "brownout"
+        // sanildi; acilis sebebi aslinda ESP_RST_PANIC'ti.
+        //
+        //   Guru Meditation Error: StoreProhibited
+        //   uyandir() -> start() -> set_state() -> emit()
+        //     -> olay_geldi() -> xQueueSend -> xTaskRemoveFromEventList
+        //
+        // SEBEP BU FONKSIYONDU ve uc hata ust usteydi:
+        //
+        //   1. `eTaskGetState(sender_task_)` — gorev kendini sildikten
+        //      sonra serbest birakilmis bellegi okuyor. Hicbir zaman
+        //      eDeleted dondurmeyebiliyor.
+        //   2. Bekleme yalnizca 2 saniyeydi. Gonderici ise bir WebSocket
+        //      yazmasinin ICINDE bloke olabiliyor — olculdu: tek yazma
+        //      7,6 saniyeye kadar. Yani bekleme cogu zaman yetmiyordu.
+        //   3. Ve pes edince kuyrugu SILIYOR, istemciyi YOK EDIYORDU —
+        //      gorev hala ikisini de kullanirken. Kuyrukta bekleyen bir
+        //      gorev varken vQueueDelete cagirmak, o gorevi serbest
+        //      birakilmis bir bekleme listesine bagli birakiyor; bir
+        //      sonraki kuyruk isleminde xTaskRemoveFromEventList tam
+        //      olarak boyle cokuyor.
+        //
+        // ⚠️ 3.5.39'da kuyrugu 96'dan 5'e indirmek bunu SIKLASTIRDI:
+        // uyandirma sinyali (`sentinel`) timeout 0 ile gonderiliyor ve
+        // kuyruk doluysa dusuyor. Sinyal artik yuk tasimiyor — dongunun
+        // kendi 100 ms'lik zaman asimi bayragi zaten goruyor.
+        //
+        // DOGRU SIRA: once cikis bayragi, sonra istemciyi DURDUR (bloke
+        // yazmayi hatayla dondurur ve gorevi serbest birakir), sonra
+        // gorevin "bittim" demesini bekle.
         if (sender_task_ != nullptr) {
             sender_should_exit_.store(true, std::memory_order_release);
-            AudioChunk* sentinel = nullptr;
-            xQueueSend(audio_tx_queue_, &sentinel, 0);
-            for (int i = 0; i < 200; ++i) {
-                if (eTaskGetState(sender_task_) == eDeleted) break;
+
+            // Bloke yazmayi kir: durdurmadan beklemek, gorevin
+            // uyanmasini yazmanin kendi zaman asimina birakmak olurdu.
+            if (client_ != nullptr) {
+                esp_websocket_client_stop(client_);
+            }
+            if (audio_tx_queue_ != nullptr) {
+                AudioChunk* sentinel = nullptr;
+                xQueueSend(audio_tx_queue_, &sentinel, 0);
+            }
+
+            bool bitti = false;
+            for (int i = 0; i < 1000; ++i) {          // en fazla 10 saniye
+                if (sender_done_.load(std::memory_order_acquire)) {
+                    bitti = true;
+                    break;
+                }
                 vTaskDelay(pdMS_TO_TICKS(10));
             }
             sender_task_ = nullptr;
+
+            if (!bitti) {
+                // 🔴 GOREV HALA CALISIYOR. Hicbir seyi SILMIYORUZ.
+                //
+                // Sizinti kotu, bellek bozulmasi felaket: sizan sey
+                // PSRAM'de birkac KB ve cihaz calismaya devam eder;
+                // bozulma ise saatler sonra alakasiz bir yerde
+                // cokertir ve sebebi bulunamaz. Bu kod tam olarak o
+                // hatayi yapiyordu.
+                ESP_LOGE(kTag, "gonderici gorev 10 sn'de cikmadi — kuyruk "
+                               "ve istemci BILEREK sizdiriliyor "
+                               "(silmek bellegi bozardi)");
+                audio_tx_queue_ = nullptr;
+                client_ = nullptr;
+                rx_buffer_ = nullptr;
+                setup_sent_ = false;
+                set_state(ConversationState::Idle);
+                return;
+            }
         }
         if (audio_tx_queue_ != nullptr) {
             AudioChunk* chunk = nullptr;
@@ -1017,7 +1084,14 @@ private:
 
     static void sender_trampoline(void* arg)
     {
-        static_cast<Impl*>(arg)->sender_loop();
+        auto* self = static_cast<Impl*>(arg);
+        self->sender_loop();
+        // 🔴 BITTIGINI KENDISI SOYLESIN. teardown() eskiden
+        // eTaskGetState(sender_task_) ile bakiyordu ve bu, gorev kendini
+        // sildikten SONRA serbest birakilmis bellegi okumak demekti
+        // (tanimsiz davranis). Artik gorev, silinmeden once bayragi
+        // kaldiriyor: bakilan sey her zaman gecerli.
+        self->sender_done_.store(true, std::memory_order_release);
         vTaskDeleteWithCaps(nullptr);
     }
 
@@ -1174,6 +1248,7 @@ private:
     QueueHandle_t audio_tx_queue_{nullptr};
     TaskHandle_t sender_task_{nullptr};
     std::atomic<bool> sender_should_exit_{false};
+    std::atomic<bool> sender_done_{true};   // gorev yokken 'bitti' sayilir
 };
 
 // ---- public class plumbing ------------------------------------------------
