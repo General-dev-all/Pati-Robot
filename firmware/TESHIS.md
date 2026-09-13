@@ -12,6 +12,79 @@ teşhis yapıldı. Yanlış teşhisler de yazılı: aynı tuzağa tekrar düşü
 
 
 
+
+## 🔴 13.09.2026 — UYKUDAN UYANMA ÇÖKERTİYOR (panic, brownout DEĞİL)
+
+**Aylardır "brownout" sanılan çökmelerin en az bir kısmı yazılım
+hatasıymış.** Yığın izi ilk kez yakalandı.
+
+### Tekrarlanabilir — %100
+
+| Deneme | Sonuç |
+|---|---|
+| Pati **uykudayken** panelden çocuğun adını yaz | 🔴 panic, yeniden başlıyor |
+| Pati **uyanıkken** aynı şeyi yaz | ✅ sorunsuz |
+
+İki kez denendi, ikisinde de aynı. Sebep isim değil: **isim değişikliği
+uyandırmayı tetikliyor**, çöken şey uyanma yolu.
+
+### Yığın izi
+
+```
+Guru Meditation Error: Core 0 panic'ed (StoreProhibited)
+
+mik_gorevi (pati_sohbet.cpp:1311)
+  -> uyandir()                       (pati_sohbet.cpp:596)
+    -> GeminiLiveClient::start()     (gemini_live_client.cpp:1201 -> 148)
+      -> set_state()                 (gemini_live_client.cpp:367)
+        -> emit()                    (gemini_live_client.cpp:379)
+          -> olay_geldi()            (pati_sohbet.cpp:389)
+            -> xQueueSend(g_kuyruk)
+              -> xTaskRemoveFromEventList  ← ÇÖKME
+```
+
+`uyu()` → `g_istemci->stop()`, `uyandir()` → `g_istemci->start()`.
+Çökme **stop/start çevriminde**. `xTaskRemoveFromEventList` içinde
+`StoreProhibited`, kuyruğun bekleyen-görev listesinin bozulduğunu
+gösteriyor — `g_kuyruk` null DEĞİL ve bellek sağlıklı (en düşük dahili
+SRAM 21059 bayt, bol).
+
+### ⚠️ Neden aylarca brownout sanıldı
+
+`api/durum` → `guc.acilis` bu ayrımı **zaten yazıyordu**:
+
+| Değer | Anlamı |
+|---|---|
+| `brownout` | gerçekten gerilim düşüşü |
+| **`cokme`** | **ESP_RST_PANIC — yazılım hatası** |
+
+Cihaz `acilis: cokme` diyordu ve kimse bakmadı; `cokme` sayacı
+"brownout sayacı" gibi okundu. **Sayacın adı `cokme` ama ikisini
+ayırmıyor** — `PIL.md`'deki bütün "çökme" ölçümleri bu yüzden karışık
+olabilir.
+
+### Etkisi
+
+Varsayılan uyku **4 dakika**. Yani çocuk dört dakika susup sonra
+konuşunca Pati çöküp yeniden başlıyor: ~10 saniye sessizlik, sonra
+normal. Dışarıdan "Pati beni duymadı" gibi görünüyor.
+
+⚠️ Hafıza, ayarlar ve wifi korunuyor — cihaz kendini toparlıyor.
+
+### Geçici çare (kod değişikliği yok)
+
+Panelden **uyku süresini 15 dakikaya** çıkarmak uyanma sayısını
+azaltıyor. Bedeli fatura: uykuda ücret işlemiyor.
+
+### 🔴 AÇIK — düzeltilmedi
+
+Sebep `stop()`/`start()` çevriminin içinde ve bulunmadı. Aranacak yer:
+istemcinin kendi görev/kuyruk yaşam döngüsü (`gemini_live_client.cpp` ·
+`teardown()` ve gönderici görevi). Bir görev kuyrukta beklerken
+silinirse kuyrukta ölü bir TCB kalır ve bir sonraki `xQueueSend` tam
+böyle çöker — en güçlü şüphe bu, **ama doğrulanmadı.**
+
+
 ## 🔴 13.09.2026 — "bir gözü kısık, saatlerce öyle bakıyor": BEKÇİ KİLİTLENMESİ
 
 **Belirti (kullanıcının sözü):** *"Bir gözü kısık saatlerce hiçbir şey
