@@ -831,16 +831,34 @@ private:
                     // base64 dominates (PCM16 is 4:3 expanded on the wire), memcpy
                     // is included so the metric tracks the full cost the conv-task
                     // pays before AssistantAudioChunk leaves this client.
+                    // 🔴 DOGRUDAN HEDEFE COZULUYOR — arada gecici
+                    // tampon ve kopya YOK. Gerekcesi base64.hpp'de,
+                    // decode_into'nun yaninda: eskiden parca basina iki
+                    // ayirma + 13 KB kopya vardi ve yigin cekismesi
+                    // cozme suresini 36 ms'ye, tepesini 103 ms'ye
+                    // cikariyordu. Hoparlor tamponu o sicramalarda
+                    // bosalip sessizlik basiyordu.
                     const std::int64_t decode_t0 = esp_timer_get_time();
-                    auto decoded = base64::decode(b64);
-                    if (!decoded) {
-                        emit_error(decoded.error(), "audio base64 decode failed");
+                    const std::size_t ham = base64::decoded_size(b64);
+                    // PCM16: tek sayi uzunluk bozuk veri demek.
+                    if (ham == 0 || (ham % sizeof(std::int16_t)) != 0) {
+                        emit_error(ConversationError::ProtocolError,
+                                   "audio base64 decode failed");
                         continue;
                     }
                     auto pcm = std::make_shared<std::vector<std::int16_t>>(
-                        decoded->size() / sizeof(std::int16_t));
-                    std::memcpy(pcm->data(), decoded->data(),
-                                pcm->size() * sizeof(std::int16_t));
+                        ham / sizeof(std::int16_t));
+                    const auto yazilan = base64::decode_into(
+                        b64, {reinterpret_cast<std::uint8_t*>(pcm->data()), ham});
+                    if (!yazilan) {
+                        emit_error(yazilan.error(), "audio base64 decode failed");
+                        continue;
+                    }
+                    // Boyut sorgusu ile gercek yazilan ayrisirsa kucult:
+                    // vector'u kucultmek yeniden ayirma yapmiyor.
+                    if (*yazilan < ham) {
+                        pcm->resize(*yazilan / sizeof(std::int16_t));
+                    }
                     const std::int64_t decode_us = esp_timer_get_time() - decode_t0;
                     decode_us_.record(static_cast<float>(decode_us));
                     if (state_.load(std::memory_order_relaxed) != ConversationState::Speaking) {

@@ -1,2 +1,2 @@
-3.5.39
-Pati konusurken sesinin kesik kesik gelmesinin sebebi bulundu: cihaz birikmis eski mikrofon sesini Pati konusurken gonderiyordu ve Gemini bunu 'cocuk ustume konusuyor' sanip kendi cevabini kesiyordu. Artik sunucuya giden ses her zaman taze; eskiyen ses bekletilmeden dusuyor.
+3.5.41
+Pati konusurken duyulan minik catirtilarin sebebi bulundu: hoparlore sigmayan ses bekletilmek yerine atiliyordu ve her atilan parca sesin icinde bir sicrama birakiyordu. Artik hicbir parca atilmiyor, sirasi gelene kadar bekliyor.

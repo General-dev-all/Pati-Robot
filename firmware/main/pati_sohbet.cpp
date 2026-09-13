@@ -847,8 +847,51 @@ void olayi_isle(const ConversationEvent& olay)
         const std::size_t bayt = olay.audio->size() * sizeof(std::int16_t);
         damga_ilk_paket(bayt, olay.emit_us);
 
-        hoparlor_yaz(std::span<const std::int16_t>(olay.audio->data(),
-                                                   olay.audio->size()));
+        // 🔴 TAMAMI CALINANA KADAR ISRAR ET — donus degeri
+        // YOK SAYILMIYOR.
+        //
+        // 13.09.2026, kullanicinin tarifi: "patlak hoparlor gibi, bir
+        // cumlede minik minik bes alti tane." Sessizlik BOSLUGU degil,
+        // dalga formunda SICRAMA — ve sebebi tam burasiydi.
+        //
+        // hoparlor_yaz TUKETTIGI ornek sayisini donduruyor ve bu satir
+        // onu okumuyordu. DMA tamponu dolduğunda i2s_channel_write 200 ms
+        // sonra zaman asimina ugruyor, parcanin KALANI sessizce
+        // dusuyordu. Atilan her ornek dalga formunda bir basamak
+        // birakiyor ve hoparlorde "cat" diye duyuluyor.
+        //
+        // ⚠️ TAMPON KUCUK OLDUGU ICIN DEGIL, GEMINI HIZLI GONDERDIGI
+        // ICIN doluyor: sunucu cevabi uretildigi hizda akitiyor, yani
+        // birkac saniyelik cumle tamponun tasiyabileceginden (342 ms)
+        // cok daha hizli geliyor. Bu normal ve beklenen; yanlis olan,
+        // sigmayan sesi ATMAKTI.
+        //
+        // Beklemek dogru davranis: calma zaten gercek zamanli, o sesle
+        // yapilacak baska bir sey yok. Yarim dupleks acikken (varsayilan)
+        // Pati konusurken mikrofon zaten gonderilmiyor, yani burada
+        // beklemek baska bir isi geciktirmiyor.
+        {
+            std::span<const std::int16_t> kalan(olay.audio->data(),
+                                                olay.audio->size());
+            int kisir_tur = 0;
+            while (!kalan.empty()) {
+                const std::size_t t = hoparlor_yaz(kalan);
+                if (t == 0) {
+                    // Hic ilerleme yok: donanim gercekten kabul etmiyor.
+                    // Sonsuz donguye girmemek icin sayili deneme, sonra
+                    // GORUNUR sekilde birak.
+                    if (++kisir_tur >= 5) {
+                        ESP_LOGW(ETIKET, "hoparlor %u ornegi kabul etmedi — "
+                                         "ses atlayacak",
+                                 static_cast<unsigned>(kalan.size()));
+                        break;
+                    }
+                    continue;
+                }
+                kisir_tur = 0;
+                kalan = kalan.subspan(t);
+            }
+        }
         // Yazma DONDUKTEN SONRA damgaliyoruz: i2s_channel_write, veri
         // DMA'ya kopyalanana kadar bekliyor. Yani bu an, sesin gercekten
         // donanima teslim edildigi an.

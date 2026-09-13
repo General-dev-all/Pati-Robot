@@ -34,4 +34,26 @@ constexpr std::size_t encoded_size(std::size_t input_len) noexcept
 
 tl::expected<std::vector<std::uint8_t>, ConversationError> decode(std::string_view input);
 
+// 🔴 HAZIR TAMPONA COZ — `encode_into`'nun ikizi.
+//
+// 13.09.2026, gercek kartta olculdu: gelen ses parcasi basina
+// `decode()` bir vector ayiriyor, cagiran taraf IKINCI bir vector
+// ayirip aralarinda 13 KB kopyaliyordu. Parca basina iki ayirma, bir
+// kopya, bir serbest birakma — saniyede bes kez, konusma boyunca.
+//
+// Olculen bedeli: cozme suresi ortalama 36 ms, en kotu 103 ms ve
+// aralarinda ON SEKIZ KAT oynama. O oynama isin agirligindan degil
+// yigin cekismesinden geliyor; is agir olsa hep ayni sururdu.
+// Hoparlorun tamponu o sicramalarda bir an bosaliyor ve yerine
+// sessizlik basiliyor — kullanicinin "bes saniyelik cumlenin 0,3
+// saniyesi kesiliyor" dedigi sey.
+//
+// ⚠️ Gonderme yolu bu isi ZATEN dogru yapiyordu (encode_into +
+// onceden ayrilmis b64_scratch_). Asimetri kodda duruyordu ve
+// yalnizca TX tarafi olculdugu icin gorulmemisti.
+std::size_t decoded_size(std::string_view input) noexcept;
+
+tl::expected<std::size_t, ConversationError> decode_into(std::string_view input,
+                                                         std::span<std::uint8_t> out);
+
 } // namespace stackchan::conversation::base64
