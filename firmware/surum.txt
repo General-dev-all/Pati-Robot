@@ -1,2 +1,2 @@
-3.5.33
-Panel toparlandi. Sik kullanilan ayarlar ustte, kurulum isleri (wifi, anahtar, guncelleme, parlaklik) tek bir Cihaz kartinda, govde ayarlari (yon cevirme, kol sinirlari) Kumanda'nin altinda katli. Aciklamalar kisaldi ve teknik sozcukler kalkti; her ayarin altindaki 'fabrika ayarlarina donunce silinm
+3.5.34
+Wifi guc tasarrufu bazen kendiliginden geri aciliyor ve Pati'nin sesi kesiliyor, cevaplari gecikiyordu; ozellikle wifi sifresi panelden yeniden girildikten sonra. Artik her baglantida yeniden kapatiliyor ve kapandigi dogrulaniyor. Cihazi kapatip acmak da ayni etkiyi yapiyor.

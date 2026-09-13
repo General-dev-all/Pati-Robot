@@ -10,6 +10,52 @@ teşhis yapıldı. Yanlış teşhisler de yazılı: aynı tuzağa tekrar düşü
 ---
 
 
+
+## 🔴 13.09.2026 — "cevap vermiyor, sesi kesiliyor" — wifi güç tasarrufu GERİ AÇILMIŞTI
+
+**Belirti (kullanıcının sözü):** *"Pati cevap vermiyor, verirse de çok
+geç; konuşurken sesi çok kısa, sürekli kesiliyor. Güncelleme öncesi çok
+iyiydi. Wifi'ın dibine götürdüm."*
+
+**Ölçüm:** `api/durum` → `ag.tasarruf: 1` (`WIFI_PS_MIN_MODEM`),
+`rssi_dbm: -42`, `guc.ses_aclik: 9` (3,8 dakikada), en uzun boşluk
+62 sn. Aynı anda ağdaki **ikinci kart**: `tasarruf: 0`, `ses_aclik: 0`.
+
+Kod `esp_wifi_set_ps(WIFI_PS_NONE)` diyor — ama **yalnızca açılışta,
+bir kez.** Bir şey sonradan geri açıyor. Seri log olmadan hangisi
+olduğu görülemedi; en güçlü şüphe **kurulum modundan STA'ya dönüş**
+(`esp_wifi_set_mode(WIFI_MODE_STA)`), çünkü:
+
+- Bu kart o gün fabrika ayarlarına dönmüş (hafıza boş, `oturum: 1`,
+  kullanım 4 dk), yani wifi'yi **panelden yeniden girmiş** — APSTA'dan
+  STA'ya geçen tek yol o.
+- Öteki kart aynı kodu koşuyor, kurulumdan geçmedi, tasarrufu kapalı.
+
+**Neden güncellemeyle karıştı:** güncelleme ve fabrika sıfırlaması aynı
+saatte yapıldı. Belirti güncellemeden sonra başladı ama sebebi
+güncelleme değil, sıfırlama sonrası kurulumdu. ⚠️ İki şey aynı anda
+değişince belirti hep sonuncuya yazılır.
+
+**Hızlı çare:** Pati'yi kapatıp aç. Açılış tasarrufu kapatıyor; kurulum
+modundan geçilmediği sürece kapalı kalıyor.
+
+**Kalıcı çare (3.5.34):** `pati_ag.cpp · tasarrufu_kapat()` — her IP
+alışında ve her STA'ya dönüşte yeniden kapatıyor, **geri okuyup**
+tutmadıysa loga uyarı düşüyor.
+
+### Ders
+
+**"Bir kez ayarladım" bir garanti değil, bir varsayım.** Wifi kipi
+değişince sürücünün neyi sıfırladığı belgede yazmıyor; ölçünce çıktı.
+Bir donanım/sürücü ayarına güveniyorsan onu **olay bazında yeniden
+uygula ve geri oku** — kodek kazancında da (`set_vol` dönüş değeri)
+aynı ders alınmıştı.
+
+**Belirtiyi ayırt eden ölçüm zaten paneldeydi:** `ag.tasarruf`. Ama
+kimse ona bakmıyordu çünkü "kod kapalı diyor". Kodun ne dediği değil,
+cihazın ne yaptığı sayılır.
+
+
 ## 🔴 13.09.2026 — "ayarım kayboluyor": ses seviyesi hiç saklanmıyordu
 
 **Belirti (kullanıcının sözü):** *"Ses seviyesi ve parlaklık ayarını

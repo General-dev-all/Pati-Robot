@@ -141,6 +141,39 @@ int cubuk(int rssi)
     return 1;
 }
 
+// 🔴 GUC TASARRUFU KAPALI — VE KAPALI KALDIGI DOGRULANIYOR.
+//
+// 13.09.2026, gercek cihazda olculdu: kod acilista bir kez
+// esp_wifi_set_ps(WIFI_PS_NONE) diyordu ve api/durum yine de
+// tasarruf=1 (MIN_MODEM) gosteriyordu. Ayni kodu kosan ikinci kartta
+// 0'di. Yani bir sey acilistan SONRA geri aciyor — kurulum modundan
+// donus (APSTA -> STA), yeniden baglanma ya da surucunun kendisi;
+// hangisi oldugu seri log olmadan gorulemedi.
+//
+// Belirtisi kullanicinin sozleriyle: "cevap vermiyor, verirse cok gec,
+// sesi surekli kesiliyor" — wifi'nin dibinde, -42 dBm'de. Ayni
+// cihazda hoparlor aclik sayaci 3,8 dakikada 9'a cikmisti; oteki
+// kartta 0. Tasarruf acikken radyo DTIM araliklarinda uyuyor ve
+// 341 ms'lik ses tamponu kuruyor (asagida, ag_gorevi icindeki not).
+//
+// Duzeltme sebepten bagimsiz: her baglanti kurulusunda ve her STA'ya
+// donuste YENIDEN kapat. Idempotent ve bedava. Ve GERI OKU: yazma
+// tutmadiysa loga UYARI dusuyor — "ESP_OK dondu, demek ki oldu"
+// diye gecistirilmiyor. Bu depoda tam bu tuzak daha once yasandi
+// (kodek kazanci; pati_ses.cpp).
+void tasarrufu_kapat(const char* neden)
+{
+    const esp_err_t h = esp_wifi_set_ps(WIFI_PS_NONE);
+    wifi_ps_type_t okunan = WIFI_PS_MIN_MODEM;
+    esp_wifi_get_ps(&okunan);
+    if (h != ESP_OK || okunan != WIFI_PS_NONE) {
+        ESP_LOGW(ETIKET, "guc tasarrufu KAPATILAMADI (%s): yazma=%s okunan=%d",
+                 neden, esp_err_to_name(h), static_cast<int>(okunan));
+    } else {
+        ESP_LOGI(ETIKET, "guc tasarrufu kapali (%s)", neden);
+    }
+}
+
 void olay_geldi(void*, esp_event_base_t taban, std::int32_t no, void* veri)
 {
     if (taban == WIFI_EVENT && no == WIFI_EVENT_STA_START) {
@@ -204,6 +237,8 @@ void olay_geldi(void*, esp_event_base_t taban, std::int32_t no, void* veri)
         g_kopma = 0;
         g_durum = AgDurumu::Bagli;
         ESP_LOGI(ETIKET, "bagli: %s · IP %s", g_ad.c_str(), g_ip);
+        // Her baglantida yeniden — gerekcesi tasarrufu_kapat'in basinda.
+        tasarrufu_kapat("baglandi");
         mdns_kur();
         xEventGroupSetBits(g_olaylar, BAGLI_BIT);
         return;
@@ -340,7 +375,11 @@ void ag_gorevi(void*)
     //
     // Bedeli: ortalama ~30 mA fazla akim. Priz beslemeli bir masa robotu
     // icin bedava; pil olsaydi burasi tartisilirdi.
-    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_wifi_set_ps(WIFI_PS_NONE));
+    //
+    // ⚠️ BU SATIR TEK BASINA YETMEDI (13.09.2026, olculdu) — cihaz
+    // sonradan yine MIN_MODEM'e donuyordu. Artik her baglantida ve her
+    // kip degisiminde yeniden kapatiliyor: tasarrufu_kapat().
+    tasarrufu_kapat("acilis");
 
     while (true) {
         // 🔴 KURULUM MODUNDA SONSUZA KADAR BEKLENMIYOR.
@@ -372,6 +411,8 @@ void ag_gorevi(void*)
                 ESP_LOGI(ETIKET, "kayitli ag geri geldi — kurulum agi "
                                  "kapatiliyor");
                 esp_wifi_set_mode(WIFI_MODE_STA);
+                // Kip degisimi tasarrufu geri acabiliyor (en guclu suphe).
+                tasarrufu_kapat("kurulumdan cikis");
                 g_kurulum_modu.store(false);
             }
             continue;
@@ -569,6 +610,7 @@ esp_err_t ag_kaydet_ve_bagla(const std::string& ad, const std::string& sifre)
         if (g_kurulum_modu.load()) {
             ESP_LOGI(ETIKET, "baglandi — kurulum agi kapatiliyor");
             esp_wifi_set_mode(WIFI_MODE_STA);
+            tasarrufu_kapat("panelden baglanma");
             g_kurulum_modu.store(false);
         }
         return ESP_OK;
