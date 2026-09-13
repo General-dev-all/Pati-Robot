@@ -714,6 +714,38 @@ void olayi_isle(const ConversationEvent& olay)
         // Bayrağı önce yükseltmek, paket yolundaki göz geçişini atlatıyordu.
         if (olay.state == ConversationState::Speaking && !g_konusuyor) {
             gozler_konusuyor();
+
+            // 🔴 GOZ YUKUNU SESTEN ONCE DUSUR — elimizdeki erken
+            // sinyali kullanan tek yer burasi.
+            //
+            // Goz cizici Pati'nin en buyuk surekli CPU musterisi: kare
+            // basina 24-30 ms tam yuk (pati_gozler.cpp, gercek kartta
+            // olculdu). Konusurken 10 fps'ten 5 fps'e iniyor ve gerekcesi
+            // acik — amfi tam yukte baslarken CPU'nun bos olmasi pay
+            // birakiyor.
+            //
+            // ⚠️ AMA O INIS GEC TETIKLENIYORDU. gozler_ses_bildir()
+            // yalnizca ses YAZMA geri cagrisindan cagriliyor
+            // (pati_ses.cpp · hoparlor_yaz), yani ilk PCM blogu zaten
+            // DMA'ya giderken. Goz gorevi o an kare ortasindaysa 24-30
+            // ms'lik rasterlemeyi bitirmek zorunda — tam da 80 ms'lik
+            // ses rampasinin akim basamagini yaydigi pencerede.
+            //
+            // Yani akimi yaymak icin koydugumuz rampa, kaldirabilecegimiz
+            // yukun ustune biniyordu. Bu satir onu one aliyor: yukaridaki
+            // yorumun dedigi gibi Speaking olayi ilk ses paketinden ONCE
+            // geliyor, yani goz zaten yavaslamis oluyor.
+            //
+            // Pencere KISA ve kendini temizliyor: ses gelirse yazma yolu
+            // 341 ms'lik damgayla uzatiyor, gelmezse suresi dolup gozler
+            // normale donuyor. Konusma hic baslamazsa bedeli yarim
+            // saniyelik yavas goz — gorunmuyor bile.
+            //
+            // ⚠️ BU TEK BASINA COKMEYI COZMEZ ve cozecegi iddia
+            // edilmiyor. CPU onlarca mA, amfi yuzlerce; bu bir KATKI
+            // payi. Olculecek olan her zamanki gibi cokme sikligi
+            // (api/durum · guc.cokme / kullanim.bugun_dk).
+            gozler_ses_bildir(500);
         }
         g_konusuyor = (olay.state == ConversationState::Speaking);
         // Kollar da konusma AKISINDAN suruluyor, gozlerle ayni yerden.

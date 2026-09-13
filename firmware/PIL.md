@@ -1037,3 +1037,84 @@ mantığı `pati_ses.cpp`'de ve orası konak testinin kapsamı dışında.
 ⚠️ Bloke eden bir çağrının **öncesinde** alınan zaman damgası, o
 çağrının süresini ölçüme karıştırır. Damga her zaman ölçülmek istenen
 olayın **bittiği** yerde alınmalı.
+
+---
+
+## 3.5.32 — göz yükü sesten ÖNCE düşürüldü
+
+13.09.2026. Kullanıcı çökmeyi dışarıdan bir yapay zekâya derin
+araştırma yaptırdı. **Hazır bir yama çıkmadı**, ama üç bulgusu kodla
+karşılaştırıldı ve ikisi kapandı.
+
+### Araştırma bulguları — kodla karşılaştırma
+
+| Bulgu | Kodda durum |
+|---|---|
+| M5PM1'in `setAw8737aMode` ile MODE_1–4 seçimi var | ✅ **zaten Mode 4** (`PATI_AMFI_KIP 4`). Mode 1 = 1,2 W, Mode 4 nominali 0,6 W'a sıkıştırıyor. Datasheet gerekçesi `pati_guc.cpp · hoparlor_amfi`'de yazılı |
+| `refresh=NOW` ~20 ms gecikme içeriyor, ses başlangıcında etkisine bak | ✅ **etkisi yok**: amfi açılışta bir kez açılıyor, konuşmada hiç dokunulmuyor |
+| `auto_clear` ile tampon boşalınca sıfır gönderilsin | ✅ **zaten açık** (`pati_ses.cpp` · `i2s_kur`) |
+| M5Stack pilde sesi %75 altında tutmayı öneriyor | ⚠️ **ölçek aynı değil.** Bizim 0.70'imiz PCM üzerine sayısal çarpan; M5Stack'in yüzdesi kendi ses API'si. Eşdeğer sayılamaz |
+
+⚠️ **`i2s_channel_preload_data` denenmedi.** Kanal zaten açılışta bir
+kez etkinleştiriliyor ve cümle başına yeniden başlatılmıyor, yani
+önyükleyecek bir "başlangıç" anı yok. Sözü kesilince yapılan
+disable/enable çifti (`hoparlor_temizle`) tek istisna ve o yol çökme
+anıyla örtüşmüyor.
+
+### 🔴 Bulunan tek gerçek boşluk: koruma GEÇ tetikleniyordu
+
+Göz çizici en büyük sürekli CPU müşterisi (kare başına 24-30 ms) ve
+konuşurken 10 → 5 fps'e iniyor. Gerekçesi bu belgede yazılı: amfi tam
+yükte başlarken CPU'nun boş olması pay bırakıyor.
+
+**Ama o iniş ses YAZILIRKEN tetikleniyordu.** `gozler_ses_bildir()`
+yalnızca `hoparlor_yaz`'ın yazma geri çağrısından çağrılıyordu — ilk
+PCM bloğu zaten DMA'ya giderken. Göz görevi o an kare ortasındaysa
+24-30 ms'lik rasterlemeyi bitirmek zorunda kalıyor: **tam da 80 ms'lik
+rampanın akım basamağını yaydığı pencerede.**
+
+Yani akımı yaymak için koyduğumuz önlem, kaldırabileceğimiz yükün
+üstüne biniyordu.
+
+**Erken sinyal zaten elimizdeydi ve kodda yazılıydı** (`pati_sohbet.cpp`):
+
+> *"Gemini `Speaking` olayını ilk ses paketinden ÖNCE gönderir."*
+
+O satır göz *ifadesini* değiştirmek için kullanılıyordu; FPS için
+kullanılmıyordu. Artık kullanılıyor — `Speaking` olayında 500 ms'lik
+bir sessizlik penceresi açılıyor, ses gelirse yazma yolu 341 ms'lik
+damgayla uzatıyor, gelmezse süresi dolup gözler normale dönüyor.
+
+### ⚠️ BU ÇÖZÜM DİYE YAZILMADI
+
+CPU onlarca mA, amfi yüzlerce. Bu bir **katkı** payı; tek başına
+çökmeyi bitirmesi beklenmiyor. Ölçülecek olan her zamanki gibi
+`guc.cokme ÷ kullanim.bugun_dk`.
+
+Değişiklik ölçüm yapılmadan yayınlandı ve **sebebi kayda geçsin**:
+önce "önce ölç, sonra değiştir" denmişti. Kullanıcı uzun ölçüm
+yapamayacağını söyledi. Ölçüm olmayacaksa değişikliği bekletmenin tek
+gerekçesi (deneyin saflığı) ortadan kalkıyor; bedeli sıfır olan bir
+değişikliği bekletmek, hiçbir şey yapmamak demek olurdu.
+
+### 🔴 Kalan en ayırt edici ölçüm — hâlâ yapılmadı
+
+**Sesi %0'a (0.15) alıp çökmeyi saymak.** 0.15/0.70 ≈ −13 dB, yani
+amfi çıkış gücünün ~1/22'si; mikrofon, Wi-Fi ve gözler değişmiyor.
+Çökme sürerse **hoparlör baskın terim değildir** ve rampa/mod/tampon
+hattında aramak bırakılmalı.
+
+⚠️ Bu deney 3.5.31'den önce **mümkün değildi**: ses seviyesi
+saklanmıyordu ve her brownout onu tavana geri alıyordu — deney kendi
+değişkenini sıfırlıyordu (`TESHIS.md`).
+
+### Ölçüm oturmadan bakılacak ucuz şey: RSSI
+
+−76…−91 dBm ölçüldü. Bu belgedeki kural: −70'in altı tek başına bir
+etken, çünkü zayıf sinyalde telsiz tam güçte kalıp yeniden gönderiyor
+ve her gönderim ayrı bir 250-350 mA darbesi.
+
+**30 saniyelik test, hâlâ yapılmadı:** Stick'i gövdeden çıkar, aynı
+yerde bırak, `api/durum` → `ag.rssi_dbm` oku. 10 dB'den fazla
+düzelirse gövde (metal kasalı powerbank ve Stick'in üstünden geçen
+şerit kablo) anteni gölgeliyor demektir.

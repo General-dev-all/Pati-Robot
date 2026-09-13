@@ -1,2 +1,2 @@
-3.5.31
-Ses seviyesi ve ekran parlakligi artik kalici: fabrika ayarlarina donunce silinmiyorlar. Ses tarafinda daha buyuk bir kusur da bu arada cikti; seviye aslinda hic saklanmiyordu ve her acilista en yuksege donuyordu, artik sectiginiz degerde kaliyor. Ayrica telefondan panele girince jest ve kol dugmele
+3.5.32
+Pati konusmaya baslarken ekran yukunu biraz daha erken azaltiyor. Amac ara ara yasanan kendiliginden yeniden baslamayi seyreltmek; bu tek basina cozum degil, katki. Gozler konusma sirasinda zaten yavasliyordu, simdi bu birkac yuz milisaniye once basliyor ve disaridan fark edilmiyor.
