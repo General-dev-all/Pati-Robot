@@ -86,6 +86,14 @@ function oge(id) {
     _metin: '',
     value: '', hidden: false, disabled: false, className: '', type: 'text',
     style: {}, width: 240, height: 240,
+    // <select>.options — 12.09.2026'da pati.js `[...k.options]` demeye
+    // basladi ve test SESSIZCE olmedi, GURULTULU oldu: "options is not
+    // iterable" ile ilk takimda duruyordu. Ama ayni gurultu, testin asil
+    // isini de bogdu — dort takim da burada dusuyor ve eksik id'lere
+    // hic sira gelmiyordu. Yani 12.09'dan 13.09'a kadar bu test hicbir
+    // seyi korumadi. Bos dizi yeterli: kod "listede var mi" diye
+    // bakiyor, yoksa ekliyor.
+    options: [],
     classList: { toggle() {}, add() {}, remove() {} },
     get textContent() { return this._metin; },
     set textContent(v) { this._metin = String(v); },

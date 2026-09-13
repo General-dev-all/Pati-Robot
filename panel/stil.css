@@ -273,6 +273,7 @@ button,
 label,
 select,
 input,
+summary,
 .anahtar,
 .kd { touch-action: manipulation; }
 button:disabled { opacity: .45; cursor: default; }
@@ -463,6 +464,31 @@ button.tehlike { color: var(--kalir); border-color: rgba(248, 81, 73, .5); }
   cursor: pointer;
 }
 .gelismis[open] summary { margin-bottom: 4px; }
+
+/* Kart İÇİNDE katlanan ayar grubu (Kumanda · Gövde ayarları).
+   Bir kez ayarlanıp unutulan şeyler için: kapalıyken tek satır yer
+   tutuyor, kartın günlük kullanılan üst yarısı görünür kalıyor. */
+.katli {
+  margin-top: 16px;
+  border-top: 1px solid var(--cizgi);
+  padding-top: 8px;
+}
+.katli summary {
+  font-size: 13px;
+  color: var(--soluk);
+  cursor: pointer;
+  padding: 6px 0;
+  touch-action: manipulation;
+}
+.katli[open] summary { color: var(--yazi); }
+
+/* Tek kartın içindeki alt bölüm başlığı (Cihaz · Wifi / Anahtar /
+   Güncelleme). h2 değil: kartın kendi başlığıyla karışmasın. */
+.alt-baslik {
+  font-size: 13px;
+  color: var(--soluk);
+  margin-top: 18px;
+}
 
 /* ----------------------------------------------------------------- tost */
 

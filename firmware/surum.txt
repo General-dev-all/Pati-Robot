@@ -1,2 +1,2 @@
-3.5.32
-Pati konusmaya baslarken ekran yukunu biraz daha erken azaltiyor. Amac ara ara yasanan kendiliginden yeniden baslamayi seyreltmek; bu tek basina cozum degil, katki. Gozler konusma sirasinda zaten yavasliyordu, simdi bu birkac yuz milisaniye once basliyor ve disaridan fark edilmiyor.
+3.5.33
+Panel toparlandi. Sik kullanilan ayarlar ustte, kurulum isleri (wifi, anahtar, guncelleme, parlaklik) tek bir Cihaz kartinda, govde ayarlari (yon cevirme, kol sinirlari) Kumanda'nin altinda katli. Aciklamalar kisaldi ve teknik sozcukler kalkti; her ayarin altindaki 'fabrika ayarlarina donunce silinmez' notlari yalnizca o dugmenin yaninda duruyor. Ayarlarin hicbiri degismedi, yalnizca yerleri ve yazilari.

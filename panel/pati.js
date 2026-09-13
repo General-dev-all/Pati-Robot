@@ -459,7 +459,7 @@ function hizYaz(gosterilen) {
   const g = document.getElementById('vBedenHiz');
   const r = document.getElementById('vBedenGercek');
   if (g) g.textContent = `%${gosterilen}`;
-  if (r) r.textContent = `Motora giden: %${gosterilendenGercege(gosterilen)}`;
+  if (r) r.textContent = `Tekere giden: %${gosterilendenGercege(gosterilen)}`;
 }
 
 // 🔴 KOLU EBEVEYNIN AYARLADIGI ARALIGA KIRP — panelin kendi tarafinda.

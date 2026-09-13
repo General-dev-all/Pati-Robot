@@ -23,6 +23,18 @@
      Açıklamalar iki satırı geçmiyor. Geliştirici araçları burada değil
      (gelistirici.html), ölçüm sayıları da gösterilmiyor — Python hepsini
      prototype/olcumler/ içine yazmaya devam ediyor.
+
+     🔴 13.09.2026'da bu kural YENİDEN uygulandı. Aradaki altı haftada
+     her ayarın altına gerekçe, tarih, "fabrika ayarlarına dönünce
+     silinmez" notu ve "servo / DC motor" gibi sözcükler birikmişti;
+     anne bir ayarı bulmak için üç ekran kaydırıyordu. Kullanıcının
+     sözü: "anne servodan DC motordan ne anlar, kol teker de."
+
+     Kurallar:
+       - Anne ne YAPACAK, o yazılır. Neden öyle olduğu KODA yazılır.
+       - "servo" → kol, "motor" → teker. Teknik ad panelde yok.
+       - Kalıcılık notu yalnızca "Fabrika ayarlarına dön"ün yanında.
+       - Bir kez ayarlanıp unutulan şeyler katlı (details).
      ========================================================================== -->
 
 <main class="sayfa">
@@ -58,10 +70,8 @@
   <div class="kartlar">
 
     <!-- ANAHTAR UYARISI — Pati susmuşsa sebebi burada yazıyor.
-         Kartın kendi içinde de aynı bilgi var ama oraya inmek için
-         sayfayı kaydırmak gerekiyor. Pati konuşmuyorsa anne panele TAM
-         bunun için giriyor; cevabı aramak zorunda kalmamalı.
-         Sorun yokken görünmüyor (hidden). -->
+         Pati konuşmuyorsa anne panele TAM bunun için giriyor; cevabı
+         aramak zorunda kalmamalı. Sorun yokken görünmüyor (hidden). -->
     <div class="uyari" id="anahtarUyari" hidden>
       <b id="anahtarUyariBaslik">—</b>
       <p id="anahtarUyariYazi">—</p>
@@ -84,15 +94,19 @@
     </section>
 
 
-    <!-- KUMANDA — yalnizca beden takiliyken gorunuyor.
-         Beden yoksa kart hic yok: olmayan bir seyin dugmesini gostermek,
-         ebeveyne bozuk oldugunu dusundururdu. -->
+    <!-- ==================================================================
+         KUMANDA — yalnızca beden takılıyken görünüyor.
+
+         Üstte OYUN: çubuk, kollar, hareket düğmeleri, hız. Bunlar her
+         gün kullanılıyor. Altta KATLI "Gövde ayarları": yön çevirme,
+         kol sınırları, kipler — bir kez ayarlanıp unutulan şeyler.
+         13.09.2026'ya kadar hepsi açıktaydı ve kart tek başına iki
+         ekran boyu tutuyordu; anne çubuğu bulmak için kaydırıyordu.
+         ================================================================== -->
     <section class="kart" id="kumandaKart" hidden>
       <h2>Kumanda</h2>
       <p class="ip">
-        Beden takılı. Tekerlekler dönmüyorsa
-        <b>pil yuvasının düğmesine</b> bak — Pati bedeni görüyor ama
-        pilin açık olup olmadığını göremiyor.
+        Tekerlekler dönmüyorsa gövdenin <b>güç düğmesine</b> bakın.
       </p>
 
       <div class="kumanda">
@@ -104,9 +118,9 @@
                   aria-label="Sol kolu indir">▼</button>
         </div>
 
-        <!-- Parmak birakilinca topuz ortaya donuyor VE sifir gonderiliyor.
-             Ama guvenlik ona bagli degil: firmware'in olu adam
-             zamanlayicisi komut kesilirse motorlari zaten durduruyor. -->
+        <!-- Parmak bırakılınca topuz ortaya dönüyor VE sıfır gönderiliyor.
+             Güvenlik ona bağlı değil: firmware'in ölü adam zamanlayıcısı
+             komut kesilirse tekerleri zaten durduruyor. -->
         <div class="joystick" id="joystick" role="application"
              aria-label="Pati'yi sür">
           <span class="joy-ok joy-ust">▲</span>
@@ -136,14 +150,11 @@
         <button class="ikincil ince" data-jest="dinlen">Dinlen</button>
       </div>
 
-      <!-- TEKERLEK KULLANAN JESTLER AYRI SATIRDA ve `data-teker`
-           isaretli. Alttaki anahtar kapatilinca bunlar sonuyor —
-           basip hicbir sey olmamasi, cocuga dugmenin bozuk oldugunu
-           dusundururdu.
-
-           Hepsi YERINDE donuyor: iki tekerlek ters yonde, Pati yer
-           degistirmiyor. Bu bir tercih degil, jest tablosunun
-           yapisi (pati_beden_matematik.hpp). -->
+      <!-- Tekerlek kullanan hareketler AYRI satırda ve `data-teker`
+           işaretli: tekerlekler kapatılınca bunlar sönüyor — basıp
+           hiçbir şey olmaması çocuğa düğmenin bozuk olduğunu
+           düşündürürdü. Hepsi YERİNDE dönüyor; Pati yer değiştirmiyor
+           (pati_beden_matematik.hpp). -->
       <div class="jestler" id="tekerJestleri">
         <button class="ikincil ince" data-jest="sevin" data-teker>Sevin</button>
         <button class="ikincil ince" data-jest="dans" data-teker>Dans et</button>
@@ -161,224 +172,115 @@
         <input id="kBedenHiz" type="range" min="0" max="100" step="5">
       </label>
       <p class="ip">
-        Masada oynanacak bir robot için tam güç fazla. Sınır
-        <b>cihazda</b> uygulanıyor — panel daha fazlasını gönderse bile
-        Pati kabul etmiyor.
+        Masada oynamak için tam güç fazla.
         <!-- Çubuk 0-100 görünüyor ama cihaz 40-100 saklıyor: %40'ın
-             altında tekerlek dönmüyor, sadece ötüyor. İki sayı farklı
-             olduğu için gerçek değeri de yazıyoruz — bir arıza ararken
-             ikisi de görünsün. -->
+             altında tekerlek dönmüyor, sadece ötüyor. Gerçek değer soluk
+             yazıyor — arıza ararken ikisi de görünsün. -->
         <span id="vBedenGercek" class="soluk"></span>
-        <br><br>
-        Varsayılan <b>%50</b>.
-        🔴 <b>Bu ayar “fabrika ayarlarına dön” dendiğinde silinmez.</b>
-        Yani sıfırlama hızı varsayılana döndürmüyor — robotu başka bir
-        çocuğa verirken buraya elle bakın.
       </p>
-
-      <!-- HER UZUV AYRI, VE ÜÇ HÂL VAR — açma-kapama yetmiyordu.
-           "Kapalı" ile "sadece kumandadan" arasındaki fark, çocuğun
-           elinden kumandayı alıp almamak. İkisi de gerçekten
-           isteniyor, o yüzden anahtar değil seçim. -->
-      <label class="kd">
-        <span class="kd-ust"><span>Tekerlekler</span></span>
-        <select id="kipTekerlek">
-          <option value="2">Açık — Pati kendi de döner</option>
-          <option value="1">Sadece kumandadan</option>
-          <option value="0">Kapalı — motorlar hiç dönmez</option>
-        </select>
-      </label>
-      <p class="ip">
-        <b>Açık:</b> Pati konuşurken arada kendiliğinden dönüyor ve
-        çocuk &ldquo;dans et&rdquo; deyince yapıyor.
-        <b>Sadece kumandadan:</b> yalnızca yukarıdaki çubuk ve
-        düğmeler; Pati kendi kararıyla dönmüyor, sesli komutu da
-        dinlemiyor. <b>Kapalı:</b> motorlar hiç dönmüyor, çubuk da
-        sönüyor.
-      </p>
-
-      <label class="anahtar">
-        <span>İleri/geri yönünü ters çevir</span>
-        <input id="surusTers" type="checkbox">
-      </label>
-      <p class="ip">
-        <b>Çubuğu yukarı ittiğinizde Pati geri gidiyorsa</b> bunu açın.
-        Motor kabloları ters takılmış demektir; bu ayar yönü yazılımdan
-        düzeltir.
-        <br><br>
-        ⚠️ <b>Sağa-sola dönüşe dokunmuyor.</b> Dönüş çubuğun yan
-        hareketinden geliyor; yalnızca ileri/geri yer değiştiriyor —
-        böyle bir gövdede dönüş zaten genelde doğru çalışıyor.
-        <br><br>
-        🔴 <b>Bu ayar “fabrika ayarlarına dön” dendiğinde silinmez.</b>
-        Kol yönüyle aynı yerde saklanıyor: kaybolursa çocuk çubuğu ileri
-        itip Pati'yi geri sürer.
-      </p>
-
-      <label class="anahtar">
-        <span>Sağ/sol yönünü ters çevir</span>
-        <input id="donusTers" type="checkbox">
-      </label>
-      <p class="ip">
-        <b>Çubuğu sağa ittiğinizde Pati sola dönüyorsa</b> bunu açın.
-        Bir öncekinin ikizi; ikisi <b>birbirinden bağımsız</b>, çünkü bir
-        gövdede yalnızca ileri/geri, başkasında yalnızca dönüş ters
-        bağlanmış olabilir.
-        <br><br>
-        ⚠️ <b>Pati'nin kendi dönüşlerine dokunmuyor.</b> Konuşurken
-        yaptığı dönüşler zaten her seferinde rastgele yöne başlıyor —
-        düzeltilecek bir şey yok. Bu ayar yalnızca çubuk için.
-        <br><br>
-        🔴 Bu ayar da <b>fabrika ayarlarına dönünce silinmiyor.</b>
-      </p>
-
-      <label class="kd">
-        <span class="kd-ust"><span>Kollar</span></span>
-        <select id="kipKol">
-          <option value="2">Açık — konuşurken kendi oynatır</option>
-          <option value="1">Sadece kumandadan</option>
-          <option value="0">Kapalı — servolar hiç oynamaz</option>
-        </select>
-      </label>
-      <p class="ip">
-        <b>Açık:</b> Pati konuşurken kollarını kendiliğinden oynatıyor
-        ve &ldquo;kolunu kaldır&rdquo; deyince kaldırıyor.
-        <b>Kapalı:</b> kollar dinlenme konumuna inip susuyor — servolar
-        akım çekmiyor, hiç ses çıkarmıyor.
-      </p>
-
-      <label class="anahtar">
-        <span>Kol yönünü ters çevir</span>
-        <input id="kolTers" type="checkbox">
-      </label>
-      <p class="ip">
-        <b>“Kolunu kaldır” deyince kol aşağı iniyorsa</b> bunu açın.
-        Servolar ters monte edilmiş demektir; bu ayar yönü yazılımdan
-        düzeltir. İkinci gövdede gerekiyor, ilkinde gerekmiyor.
-        <br><br>
-        🔴 <b>Bu ayar “fabrika ayarlarına dön” dendiğinde silinmez.</b>
-        Kol aralıklarıyla aynı yerde saklanıyor: unutulup yeniden
-        ayarlanmazsa kol ters yöne gidip <b>bir yere çarpar</b> ve servo
-        bozulur.
-      </p>
-
-      <!-- KOL ARALIKLARI — mekanik sınır, süs değil. -->
-      <label class="kd">
-        <span class="kd-ust"><span>Sol kol en az</span><b id="vKolSolAz">—</b></span>
-        <input id="kKolSolAz" type="range" min="0" max="100" step="5">
-      </label>
-      <label class="kd">
-        <span class="kd-ust"><span>Sol kol en çok</span><b id="vKolSolCok">—</b></span>
-        <input id="kKolSolCok" type="range" min="0" max="100" step="5">
-      </label>
-      <label class="kd">
-        <span class="kd-ust"><span>Sağ kol en az</span><b id="vKolSagAz">—</b></span>
-        <input id="kKolSagAz" type="range" min="0" max="100" step="5">
-      </label>
-      <label class="kd">
-        <span class="kd-ust"><span>Sağ kol en çok</span><b id="vKolSagCok">—</b></span>
-        <input id="kKolSagCok" type="range" min="0" max="100" step="5">
-      </label>
-      <p class="ip">
-        Kolun gidebileceği aralık. <b>Çubuğu bırakınca kol oraya
-        gidiyor</b> — böylece bir yere çarpıp çarpmadığını görerek
-        ayarlayabilirsiniz.
-        <br><br>
-        Sol kol aşağıda <b>tekerleğe</b>, yukarıda <b>üstteki kabloya</b>
-        çarpabiliyor; o yüzden dar geliyor (%10–%70). Sağ kolun önünde
-        bir şey yok. Yanlış ayarlanırsa kol bir yere dayanır, servo
-        dönmeye çalışıp durur, ısınır ve <b>bozulur</b> — belirtisi
-        sürekli bir vızıltıdır.
-        <br><br>
-        🔴 <b>Bu dört ayar “fabrika ayarlarına dön” dendiğinde
-        silinmez.</b> Ayrı bir yerde saklanıyorlar: unutulup yeniden
-        ayarlanmazsa bedeli donanım oluyor.
-      </p>
-
 
       <p class="ip">
-        <b>Pati yürüyemez ve yürümeyi denemez.</b> Kendiliğinden
-        yaptığı her hareket <b>yerinde dönmek</b>: iki tekerlek ters
-        yönde gider, yani Pati yer değiştirmez ve masadan düşemez.
-        Çocuk &ldquo;ileri git&rdquo; derse Pati gitmiyor,
-        yürüyemediğini söylüyor ve bu çubuğu gösteriyor.
+        Pati kendi başına yürümez, yalnızca <b>yerinde döner</b> —
+        masadan düşmez. İlerlemek yalnızca bu çubukla.
       </p>
+
+      <!-- ---------------------------------------------------------------
+           GÖVDE AYARLARI — katlı. Bir kez ayarlanıp unutulan şeyler.
+           --------------------------------------------------------------- -->
+      <details class="katli">
+        <summary>Gövde ayarları</summary>
+
+        <!-- Her uzuv ayrı ve üç hâlli: "kapalı" ile "sadece kumandadan"
+             arasındaki fark, çocuğun elinden kumandayı alıp almamak. -->
+        <label class="kd">
+          <span class="kd-ust"><span>Tekerlekler</span></span>
+          <select id="kipTekerlek">
+            <option value="2">Açık — Pati kendi de döner</option>
+            <option value="1">Sadece kumandadan</option>
+            <option value="0">Kapalı</option>
+          </select>
+        </label>
+        <p class="ip">
+          <b>Sadece kumandadan:</b> Pati kendi kararıyla dönmez,
+          &ldquo;dans et&rdquo; deyince de dönmez.
+        </p>
+
+        <label class="kd">
+          <span class="kd-ust"><span>Kollar</span></span>
+          <select id="kipKol">
+            <option value="2">Açık — konuşurken kendi oynatır</option>
+            <option value="1">Sadece kumandadan</option>
+            <option value="0">Kapalı</option>
+          </select>
+        </label>
+        <p class="ip">
+          <b>Kapalı:</b> kollar dinlenme konumunda durur, hiç ses çıkarmaz.
+        </p>
+
+        <label class="anahtar">
+          <span>İleri/geri yönünü ters çevir</span>
+          <input id="surusTers" type="checkbox">
+        </label>
+        <p class="ip">
+          Çubuğu yukarı itince Pati <b>geri</b> gidiyorsa açın.
+        </p>
+
+        <label class="anahtar">
+          <span>Sağ/sol yönünü ters çevir</span>
+          <input id="donusTers" type="checkbox">
+        </label>
+        <p class="ip">
+          Çubuğu sağa itince Pati <b>sola</b> dönüyorsa açın.
+        </p>
+
+        <label class="anahtar">
+          <span>Kol yönünü ters çevir</span>
+          <input id="kolTers" type="checkbox">
+        </label>
+        <p class="ip">
+          &ldquo;Kolunu kaldır&rdquo; deyince kol <b>aşağı</b> iniyorsa açın.
+        </p>
+
+        <!-- KOL SINIRLARI — mekanik sınır, süs değil. Kaydırıcı
+             bırakılınca kol oraya gidiyor; anne çarpıp çarpmadığını
+             görerek ayarlıyor. -->
+        <label class="kd">
+          <span class="kd-ust"><span>Sol kol en az</span><b id="vKolSolAz">—</b></span>
+          <input id="kKolSolAz" type="range" min="0" max="100" step="5">
+        </label>
+        <label class="kd">
+          <span class="kd-ust"><span>Sol kol en çok</span><b id="vKolSolCok">—</b></span>
+          <input id="kKolSolCok" type="range" min="0" max="100" step="5">
+        </label>
+        <label class="kd">
+          <span class="kd-ust"><span>Sağ kol en az</span><b id="vKolSagAz">—</b></span>
+          <input id="kKolSagAz" type="range" min="0" max="100" step="5">
+        </label>
+        <label class="kd">
+          <span class="kd-ust"><span>Sağ kol en çok</span><b id="vKolSagCok">—</b></span>
+          <input id="kKolSagCok" type="range" min="0" max="100" step="5">
+        </label>
+        <p class="ip">
+          Kolun gidebileceği aralık. Kaydırıcıyı bırakınca kol oraya
+          gider; <b>bir yere çarpıyorsa daraltın</b> — çarpan kol
+          zorlanır ve bozulabilir.
+        </p>
+      </details>
     </section>
 
-    <!-- BEDEN VARDI, ŞİMDİ YOK.
-         Kumanda kartı beden yokken hiç görünmüyor ve bu doğru: beden
-         almamış birine olmayan bir şeyin düğmelerini göstermek
-         yanlış olurdu. Ama beden BU AÇILIŞTA takılmışsa ve şimdi
-         yoksa, sebebi büyük ihtimalle gevşek bir kablo — kart sessizce
-         kaybolduğu için ebeveyn bunu "panel bozuldu" diye okur. -->
+    <!-- BEDEN VARDI, ŞİMDİ YOK. Kart sessizce kaybolsaydı anne bunu
+         "panel bozuldu" diye okurdu. -->
     <section class="kart" id="bedenGittiKart" hidden>
-      <h2>Beden çıktı</h2>
+      <h2>Gövde çıktı</h2>
       <p class="ip">
-        Pati bedeni gördü, sonra kayboldu (<b id="vTakma">0</b> kez
-        takıldı). Genelde sebebi <b>gevşek bir jumper</b> —
-        özellikle toprak ucu. Takınca kumanda bölümü kendiliğinden
-        geri geliyor.
+        Pati gövdeyi gördü, sonra kayboldu (<b id="vTakma">0</b> kez
+        takıldı). Genelde <b>gevşek bir kablo</b>. Takınca kumanda
+        kendiliğinden geri gelir.
       </p>
     </section>
 
-    <!-- KONUŞMA — panelin en üstünde, en sık değişen ayarlar olduğu için.
-         Üçü de setup mesajında gidiyor, yani çalışan oturumda değişmiyor;
-         GoAway yenilemesiyle tur arasında uygulanıyor (ölçüldü 568 ms,
-         hafıza korunuyor). -->
-    <section class="kart">
-      <h2>Konuşma</h2>
 
-      <label class="anahtar">
-        <span>Sözü kesilebilsin</span>
-        <input id="sozKesme" type="checkbox">
-      </label>
-      <p class="ip">
-        Konuşurken araya girilebilir, hemen susar.
-        <b>Kulaklık gerekir</b> — yoksa kendi sesini duyup sözünü keser.
-      </p>
-
-      <label class="kd">
-        <span class="kd-ust"><span>Cevap hızı</span></span>
-        <!-- "Normal" = Google varsayılanı; `silenceDurationMs` hiç
-             gönderilmiyor. Karşılığı ÖLÇÜLDÜ: ~920 ms
-             (NOTLAR.md — metin modu 835 ms, sesli mod 1757 ms, fark). -->
-        <select id="vadSecim">
-          <option value="">Normal · ~0,9 sn</option>
-          <option value="800">0,8 sn</option>
-          <option value="600">0,6 sn</option>
-          <!-- 500 = firmware varsayilani (Kconfig PATI_VAD_SESSIZLIK_MS).
-               Listede YOKTU ve kutu bos gorunuyordu: select'e listede
-               olmayan bir deger yazilinca tarayici hicbir sey secmiyor.
-               Ebeveyn kendi ayarini goremiyordu. -->
-          <option value="500">0,5 sn</option>
-          <option value="400">0,4 sn — hızlı</option>
-          <option value="300">0,3 sn — en hızlı</option>
-        </select>
-      </label>
-      <p class="ip">
-        Ses kesildikten sonra bu kadar bekleyip cevap verir.
-        Kısaltmak hızlandırır; <b>fazla kısaltmak düşünme aralarında
-        sözü keser.</b>
-      </p>
-
-      <label class="anahtar">
-        <span>Gözleriyle duygusunu göstersin</span>
-        <input id="yuzAcik" type="checkbox">
-      </label>
-      <p class="ip">
-        Sevinme, şaşırma, sitem gözlere yansır. Karşılığı
-        <b>~0,6 saniye</b> daha yavaş cevap. Kapalıyken gözler yine
-        hareket eder.
-        <!-- Gizli bağ, yazılmazsa kimse bulamaz: bedeni bildiren
-             prompt ekleri ve `hareket` alanı AYNI araçla gidiyor.
-             Bu anahtar kapalıyken Pati bedeninin farkında olmuyor ve
-             "kolunu kaldır" işlemiyor. Ebeveynin bunu panelde
-             görmesi gerekiyor. -->
-        <b>Beden takılıysa bu anahtar onu da kapatır:</b> Pati kolunu
-        kaldıramaz ve &ldquo;dans et&rdquo; gibi istekleri anlamaz.
-      </p>
-    </section>
-
+    <!-- ================================================================== -->
     <section class="kart">
       <h2>Ses</h2>
 
@@ -386,19 +288,14 @@
         <span class="kd-ust"><span>Ses seviyesi</span><b id="vSeviye">—</b></span>
         <input id="kSeviye" type="range">
       </label>
+      <!-- Çökme uyarısı ANNE DİLİNDE: "brownout" değil, "kendini yeniden
+           başlatıyor". Yapması gereken tek şey yazıyor. Aralığın
+           kendisi cihazdan geliyor (pati.js · seviyeYaz), yani %100
+           gerçekten çıkabilen en yüksek ses — panel yalan söylemiyor. -->
       <p class="ip">
-        Konuşurken bile <b>anında</b> değişir.
-        <br><br>
-        🔴 <b>Bu ayar “fabrika ayarlarına dön” dendiğinde silinmez.</b>
-        3.5.31'e kadar ses seviyesi <b>hiç saklanmıyordu</b> — her
-        açılışta en yükseğe dönüyordu ve Pati kendiliğinden yeniden
-        başladığında da öyle. Artık kalıcı.
-        <br><br>
-        <b>%100, Pati'nin çıkarabildiği en yüksek ses.</b> Daha
-        yükseğe çıkarılmıyor: yüksek seviyede çekilen akım cihazı
-        yeniden başlatıyor ve Pati sözünü yarıda kesiyor.
-        <b>%0 en kısık ayar, tamamen susma değil</b> — çocuk yanlışlıkla
-        sonuna çekerse Pati susmuş olmasın diye.
+        Pati sık sık <b>kendini yeniden başlatıyorsa</b> sesi biraz
+        kısın; en yüksek ses bazen buna yol açıyor.
+        %0 en kısık ayar, tamamen sessiz değil.
       </p>
 
       <label class="kd">
@@ -406,7 +303,7 @@
         <input id="kHiz" type="range">
       </label>
       <p class="ip">
-        Sağa kaydırınca ses hem tizleşir hem hızlanır.
+        Sağa kaydırınca ses daha ince ve hızlı.
       </p>
 
       <label class="kd">
@@ -414,170 +311,76 @@
         <select id="sSes"></select>
       </label>
       <button id="dene" class="ikincil genis">Dinle</button>
-      <p class="ip">
-        Tizlik ve ses seçimi, konuşma sürüyorsa cümle bitince
-        geçerli olur.
-      </p>
     </section>
 
-    <!-- Bu kutu "güç tasarrufu" gibi görünüyor ama asıl mesele PARA:
-         ücret dakikayla işliyor ve en büyük kalem sohbet değil boşta
-         beklemek. Uyandırma ölçüldü: 617 ms. -->
+
+    <!-- ==================================================================
+         KONUŞMA — cevap hızı, gözler, sözü kesme, uyku.
+         Uyku eskiden ayrı karttı; tek kaydırıcı için bir kart fazlaydı
+         ve konusu da bu: Pati sessizlikte ne yapar.
+         ================================================================== -->
     <section class="kart">
-      <h2>Ekran</h2>
+      <h2>Konuşma</h2>
+
       <label class="kd">
-        <span class="kd-ust"><span>Parlaklık</span><b id="vParlaklik">—</b></span>
-        <!-- Taban %5, sıfır değil: sönük bir ekran çocuğa "Pati bozuldu"
-             diye okunuyor. Cihaz da aynı tabanı uyguluyor
-             (pati_ekran.cpp · PARLAKLIK_TABAN) — ikisi ayrışırsa panel
-             seçilebilen bir değer gösterir ve cihaz onu sessizce
-             yükseltir. -->
-        <input id="kParlaklik" type="range" min="5" max="100" step="5">
+        <span class="kd-ust"><span>Cevap hızı</span></span>
+        <!-- "Normal" = Google varsayılanı; ~920 ms ölçüldü (NOTLAR.md).
+             500 = firmware varsayılanı; listede olmalı, yoksa kutu boş
+             görünüyor. -->
+        <select id="vadSecim">
+          <option value="">Normal · ~0,9 sn</option>
+          <option value="800">0,8 sn</option>
+          <option value="600">0,6 sn</option>
+          <option value="500">0,5 sn</option>
+          <option value="400">0,4 sn — hızlı</option>
+          <option value="300">0,3 sn — en hızlı</option>
+        </select>
       </label>
       <p class="ip">
-        Düşük parlaklık <b>pili uzatır</b>. Kaydırıcıyı bırakınca
-        <b>anında</b> uygulanıyor — ekranda değişmiyorsa arka ışıkta
-        sorun var demektir.
-        <br><br>
-        🔴 <b>Bu ayar da “fabrika ayarlarına dön” dendiğinde silinmez.</b>
+        Çok kısaltırsanız Pati düşünme aralarında sözü keser.
       </p>
-    </section>
 
-    <section class="kart">
-      <h2>Uyku</h2>
+      <label class="anahtar">
+        <span>Gözleriyle duygusunu göstersin</span>
+        <input id="yuzAcik" type="checkbox">
+      </label>
+      <!-- Gizli bağ: gövdeyi anlatan prompt eki AYNI araçla gidiyor.
+           Bu kapalıyken Pati gövdesinin farkında olmuyor. Anne bunu
+           görmeli. -->
+      <p class="ip">
+        Cevap yarım saniye kadar gecikir. <b>Kapalıyken gövdeyi de
+        kullanmaz</b> — &ldquo;kolunu kaldır&rdquo;, &ldquo;dans et&rdquo;
+        işlemez.
+      </p>
+
+      <label class="anahtar">
+        <span>Sözü kesilebilsin</span>
+        <input id="sozKesme" type="checkbox">
+      </label>
+      <p class="ip">
+        <b>Kulaklık gerekir</b>; yoksa kendi sesini duyup kendi sözünü keser.
+      </p>
+
       <label class="kd">
         <span class="kd-ust"><span>Sessizlikten sonra uyu</span><b id="vUyku">—</b></span>
-        <!-- step 0,5: varsayilan 90 saniye (1,5 dk) ve tam sayi
-             adimda kaydirici bunu gosteremiyordu. Math.round ile
-             "2 dk" yaziyordu — panel gercekte olmayan bir degeri
-             soyluyordu. -->
+        <!-- step 0,5: varsayılan 1,5 dk ve tam sayı adımda kaydırıcı
+             bunu gösteremiyordu. -->
         <input id="kUyku" type="range" min="1" max="15" step="0.5">
       </label>
       <p class="ip">
-        Uykudayken de <b>dinler</b>; ses gelince <b>0,6 saniyede</b>
-        uyanır. Yavaşlatmaz, <b>faturayı</b> düşürür.
+        Uykudayken de dinler, ses gelince hemen uyanır. Erken uyumak
+        <b>faturayı</b> düşürür.
       </p>
       <div class="kutu-bilgi" id="kotaBilgi">—</div>
-
     </section>
 
-    <section class="kart">
-      <h2>Wifi</h2>
-      <div class="satir-arasi">
-        <div>
-          <b id="wAd">—</b>
-          <small id="wGuc">—</small>
-        </div>
-        <button id="wDegistir" class="ikincil ince">Değiştir</button>
-      </div>
 
-      <div id="wPanel" hidden>
-        <div id="wListe" class="liste"></div>
-        <div id="wSifreKutu" hidden>
-          <label class="kd">
-            <span class="kd-ust"><span id="wSecilen">—</span></span>
-            <input id="wSifre" type="password" placeholder="Şifre"
-                   autocomplete="off">
-          </label>
-          <label class="anahtar">
-            <span>Şifreyi göster</span>
-            <input id="wGoster" type="checkbox">
-          </label>
-          <button id="wBagla" class="birincil genis">Bağlan</button>
-        </div>
-      </div>
-      <p class="ip">
-        Ağa bağlanamazsa kendi ağını açar (“Pati-…”). Telefonla
-        bağlanınca bu sayfa kendiliğinden açılır.
-      </p>
-    </section>
-
-    <!-- GEMİNİ ANAHTARI
-         Pati konuşmak için Google'ın servisini kullanıyor ve bu anahtar
-         onun faturasını kime yazacağını söylüyor. Robotta duruyor,
-         firmware'in içinde DEĞİL — yoksa güncelleme dosyasıyla birlikte
-         herkese açılırdı (pati_anahtar.hpp).
-
-         Giriş kutusu Wifi şifresi gibi düğme arkasında duruyor, ve
-         sebebi aynı: iOS'un captive portal penceresi sayfadaki İLK
-         görünür metin kutusuna kendiliğinden odaklanıyor, klavye
-         açılıyor ve sayfa gezilemez hale geliyor (pati.js §İSTENMEYEN
-         ODAK). Anahtar hiç girilmemişse kutu kendiliğinden açılıyor —
-         anne o an zaten bunun için gelmiş oluyor. -->
-    <section class="kart" id="anahtarKart">
-      <h2>Gemini anahtarı</h2>
-      <div class="satir-arasi">
-        <div>
-          <b id="aDurum">—</b>
-          <small id="aNot">—</small>
-        </div>
-        <button id="aDegistir" class="ikincil ince">Değiştir</button>
-      </div>
-
-      <div id="aPanel" hidden>
-        <label class="kd">
-          <span class="kd-ust"><span>Anahtarı yapıştır</span></span>
-          <input id="aGiris" type="password" placeholder="AIza…"
-                 autocomplete="off" autocapitalize="off" spellcheck="false">
-        </label>
-        <label class="anahtar">
-          <span>Anahtarı göster</span>
-          <input id="aGoster" type="checkbox">
-        </label>
-        <button id="aKaydet" class="birincil genis">Kaydet</button>
-        <p class="ip">
-          <b>aistudio.google.com/apikey</b> adresinden alınıyor.
-          Tamamını kopyalayıp yapıştırın — yarım kopyalanan anahtar
-          kabul edilmez.
-        </p>
-      </div>
-
-      <p class="ip">
-        Bir kez yazılıyor, Pati'de kalıyor.
-        <b>Fabrika ayarlarına dönmek bunu silmez.</b>
-      </p>
-    </section>
-
-    <!-- GÜNCELLEME
-         Pati kendini yeniliyor: bilgisayara takmak, kablo, program
-         yüklemek yok. Yeni sürüm GitHub'da duruyor, Pati oradan
-         indiriyor.
-
-         "Gelişmiş"in içine konmadı: anne bunu bulabilmeli. Ama en üste
-         de konmadı — günlük bir iş değil. -->
-    <section class="kart">
-      <h2>Güncelleme</h2>
-      <div class="satir-arasi">
-        <div>
-          <b id="gSurum">—</b>
-          <small id="gNot">—</small>
-        </div>
-        <button id="gBak" class="ikincil ince">Kontrol et</button>
-      </div>
-
-      <div id="gYeni" hidden>
-        <div class="kutu-bilgi" id="gNotlar">—</div>
-        <button id="gKur" class="birincil genis">Güncelle</button>
-      </div>
-
-      <div id="gIlerleme" hidden>
-        <div class="cubuk"><div class="cubuk-ic" id="gCubuk"></div></div>
-        <p class="ip" id="gYuzde">—</p>
-      </div>
-
-      <p class="ip">
-        Güncellenirken Pati susar ve kendini yeniden başlatır.
-        <b>Bir dakika kadar sürer.</b> Hafızası ve ayarları korunur.
-      </p>
-    </section>
-
+    <!-- ================================================================== -->
     <section class="kart">
       <h2>Kişi bilgisi</h2>
 
-      <!-- Adı İKİ TARAF DA değiştirebiliyor: buradan yazılarak, ya da
-           konuşma sırasında ("bundan sonra senin adın Osman"). Ayrı bir
-           öncelik kuralı yok, son yazılan geçerli.
-           Boş bırakmak hata değil, varsayılana döndürüyor. -->
+      <!-- Adı iki taraf da değiştirebiliyor: buradan ya da konuşarak.
+           Son yazılan geçerli. -->
       <label class="kd">
         <span class="kd-ust"><span>Robotun adı</span></span>
         <input id="rAd" type="text" placeholder="Pati">
@@ -600,16 +403,16 @@
         <textarea id="cEk" rows="3"
           placeholder="Kedisinin adı… sevdikleri… akşam sekizde diş fırçalaması…"></textarea>
       </label>
-      <!-- Sistem promptu ebeveyne açılmıyor. Kişilik kuralları ölçülerek
-           bulundu (soru kuralı: %9 → %86) ve serbest metin onları
-           seyreltiyor. Buradan yazılanlar kuralların YERİNE geçmiyor,
-           ayrı bir başlık altında yanına ekleniyor. -->
+      <!-- Sistem promptu anneye açılmıyor: kişilik kuralları ölçülerek
+           bulundu ve serbest metin onları seyreltiyor. Buradan yazılan,
+           kuralların yanına "bilgi" olarak ekleniyor. -->
       <p class="ip">
-        <b>Bilgi</b> olarak verilir, sonraki konuşmada geçerli olur.
-        Karakteri değişmez.
+        Sonraki konuşmada geçerli olur. Karakteri değişmez.
       </p>
     </section>
 
+
+    <!-- ================================================================== -->
     <section class="kart">
       <h2>
         Hafıza
@@ -617,29 +420,121 @@
       </h2>
       <div id="hListe" class="liste"></div>
       <p class="ip">
-        Konuşmalardan kendi çıkardı. Yanlış olanı sil; yenisini
-        sonraki konuşmada öğrenir.
+        Konuşmalardan kendi çıkardı. Yanlış olanı silin.
       </p>
     </section>
 
+
+    <!-- ==================================================================
+         CİHAZ — ekran, wifi, anahtar, güncelleme. Dördü de kurulum işi;
+         eskiden dört ayrı karttı. Katlı DEĞİL: anahtar uyarısının
+         düğmesi buraya kaydırıyor (pati.js · anahtarKart) ve
+         güncelleme kutusu görünür kalmalı.
+         ================================================================== -->
+    <section class="kart">
+      <h2>Cihaz</h2>
+
+      <label class="kd">
+        <span class="kd-ust"><span>Ekran parlaklığı</span><b id="vParlaklik">—</b></span>
+        <!-- Taban %5, sıfır değil: sönük ekran çocuğa "bozuldu" diye
+             okunuyor. Cihaz aynı tabanı uyguluyor (PARLAKLIK_TABAN). -->
+        <input id="kParlaklik" type="range" min="5" max="100" step="5">
+      </label>
+      <p class="ip">
+        Düşük parlaklık pili uzatır.
+      </p>
+
+      <div class="alt-baslik">Wifi</div>
+      <div class="satir-arasi">
+        <div>
+          <b id="wAd">—</b>
+          <small id="wGuc">—</small>
+        </div>
+        <button id="wDegistir" class="ikincil ince">Değiştir</button>
+      </div>
+      <div id="wPanel" hidden>
+        <div id="wListe" class="liste"></div>
+        <div id="wSifreKutu" hidden>
+          <label class="kd">
+            <span class="kd-ust"><span id="wSecilen">—</span></span>
+            <input id="wSifre" type="password" placeholder="Şifre"
+                   autocomplete="off">
+          </label>
+          <label class="anahtar">
+            <span>Şifreyi göster</span>
+            <input id="wGoster" type="checkbox">
+          </label>
+          <button id="wBagla" class="birincil genis">Bağlan</button>
+        </div>
+      </div>
+      <p class="ip">
+        Ağa bağlanamazsa kendi ağını açar (&ldquo;Pati-…&rdquo;);
+        telefonla bağlanınca bu sayfa kendiliğinden açılır.
+      </p>
+
+      <!-- GEMİNİ ANAHTARI — robotta duruyor, firmware'in içinde değil.
+           Giriş kutusu düğme arkasında: iOS'un captive portal penceresi
+           sayfadaki ilk görünür metin kutusuna odaklanıp klavyeyi açıyor
+           (pati.js §İSTENMEYEN ODAK). -->
+      <div class="alt-baslik" id="anahtarKart">Gemini anahtarı</div>
+      <div class="satir-arasi">
+        <div>
+          <b id="aDurum">—</b>
+          <small id="aNot">—</small>
+        </div>
+        <button id="aDegistir" class="ikincil ince">Değiştir</button>
+      </div>
+      <div id="aPanel" hidden>
+        <label class="kd">
+          <span class="kd-ust"><span>Anahtarı yapıştır</span></span>
+          <input id="aGiris" type="password" placeholder="AIza…"
+                 autocomplete="off" autocapitalize="off" spellcheck="false">
+        </label>
+        <label class="anahtar">
+          <span>Anahtarı göster</span>
+          <input id="aGoster" type="checkbox">
+        </label>
+        <button id="aKaydet" class="birincil genis">Kaydet</button>
+        <p class="ip">
+          <b>aistudio.google.com/apikey</b> adresinden alınır; tamamını
+          kopyalayıp yapıştırın.
+        </p>
+      </div>
+
+      <div class="alt-baslik">Güncelleme</div>
+      <div class="satir-arasi">
+        <div>
+          <b id="gSurum">—</b>
+          <small id="gNot">—</small>
+        </div>
+        <button id="gBak" class="ikincil ince">Kontrol et</button>
+      </div>
+      <div id="gYeni" hidden>
+        <div class="kutu-bilgi" id="gNotlar">—</div>
+        <button id="gKur" class="birincil genis">Güncelle</button>
+      </div>
+      <div id="gIlerleme" hidden>
+        <div class="cubuk"><div class="cubuk-ic" id="gCubuk"></div></div>
+        <p class="ip" id="gYuzde">—</p>
+      </div>
+      <p class="ip">
+        Güncellenirken Pati bir dakika kadar susar. Hafızası ve ayarları
+        korunur.
+      </p>
+    </section>
+
+
+    <!-- ================================================================== -->
     <details class="kart gelismis">
       <summary>Gelişmiş</summary>
       <button class="tehlike genis" id="fabrika">Fabrika ayarlarına dön</button>
+      <!-- Kalıcılık notu YALNIZCA BURADA. Eskiden her ayarın altında
+           "bu ayar silinmez" yazıyordu — anne için gürültüydü; sorunun
+           sorulduğu tek yer bu düğme. -->
       <p class="ip">
-        🔴 <b>Şunlar silinmez:</b> kol açı sınırları, kol yönü, sürüş ve
-        dönüş yönü, hız sınırı, <b>ses seviyesi</b> ve
-        <b>ekran parlaklığı</b>.
-        <br><br>
-        İlk dördü bu <b>gövdenin nasıl kablolandığını</b> anlatıyor —
-        kaybolurlarsa kol bir yere çarpar ya da çocuk çubuğu ileri itip
-        Pati'yi geri sürer. Son üçü <b>sizin tercihiniz</b> ve açık
-        isteğiniz üzerine korunuyor. Robotu başka birine verirken bu
-        yedisine <b>panelden elle</b> bakın; sıfırlama onları
-        döndürmüyor.
+        Şunlar silinmez: Gemini anahtarı, gövde ayarları (kol sınırları
+        ve yönler), hız sınırı, ses seviyesi, ekran parlaklığı.
       </p>
-      <!-- Sürüm yazısı buradan Güncelleme kartına taşındı: sürümün
-           tek bir yerde görünmesi gerekiyor ve doğru yer, "yeni sürüm
-           var mı" sorusunun sorulduğu yer. -->
     </details>
 
   </div>
