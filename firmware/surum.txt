@@ -1,2 +1,2 @@
 3.5.33
-Panel toparlandi. Sik kullanilan ayarlar ustte, kurulum isleri (wifi, anahtar, guncelleme, parlaklik) tek bir Cihaz kartinda, govde ayarlari (yon cevirme, kol sinirlari) Kumanda'nin altinda katli. Aciklamalar kisaldi ve teknik sozcukler kalkti; her ayarin altindaki 'fabrika ayarlarina donunce silinmez' notlari yalnizca o dugmenin yaninda duruyor. Ayarlarin hicbiri degismedi, yalnizca yerleri ve yazilari.
+Panel toparlandi. Sik kullanilan ayarlar ustte, kurulum isleri (wifi, anahtar, guncelleme, parlaklik) tek bir Cihaz kartinda, govde ayarlari (yon cevirme, kol sinirlari) Kumanda'nin altinda katli. Aciklamalar kisaldi ve teknik sozcukler kalkti; her ayarin altindaki 'fabrika ayarlarina donunce silinm
