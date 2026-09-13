@@ -10,6 +10,16 @@ managed from a web panel served by the robot itself.
 The hardware is one part — an M5Stack StickS3 — with the microphone,
 speaker, display and battery already inside it. Nothing is soldered.
 
+<p align="center">
+  <img src="enclosure/images/pati-assembled.jpg" alt="Pati, assembled" height="300">
+  <img src="enclosure/images/pati-cad-render.png" alt="Pati in CAD" height="300">
+</p>
+<p align="center"><sub>The printed body, assembled &nbsp;·&nbsp; the same assembly in CAD</sub></p>
+
+The body is optional and printable — STLs and editable CAD source are in
+[`enclosure/`](enclosure/). Without it Pati still talks, listens and
+shows its eyes; the body adds two wheels and two arms.
+
 **Status.** Microphone, speaker, display, eyes, Wi-Fi, panel and Gemini
 conversation were verified on a real StickS3 on September 1, 2026.
 Battery operation is still unstable: speaking can trigger a reset.
@@ -27,8 +37,8 @@ panel/       Parent panel — one web page, served from disk during
              development and compiled into the firmware for the device
 prototype/   Python reference implementation; the host tests compare
              firmware behaviour against it
-enclosure/   Notes for a future outer shell — there is no enclosure yet,
-             and the board does not need one
+enclosure/   The printable body: STLs ready to slice, editable CAD
+             source, and the assembly notes
 ```
 
 The devkit's assembly guide, wiring diagram and printed parts are not
@@ -92,7 +102,9 @@ git switch --detach v2.2.8-devkit     # source
 
 Its built `pati.bin` is in the `v2.2.8` release. The branch also carries
 what `main` no longer does: `assembly/REHBER.html` (the soldering guide,
-Turkish), the wiring diagram, and the printed enclosure parts.
+Turkish), the wiring diagram, and **that board's** printed parts — which
+are not the ones in [`enclosure/`](enclosure/). Those describe a device
+that no longer exists.
 
 ⚠️ **Do not run this firmware on that board.** Same chip family, so it
 flashes and boots, and the update manifest carries no hardware field. It

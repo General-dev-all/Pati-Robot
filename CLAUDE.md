@@ -400,6 +400,14 @@ takılı değilken bedenle ilgili hiçbir şey görünmüyor.
 Ayrıntı ve devreye alma ölçümleri: **`firmware/BEDEN.md`**. Kabloyu
 takacak kişi için tek sayfalık şema: **`firmware/Pati_Tek_Bakis_Kablolama_Diyagrami.png`**.
 
+🔴 **Gövdenin 3B baskı dosyaları `enclosure/`'da** (13.09.2026'da
+eklendi): `print/` dilimleyiciye hazır STL'ler, `cad/` düzenlenebilir
+kaynak (STEP / Parasolid / SpaceClaim), `images/` gerçek fotoğraf ve
+CAD görüntüsü — ikisi kök README'de de gösteriliyor.
+⚠️ `enclosure/README.md` uzun süre *"gövde yok ve gerekmiyor"* diyordu;
+o cümle gövde yapıldıktan sonra aylarca yanlış kaldı. Donanım
+değişince ona bakan belgeler de değişmeli.
+
 🔴 **AA pilin (+) ucu StickS3'e HİÇBİR ŞEKİLDE gitmiyor.** Gövdeden
 Stick'e giden sekiz kablonun hepsi ya toprak ya Stick'in kendi çıkışı;
 6 V hattı gövdenin içinde kalıyor. Sebebi Hat2-Bus'ın dizilişi: sinyal

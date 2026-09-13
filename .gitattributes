@@ -35,3 +35,19 @@
 # Kablolama diyagrami da ikili. Satir sonu cevrilirse dosya bozulur ve
 # bozuldugu ancak birisi acmaya calisinca anlasilir.
 *.png binary
+*.jpg binary
+
+# 3B model ve CAD dosyalari IKILI islenmeli.
+#
+# STL zaten ikili (80 baytlik basliktan sonra ham ucgenler). STEP ve
+# Parasolid (.x_t) ise METIN gorunuyor ve tam tuzak burada: Windows'ta
+# satir sonu cevrimi dosyayi sessizce degistirir. CAD araclari bunu
+# "bozuk dosya" diye degil, eksik geometri diye gosterir.
+#
+# `binary` ayrica diff ve birlestirmeyi de kapatiyor; 18 MB'lik bir
+# STEP dosyasinin satir satir farkini kimse okumayacak.
+*.stl binary
+*.step binary
+*.stp binary
+*.x_t binary
+*.scdocx binary
