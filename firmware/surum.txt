@@ -1,2 +1,2 @@
-3.5.47
-"Sesi puruzsuz cal" aciklamasi kisaltildi; bir onceki surumde gereksiz uzundu.
+3.5.48
+"Sesi puruzsuz cal" aciklamasina citirtinin ne zaman olustugu eklendi: Google yogun oldugunda.
