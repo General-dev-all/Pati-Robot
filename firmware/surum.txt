@@ -1,2 +1,2 @@
-3.5.45
-Pati konusurken duyulan citirtilar icin yeni bir ayar: Ses > "Sesi puruzsuz cal". Acik geliyor. Internetten gelen ses duzensiz aktigi icin hoparlorun deposu cevabin basinda kuruyor ve arada cok kisa kesilmeler oluyordu; Pati artik konusmaya baslamadan once kucuk bir yedek biriktiriyor. Cevap fark edilmeyecek kadar geciyor. Citirti duymuyorsaniz ve cevabi daha hizli isterseniz kapatabilirsiniz.
+3.5.46
+"Sesi puruzsuz cal" ayarinin aciklamasi genisletildi: cıtırtının neden olustugu, ayarin ne yaptigi ve bedelinin ne oldugu yaziyor. Boylece gerekirse bilerek kapatilabilir.
