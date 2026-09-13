@@ -121,6 +121,17 @@ Pati works on its own. The body is optional: it adds two driven wheels
 and two servo arms, and it prints on a home 3D printer. Files, parts
 list and assembly notes are in [`enclosure/`](enclosure/).
 
+🔴 **The two front wheels must be ball casters, and they print too**
+(`enclosure/print/ball-caster.stl`, print-in-place — the ball comes out
+of the printer already turning inside its socket). This is not a styling
+choice. With fixed-axle front wheels the chassis sits on a rail: it
+rolls freely fore and aft but resists sliding sideways, so the torque
+that cannot become rotation escapes along the only unresisted axis and
+**Pati creeps forward while turning in place**. Three firmware releases
+tried to fix that in software and none of them could — the gesture table
+already sums to zero rotation by construction. Swapping the front wheels
+ended it.
+
 🔴 **Pati turns in place. It never drives itself anywhere.** There is no
 cliff sensor, so a robot that could travel on its own would eventually
 walk off a table. The whole gesture system is built around one

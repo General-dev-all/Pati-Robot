@@ -23,6 +23,7 @@ düzenlenebilir CAD kaynağı.
 | `arm.stl` | Kol. **İki adet basılıyor** — servo boynuzuna geçiyor |
 | `sticks3-case.stl` | StickS3'ün kızağa oturan kasası |
 | `sticks3-cable-plug.stl` | Hat2-Bus şerit kablosunu Stick'e hizalayan tutucu |
+| `ball-caster.stl` | **Ön sarhoş teker.** İki adet basılıyor — aşağıya bak |
 
 ### `cad/` — tasarımı değiştirmek için
 
@@ -54,12 +55,42 @@ yana kaymaya direniyor, yani gövdeyi bir rayın üstüne koyuyor. Dönüşe
 jest tablosunda net dönüş yapısal olarak sıfır (iki tekerlek her zaman
 ters yönde) ve konak testi bunu her girdide tarıyor — yani komut zaten
 doğruydu, kayan şey fizikti. Ön tekerlekler dönebilen (İngilizcesi
-*caster*, Türkçede "sarhoş teker") tipiyle değiştirilince kayma bitti
-(13.09.2026). Ayrıntı: [`../firmware/BEDEN.md`](../firmware/BEDEN.md).
+*ball caster*, Türkçede "sarhoş teker", satın alırken "üniversal bilya")
+tipiyle değiştirilince kayma bitti (13.09.2026). Ayrıntı:
+[`../firmware/BEDEN.md`](../firmware/BEDEN.md).
 
 **Neden önemli:** Pati'de uçurum sensörü yok. Kendi kararıyla ilerleyen
 bir robot eninde sonunda masadan düşer, ve bu tasarımın tamamı Pati'nin
 yalnızca *yerinde dönmesi* üzerine kurulu.
+
+### `ball-caster.stl` — satın almaya gerek yok, basılıyor
+
+**Yerinde basılan (print-in-place) bir parça.** Yuva ve bilya tek
+dosyada, ayrı ayrı montaj yok: baskı bitince bilya yuvanın içinde
+kendiliğinden dönüyor.
+
+Ölçüler dosyadan okundu, tahmin değil:
+
+| | |
+|---|---|
+| Dış ölçü | 31 × 31 × 21 mm |
+| Bilya çapı | 16,0 mm |
+| Yuva–bilya boşluğu | **0,177 mm**, her yerde eşit |
+| Adet | **2** (ön tekerleklerin ikisi de) |
+
+🔴 **0,177 mm dar bir boşluk ve bu parçanın tek riski orada.** Yerinde
+basılan parçalarda alışılmış aralık 0,2–0,4 mm; bu onun altında. İyi
+ayarlanmış bir yazıcıda sorun çıkarmaz, ama fazla akıtan (over-extrude)
+ya da kalibresi kaymış bir yazıcıda **bilya yuvaya kaynar ve dönmez**.
+
+Belirtisi baskıdan hemen sonra anlaşılıyor: bilyayı parmakla
+çeviremiyorsan kaynamıştır. Kurtarmayı denemek yerine akış oranını
+düşürüp yeniden basmak daha hızlı — kaynamış bir bilyayı zorlamak
+yuvayı kırıyor.
+
+⚠️ **Dönmeyen bir sarhoş teker, sabit akslı tekerlekle aynı şeydir** —
+yani yukarıdaki ileri kayma sorunu geri gelir. Bu parça basıldıktan
+sonra **ikisi de elle kontrol edilmeli.**
 
 ---
 
@@ -68,7 +99,7 @@ yalnızca *yerinde dönmesi* üzerine kurulu.
 | Parça | Not |
 |---|---|
 | 2 × TT redüktörlü DC motor + tekerlek | sarı, yaygın tip |
-| 2 × dönebilen (caster) ön tekerlek | yukarıdaki bölüm |
+| ~~2 × dönebilen ön tekerlek~~ | **satın alma — `ball-caster.stl` basılıyor** |
 | 1 × L9110S çift kanal motor sürücü | |
 | 2 × SG90 sınıfı mini servo | kollar |
 | Besleme | 4'lü AA yuvası **ya da** powerbank |
@@ -143,6 +174,8 @@ bir etkeni. Henüz doğrulanmadı ama şüphe, powerbank'in ve Stick'in
 ölçülmediği için yazılmadı, uydurulmadı:
 
 - Katman yüksekliği, doluluk oranı, destek gerekip gerekmediği
+- `ball-caster.stl`'in hangi yüzü tablaya bakacak (bilya yuvadan
+  yukarı taşıyor; yönü baskı başarısını doğrudan etkiler)
 - Filament cinsi (fotoğraftaki baskı beyaz, cinsi kayıtlı değil)
 - Baskı süresi ve malzeme miktarı
 - Vida ölçüleri
