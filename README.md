@@ -16,6 +16,13 @@ speaker, display and battery already inside it. Nothing is soldered.
 </p>
 <p align="center"><sub>The printed body, assembled &nbsp;·&nbsp; the same assembly in CAD</sub></p>
 
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=BEeX3aKE_l4">
+    <img src="https://img.youtube.com/vi/BEeX3aKE_l4/maxresdefault.jpg" alt="Pati in action — watch on YouTube" width="560">
+  </a>
+</p>
+<p align="center"><a href="https://www.youtube.com/watch?v=BEeX3aKE_l4"><b>▶ Watch Pati in action</b></a></p>
+
 The body is optional and printable — STLs and editable CAD source are in
 [`enclosure/`](enclosure/). Without it Pati still talks, listens and
 shows its eyes; the body adds two wheels and two arms.
