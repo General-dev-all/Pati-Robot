@@ -1,2 +1,2 @@
-3.5.35
-Pati bazen bir yuz ifadesinde donup kaliyor, hicbir sey soylemiyor ve soylenenleri de duymuyordu; ancak kapatip acinca duzeliyordu. Sebebi bulundu: konusma bittigi halde bitmis sayilmiyor ve bu hal mikrofonu da susturuyordu. Artik 15 saniye icinde kendi kendine toparliyor. Ayrica wifi guc tasarrufu 
+3.5.36
+Wifi guc tasarrufu artik hicbir kosulda acik kalamiyor: alti ayri yerde kapatiliyor ve her wifi olayindan sonra aninda denetleniyor. Denetim surekli calisan bir sayac degil, yalnizca bir sey degistiginde uyanan bir kontrol - yani Pati'ye fazladan yuk binmiyor. Kac kez kapatildigi panelde yaziliyor.
