@@ -70,6 +70,11 @@ bool sohbet_calisiyor();
 // (31.07.2026, telefonda goruldu).
 bool sohbet_uyuyor();
 
+// Istemcinin akis durumu — GOZLERINKINDEN AYRI. Gerekcesi .cpp'de:
+// ikisi ayrisinca mikrofon sessizce atiliyor ve hicbir sayac bunu
+// gostermiyordu.
+const char* sohbet_akis_durumu();
+
 // Kuyruk dolu oldugu icin DUSEN olay sayisi.
 //
 // NEDEN DISA ACILIYOR: sifir olmali. Sifirdan buyukse ses gorevi

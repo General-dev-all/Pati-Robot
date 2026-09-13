@@ -1093,6 +1093,14 @@ void mik_gorevi(void* /*arg*/)
     // oyardi.
     std::int64_t bekci_sesli_us = 0;
 
+    // Toplu gonderim tamponu — gerekcesi asagida, push_audio'nun yaninda.
+    // Gorev yereli: bu tampona dokunan tek sey bu dongu.
+    constexpr size_t MIK_TOPLU_ORNEK = 6 * PATI_OKUMA_ORNEK;   // 120 ms
+    static_assert(MIK_TOPLU_ORNEK <= 2048,
+                  "istemcinin kMaxChunkSamples tavanini asiyor");
+    std::int16_t toplu[MIK_TOPLU_ORNEK];
+    size_t toplu_n = 0;
+
     while (g_calisiyor) {
         const std::size_t n = mikrofon_oku(parca, 100);
 
@@ -1222,8 +1230,49 @@ void mik_gorevi(void* /*arg*/)
         // Gercek cozum govde tasariminda (PLAN.md): hoparloru
         // mikrofondan uzaga ve ters yone koymak.
         if (!ayar_soz_kesme() && g_konusuyor) {
+            // Yarim biriken parca ATILIYOR, saklanmiyor: Pati konusmaya
+            // basladiginda elde kalan ses artik bayat. Sonra gonderilseydi
+            // sunucuya gecmise ait bir parca girerdi.
+            toplu_n = 0;
             continue;
         }
+
+        // 🔴 MIKROFON TOPLU GONDERILIYOR — 20 ms yerine 120 ms.
+        //
+        // 13.09.2026, GERCEK KARTTA OLCULDU ve sebep buydu:
+        //
+        //     metrics(mic): sent=251  evicted=1197  silent_drop=0
+        //                   queue_depth avg=91.4 max=96   (kuyruk 96'lik)
+        //                   send_dt_ms  avg=122 max=2683
+        //                   push_interval_ms avg=20.0
+        //
+        // Mikrofon saniyede 50 parca uretiyor, gonderici ancak 8 tanesini
+        // yollayabiliyordu. Kuyruk surekli dolu kaliyor ve sesin %83'u
+        // ATILIYORDU. Gemini cocugun sesinin altida birini duyuyor: bazen
+        // hic cevap vermiyor, bazen parcalardan bir sey cikarip gec
+        // cevap veriyor. Kullanicinin sikayeti tam buydu.
+        //
+        // ⚠️ HICBIR SEY HATA VERMIYORDU: send_fail=0,
+        // silent_drop=0. Tikanma tamamen sessiz. Ustelik bu sayac ZATEN
+        // VARDI ama yalnizca TUR SONUNDA basiliyordu — tur olusmadigi
+        // icin hic basilmadi. Kendini gizleyen bir olcum.
+        //
+        // Darbogaz sesin kendisi degil, PAKET BASINA sabit maliyet: her
+        // parca ayri bir TLS kaydi ve ayri bir WebSocket cercevesi.
+        // Alti okumayi birlestirmek o maliyeti altida bire indiriyor.
+        //
+        // 1920 = 6 x 320 ornek = 120 ms @ 16 kHz. Istemcinin tavani 2048
+        // (kMaxChunkSamples); 1920 hem altinda kaliyor hem okuma boyutuna
+        // tam bolunuyor.
+        //
+        // ⚠️ GECIKMEYI ARTIRMIYOR, AZALTIYOR. Kulaga ters geliyor
+        // ama olcum acik: kuyruk 96 x 20 ms = 1,9 saniyelik birikmis
+        // sesle dolu geziyordu. Gemini'nin duydugu ses zaten iki saniye
+        // eskiydi. Tikaniklik acilinca o birikme kayboluyor.
+        for (size_t i = 0; i < n && toplu_n < MIK_TOPLU_ORNEK; ++i) {
+            toplu[toplu_n++] = parca[i];
+        }
+        if (toplu_n < MIK_TOPLU_ORNEK) continue;
 
         // Donus degeri YOK SAYILMIYOR.
         //
@@ -1232,10 +1281,11 @@ void mik_gorevi(void* /*arg*/)
         // diye gorunur ve sebebi mikrofonda ya da agda aranir. Sayaci
         // rapora yaziyoruz.
         if (const auto r = g_istemci->push_audio(
-                std::span<const std::int16_t>(parca.data(), n));
+                std::span<const std::int16_t>(toplu, toplu_n));
             !r.has_value()) {
             ++g_gonderilemeyen;
         }
+        toplu_n = 0;
     }
     vTaskDelete(nullptr);
 }
@@ -1389,6 +1439,33 @@ std::uint32_t sohbet_tur_sayisi()
 bool sohbet_calisiyor()
 {
     return g_calisiyor;
+}
+
+// 🔴 ISTEMCININ AKIS DURUMU — gozlerinkinden AYRI.
+//
+// 60 saniyelik rapor "dinliyor" yaziyordu ama o GOZ durumu
+// (gozler_su_anki). Istemci bambaska bir durumda olabiliyor ve o hal
+// hicbir yerde gorunmuyordu: state_ Listening degilse mikrofon
+// paketleri SESSIZCE atiliyor (gemini_live_client.cpp · push_audio ve
+// send_one_chunk) ve push_audio yine "basarili" donuyor, yani
+// sohbet_gonderilemeyen() de artmiyor.
+//
+// 13.09.2026'da tam bu korluk yasandi: mikrofon calisiyor (tepe 4000-7000),
+// baglanti saglam, sifir tur, sifir hata — ve bakilacak hicbir sayi yok.
+// Dusen paket sayaci VAR ama yalnizca TUR SONUNDA basiliyor; tur hic
+// olusmadigi icin hic basilmiyordu.
+const char* sohbet_akis_durumu()
+{
+    if (g_istemci == nullptr) return "yok";
+    switch (g_istemci->state()) {
+        case ConversationState::Idle:       return "bos";
+        case ConversationState::Connecting: return "baglaniyor";
+        case ConversationState::Listening:  return "dinliyor";
+        case ConversationState::Thinking:   return "dusunuyor";
+        case ConversationState::Speaking:   return "konusuyor";
+        case ConversationState::Error:      return "HATA";
+    }
+    return "?";
 }
 
 bool sohbet_uyuyor()

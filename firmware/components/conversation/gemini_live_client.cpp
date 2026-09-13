@@ -49,10 +49,32 @@ constexpr UBaseType_t kSenderTaskPrio = 5;
 constexpr std::size_t kSenderTaskStack = 6144;
 constexpr BaseType_t kSenderTaskCore = 1;
 
-// Audio tx ring. PCM16 @ 16 kHz mono = 32 KB/s; 40 ms chunks = 640 samples
-// (1280 bytes) each. 96 slots ≈ 3.8 s buffer for hiccups before evictions.
-// Worst-case ~120 KiB sitting in PSRAM.
-constexpr std::size_t kAudioTxQueueLen = 96;
+// 🔴 CANLI SES KUYRUGU ZAMANLA SINIRLI, SLOT SAYISIYLA DEGIL.
+//
+// Eski yorum "40 ms chunks ... 96 slots ≈ 3.8 s" diyordu ve UC YERDEN
+// birden yanlisti: mikrofon 40 degil 20 ms gonderiyordu (yani 1,9 s),
+// 13.09.2026'da toplu gonderime gecilince 120 ms oldu ve ayni 96 slot
+// bir anda 11,5 SANIYELIK ses tutar hale geldi.
+//
+// ⚠️ CANLI SESTE BIRIKME BIR TAMPON DEGIL, BIR KUSURDUR. Gercek kartta
+// olculdu: kuyruk 96'ya dayaninca Gemini'ye ULASAN ses saniyelerce
+// eskiyor ve sonucu iki katli oluyor:
+//   1. Cocugun cumlesi gec varip turu kaciriyor -> "cevap vermiyor".
+//   2. Daha kotusu: Pati KONUSURKEN, konusmadan ONCE kaydedilmis ses
+//      sunucuya variyor. Gemini bunu "cocuk ustume konusuyor" sayip
+//      kendi cevabini kesiyor (serverContent.interrupted, kayitta
+//      goruldu) -> kullanicinin "sesi kesik kesik geliyor" dedigi sey.
+//
+// Yani eski sesi SAKLAMAK, atmaktan daha zararli. Kuyruk artik en fazla
+// yarim saniye tutuyor; tasan en eski parca aninda dusuyor ve sunucuya
+// giden ses HER ZAMAN taze oluyor.
+//
+// Sayi tek yerden turetiliyor: parca suresi degisirse slot sayisi
+// kendiliginden duzeliyor. Eski yorumun uc kez eskimesinin sebebi
+// suresi ile slot sayisinin iki ayri yerde tutulmasiydi.
+constexpr std::size_t kAudioTxQueueMs = 600;   // canli ses icin ust sinir
+constexpr std::size_t kAudioChunkMs   = 120;   // main/pati_sohbet.cpp ile ayni
+constexpr std::size_t kAudioTxQueueLen = kAudioTxQueueMs / kAudioChunkMs;  // 5
 
 // Hot-path scratch ceiling for the sender's base64 / JSON wrap. 2048 PCM16
 // samples × 2 B = 4096 B raw; base64 + JSON envelope ~5800 B at peak.
@@ -567,6 +589,29 @@ private:
         cJSON* gen_cfg = cJSON_AddObjectToObject(setup, "generationConfig");
         cJSON* mods = cJSON_AddArrayToObject(gen_cfg, "responseModalities");
         cJSON_AddItemToArray(mods, cJSON_CreateString("AUDIO"));
+
+        // 🔴 SUNUCU VAD AYARLARI — 13.09.2026'ya kadar HIC GONDERILMIYORDU.
+        //
+        // ConversationConfig bunlari tasiyor, panel gosteriyor, ebeveyn
+        // ayarliyor ve send_setup() iletmiyordu. TESHIS.md bunu 01.09'da
+        // yazmisti ("VAD ayarlari Gemini'ye hic gonderilmiyordu") ama
+        // duzeltme dogrulanamamisti — o gun kota doluydu.
+        //
+        // ⚠️ NEDEN ONEMLI: cihaz turu KENDI KAPATMIYOR. Mikrofonu
+        // kesintisiz akitiyor ve "cocuk sustu, sira bende" kararini
+        // TAMAMEN sunucunun etkinlik algilamasina birakiyor. O algilama
+        // yapilandirilmazsa sunucu varsayilanina kaliyoruz ve ebeveynin
+        // panelden sectigi "cevap hizi" hicbir sey yapmiyor — panelin
+        // olmayan bir seyi vaat etmesi, bu depoda dorduncu kez.
+        //
+        // Bicim bilgisayardan dogrulandi (13.09.2026): bu sekliyle
+        // gonderilen setup kabul ediliyor ve tur donuyor.
+        cJSON* rt_cfg = cJSON_AddObjectToObject(setup, "realtimeInputConfig");
+        cJSON* aad = cJSON_AddObjectToObject(rt_cfg, "automaticActivityDetection");
+        cJSON_AddNumberToObject(aad, "silenceDurationMs",
+                                static_cast<double>(config_.vad_silence_ms));
+        cJSON_AddNumberToObject(aad, "prefixPaddingMs",
+                                static_cast<double>(config_.vad_prefix_padding_ms));
         if (!config_.voice.empty()) {
             cJSON* speech_cfg = cJSON_AddObjectToObject(gen_cfg, "speechConfig");
             cJSON* voice_cfg = cJSON_AddObjectToObject(speech_cfg, "voiceConfig");

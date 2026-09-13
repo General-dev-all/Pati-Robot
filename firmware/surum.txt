@@ -1,2 +1,2 @@
-3.5.36
-Wifi guc tasarrufu artik hicbir kosulda acik kalamiyor: alti ayri yerde kapatiliyor ve her wifi olayindan sonra aninda denetleniyor. Denetim surekli calisan bir sayac degil, yalnizca bir sey degistiginde uyanan bir kontrol - yani Pati'ye fazladan yuk binmiyor. Kac kez kapatildigi panelde yaziliyor.
+3.5.39
+Pati konusurken sesinin kesik kesik gelmesinin sebebi bulundu: cihaz birikmis eski mikrofon sesini Pati konusurken gonderiyordu ve Gemini bunu 'cocuk ustume konusuyor' sanip kendi cevabini kesiyordu. Artik sunucuya giden ses her zaman taze; eskiyen ses bekletilmeden dusuyor.

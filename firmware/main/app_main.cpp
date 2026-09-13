@@ -1104,10 +1104,14 @@ extern "C" void app_main()
         const int64_t sn = (esp_timer_get_time() - t0) / 1000000;
         if (sn % 60 < 5) {
             ESP_LOGI(ETIKET,
-                     "%lld dk %lld sn · %u tur · %s · %u kare (%u us/%u px) "
-                     "· bos yigit: %u bayt",
+                     "%lld dk %lld sn · %u tur · goz:%s akis:%s · "
+                     "%u kare (%u us/%u px) · bos yigit: %u bayt",
                      sn / 60, sn % 60, static_cast<unsigned>(tur),
                      pati::gozler_su_anki(),
+                     // 🔴 IKISI AYRI SEY. Goz "dinliyor" gorunurken
+                     // istemci baska bir durumda olabiliyor ve o halde
+                     // mikrofon sessizce atiliyor.
+                     pati::sohbet_akis_durumu(),
                      static_cast<unsigned>(pati::gozler_kare()),
                      static_cast<unsigned>(pati::gozler_kare_us()),
                      static_cast<unsigned>(pati::gozler_piksel()),
