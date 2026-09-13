@@ -1,2 +1,2 @@
-3.5.46
-"Sesi puruzsuz cal" ayarinin aciklamasi genisletildi: cıtırtının neden olustugu, ayarin ne yaptigi ve bedelinin ne oldugu yaziyor. Boylece gerekirse bilerek kapatilabilir.
+3.5.47
+"Sesi puruzsuz cal" aciklamasi kisaltildi; bir onceki surumde gereksiz uzundu.
