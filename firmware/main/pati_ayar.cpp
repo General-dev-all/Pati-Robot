@@ -79,6 +79,7 @@ bool g_soz_kesme = false;
 // istegi "kapaliyken sarja takinca acilmasin" (12.09.2026).
 int g_vad_ms = 0;
 bool g_yuz = true;
+bool g_ses_on_bellek = true;
 int g_beden_hiz = 70;   // panelde %50
 
 // 🔴 IKISI DE VARSAYILAN ACIK — kullanicinin acik istegi (06.09.2026):
@@ -231,6 +232,7 @@ esp_err_t ayar_baslat()
                                              VAD_EN_AZ, VAD_EN_FAZLA);
     }
     if (nvs_get_i32(h, "yuz", &v) == ESP_OK) g_yuz = (v != 0);
+    if (nvs_get_i32(h, "on_bellek", &v) == ESP_OK) g_ses_on_bellek = (v != 0);
     if (nvs_get_i32(h, "tekerlek", &v) == ESP_OK) {
         g_tekerlek_kip = std::clamp(static_cast<int>(v), KIP_KAPALI, KIP_ACIK);
     } else if (nvs_get_i32(h, "hareket", &v) == ESP_OK) {
@@ -327,6 +329,7 @@ int ayar_parlaklik() { return g_parlaklik; }
 bool ayar_soz_kesme() { return g_soz_kesme; }
 int ayar_vad_ms() { return g_vad_ms; }
 bool ayar_yuz_araci() { return g_yuz; }
+bool ayar_ses_on_bellek() { return g_ses_on_bellek; }
 
 // 🔴 RAM'DEN OKUNUYOR, NVS'TEN DEGIL. beden_surus() bunu her komutta
 // (saniyede ~7 kez) cagiriyor; NVS'e gitseydi surus yolunda flash
@@ -475,6 +478,14 @@ void ayar_vad_yaz(int ms)
     ESP_LOGI(ETIKET, "sustu karari: %d ms (tur sonunda gecerli)", y);
 }
 
+void ayar_ses_on_bellek_yaz(bool acik)
+{
+    if (acik == g_ses_on_bellek) return;
+    g_ses_on_bellek = acik;
+    i32_yaz("on_bellek", acik ? 1 : 0);
+    ESP_LOGI(ETIKET, "ses on-bellegi: %s", acik ? "acik" : "kapali");
+}
+
 void ayar_yuz_yaz(bool acik)
 {
     if (acik == g_yuz) return;
@@ -544,7 +555,7 @@ void ayar_sifirla()
         // zaten acilistaki gecis sirasinda temizleniyor.
         for (const char* a : {"ses_adi", "hiz_yuz", "uyku_dk", "soz_kesme",
 
-                              "vad_ms", "yuz", "tekerlek",
+                              "vad_ms", "yuz", "on_bellek", "tekerlek",
                               "kol", "hareket", "sevinc"}) {
             nvs_erase_key(h, a);
         }
@@ -576,10 +587,11 @@ void ayar_yenileme_temizle() { g_yenileme.store(false); }
 
 std::string ayar_json()
 {
-    char b[420];
+    char b[480];
     std::snprintf(b, sizeof(b),
                   "\"ses\":{\"seviye\":%.3f,\"en_az\":%.2f,\"en_fazla\":%.2f,"
-                  "\"hiz\":%.2f,\"ses_adi\":\"%s\"},"
+                  "\"hiz\":%.2f,\"ses_adi\":\"%s\","
+                  "\"on_bellek\":%s},"
                   "\"uyku\":%d,\"parlaklik\":%d,"
                   "\"konusma\":{\"soz_kesme\":%s,\"vad\":%d,\"yuz\":%s},"
                   "\"kumanda\":{\"hiz\":%d,\"tekerlek\":%d,\"kol\":%d,"
@@ -587,7 +599,9 @@ std::string ayar_json()
                   "\"kol_sol_az\":%d,\"kol_sol_cok\":%d,"
                   "\"kol_sag_az\":%d,\"kol_sag_cok\":%d}",
                   ses_seviyesi(), SES_SEVIYESI_EN_AZ, SES_SEVIYESI_EN_FAZLA,
-                  g_hiz, g_ses_adi.c_str(), g_uyku_dk, g_parlaklik,
+                  g_hiz, g_ses_adi.c_str(),
+                  g_ses_on_bellek ? "true" : "false",
+                  g_uyku_dk, g_parlaklik,
                   g_soz_kesme ? "true" : "false", g_vad_ms,
                   g_yuz ? "true" : "false",
                   g_beden_hiz, g_tekerlek_kip, g_kol_kip,

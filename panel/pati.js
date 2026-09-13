@@ -706,6 +706,21 @@ function kumandaKur() {
     }
   }
 
+  // Sesi purussuz cal — cevap basinda ses yedegi.
+  {
+    const o = $('#onBellek');
+    if (o) {
+      o.addEventListener('change', (e) => {
+        fetch('/api/ayar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ alan: 'on_bellek', deger: e.target.checked ? 1 : 0 }),
+        }).then(() => tost(e.target.checked ? 'Pürüzsüz ses ✓' : 'Pürüzsüz ses kapalı'))
+          .catch(() => {});
+      });
+    }
+  }
+
   // Donus yonu — surus yonunun ikizi, ayni kalici yerde.
   {
     const d = $('#donusTers');
@@ -914,6 +929,14 @@ function durumu_uygula(d) {
     mesaj({ tip: 'sesler', liste: D.sesler, secili: d.ses.ses_adi,
             hiz: d.ses.hiz });
   }
+  {
+    const o = $('#onBellek');
+    if (o && d.ses && typeof d.ses.on_bellek === 'boolean'
+        && document.activeElement !== o) {
+      o.checked = d.ses.on_bellek;
+    }
+  }
+
   if (typeof d.parlaklik === 'number') {
     const p = document.getElementById('kParlaklik');
     if (p && document.activeElement !== p) {

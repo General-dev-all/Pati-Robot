@@ -104,6 +104,60 @@ std::array<std::int16_t, PATI_OKUMA_ORNEK * 3> g_ham{};
 // cikarsa geri dusulmustur; o zaman deger kalici olarak dusurulmeli.
 //
 // Tanimlayici basina 1024 x 2 = 2048 bayt; IDF'in siniri 4092.
+// 🔴 16 -> 24 (341 ms -> 512 ms), 13.09.2026. GEREKCESI OLCULDU.
+//
+// Belirti: Pati konusurken cumlenin icinde "patlak hoparlor gibi"
+// cok kisa citirtilar, cumle basina bes alti tane, konusmalarin
+// %80'inde.
+//
+// 🔴 AYIRT EDICI OLCUM KULLANICININ KULAGIYLA YAPILDI: tizlik/hiz
+// 1.00x'e cekilince citirti TAMAMEN kayboluyor, 1.30x'te geri
+// geliyor. Once bunun ses ISLEME hatasi oldugu sanildi; degilmis.
+//
+// Gemini'nin gonderdigi ses bilgisayara alinip ayni algoritmadan
+// gecirildi (dogrusal ara deger + zarf sinirlayici + yumusak kirpma,
+// birebir ayni sabitlerle) ve uc ayri surumu dinletildi: UCU DE
+// TERTEMIZ. Yani ornek DEGERLERI dogru; kusur degerlerde degil
+// ZAMANLAMADA.
+//
+// Asimetrinin sebebi tek bir orana dayaniyor: hoparlor her zaman
+// 48 kHz tuketiyor, ama 1.30x'te her cikis ornegi 0,65 KAYNAK ornegi
+// yiyor. Yani ayni tampon, kaynak sesi olcusunde
+//
+//     1.00x -> saniyede 1,0 saniye        1.30x -> saniyede 1,3 saniye
+//
+// hizinda bosaliyor. Agdan gelen ses biraz geciktiginde 1.00x
+// atlatiyor, 1.30x kuruyor. Kuruyunca `auto_clear` yerine SESSIZLIK
+// basiyor (bilerek: eski veriyi tekrarlamak daha kotu) ve sifira
+// dusup geri donen dalga kulakta "cit" diye duyuluyor.
+//
+// ⚠️ 1.30x PAZARLIKSIZ — Pati'nin sesi ondan geliyor (CLAUDE.md).
+// Degistirilecek olan carpan degil, ona yetecek pay.
+//
+// 512 ms, 1,3 kat hizli bosalmayi 1,5 kat payla karsiliyor. Acilista
+// ayriliyor ve o an ~272 KB bos dahili SRAM var; calisma anindaki
+// 40 KB'lik pay bundan etkilenmiyor.
+// ⚠️ 24 DENENDI VE GERI ALINDI (13.09.2026) — DMA tamponu BUYUTULEMIYOR.
+//
+// Citirti icin 16 -> 24 (341 -> 512 ms) yapildi. Tampon gercekten
+// buyudu (panelde 512 ms goruldu) ama cihaz KULLANILAMAZ hale geldi:
+//
+//     dahili SRAM: en dusuk 243 bayt
+//     akis:HATA · 0 tur · MIKROFON SESSIZ (sohbet dongusu hic okumuyor)
+//
+// I2S tamponu DMA erisimli olmak zorunda, yani ZORUNLU olarak dahili
+// SRAM'de. 8 tanimlayici daha ~16 KB dahili RAM yiyor ve o pay TLS'in
+// payiydi: WebSocket baglantisi yer bulamayip Error'a dustu, mikrofon
+// gorevi okumayi birakti, Pati sagir kaldi.
+//
+// 🔴 SAYI ZATEN UCTAYMIS: 16 ile bile en dusuk pay ~1900 bayt. Bu
+// depoda "dahili SRAM 1903 bayta kadar indi" diye yazili (CLAUDE.md)
+// ve o satir bir uyariymis, bir gozlem degil.
+//
+// Yani yukaridaki "SES TAKILIRSA DMA_TANIM'i 24'e cikar" tavsiyesi
+// BU CIHAZDA GECERSIZ. Citirtinin cozumu tamponu buyutmek degil;
+// gerekiyorsa PSRAM'de bir on-tampon (jitter buffer) kurulmali —
+// oynatmayi ~300 ms geciktirip yedek biriktirmek. Orasi ayri bir is.
 constexpr int DMA_TANIM = 16;
 constexpr int DMA_CERCEVE = 1024;
 int g_dma_ms = 0;
@@ -244,7 +298,7 @@ esp_err_t ses_kur()
     //
     // Buraya dusuluyorsa DMA_TANIM kalici olarak indirilmeli: yer,
     // calisma sirasinda baska bir seyi aclikta birakiyor demektir.
-    for (int daha_az : {14, 12}) {
+    for (int daha_az : {20, 16, 14, 12}) {
         if (hata != ESP_ERR_NO_MEM) break;
         ESP_LOGW(ETIKET, "DMA icin ic RAM yetmedi (%d x %d) — %d deneniyor",
                  tanim, DMA_CERCEVE, daha_az);
@@ -664,20 +718,49 @@ size_t hoparlor_yaz(std::span<const std::int16_t> kaynak, uint32_t timeout_ms)
     const size_t tuketilen = g_ornek.isle(
         kaynak, adim, ses_etkin_seviye(), cikti,
         [&](std::span<const std::int16_t> blok) -> bool {
-            gozler_ses_bildir(g_dma_ms);
-            size_t bayt = 0;
-            const esp_err_t hata = i2s_channel_write(
-                g_tx, blok.data(), blok.size() * sizeof(std::int16_t),
-                &bayt, timeout_ms);
-            if (bayt != 0) gozler_ses_bildir(g_dma_ms);
-            if (hata != ESP_OK && hata != ESP_ERR_TIMEOUT) {
-                ESP_LOGW(ETIKET, "hoparlor yazma: %s", esp_err_to_name(hata));
-                return false;
+            // 🔴 BLOK TAMAMEN YAZILANA KADAR ISRAR EDILIYOR.
+            //
+            // Eskiden kismi yazmada `false` doniyordu ve gerekcesi
+            // "kalani zorlamak gecikmeyi buyutur" idi. O muhakeme
+            // yanlisti ve bedeli 13.09.2026'da kullanicinin kulagiyla
+            // bulundu: "patlak hoparlor gibi cit cut sesler."
+            //
+            // Cunku `false` DONMEK SESI ATMAK DEMEK: tampondaki 512
+            // ornek teslim edilmemis oluyor ve ustune yeniden
+            // ornekleyici kendini sifirliyor (pati_ornekleyici.hpp ·
+            // kesildi dali). Iki sureksizlik ust uste biniyor.
+            //
+            // ⚠️ "Gecikme buyur" kaygisi da yersizdi: calma zaten
+            // gercek zamanli. Beklenen sure, sesin kendi suresi.
+            // Tampon Gemini HIZLI GONDERDIGI icin doluyor, cihaz yavas
+            // oldugu icin degil.
+            size_t yazilan = 0;
+            const size_t hedef = blok.size() * sizeof(std::int16_t);
+            const auto* ham = reinterpret_cast<const std::uint8_t*>(blok.data());
+            int kisir = 0;
+            while (yazilan < hedef) {
+                size_t bayt = 0;
+                const esp_err_t hata = i2s_channel_write(
+                    g_tx, ham + yazilan, hedef - yazilan, &bayt, timeout_ms);
+                if (hata != ESP_OK && hata != ESP_ERR_TIMEOUT) {
+                    ESP_LOGW(ETIKET, "hoparlor yazma: %s", esp_err_to_name(hata));
+                    return false;
+                }
+                if (bayt != 0) {
+                    gozler_ses_bildir(g_dma_ms);
+                    yazilan += bayt;
+                    kisir = 0;
+                    continue;
+                }
+                // Hic ilerleme yok: donanim gercekten kabul etmiyor.
+                // Sonsuz donguye girmemek icin sayili deneme.
+                if (++kisir >= 5) {
+                    ESP_LOGW(ETIKET, "hoparlor %u bayti kabul etmedi",
+                             static_cast<unsigned>(hedef - yazilan));
+                    return false;
+                }
             }
-            // Kismi yazma: kuyruk dolu ve bekleme suresi doldu. Kalani
-            // zorlamak gecikmeyi buyutur; birakmak daha dogru — ama
-            // artik SESSIZCE degil, donus degerinde gorunerek.
-            return bayt == blok.size() * sizeof(std::int16_t);
+            return true;
         });
 
     // Damga BURADA — yazma bittikten sonra. Gerekcesi yukarida.

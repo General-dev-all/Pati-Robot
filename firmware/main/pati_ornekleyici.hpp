@@ -316,10 +316,36 @@ public:
         }
 
         if (kesildi) {
-            // Kalan atildi, yani sureklilik zaten koptu. Fazi ve
-            // sinir ornegini saklamak yanlis olurdu.
-            faz_ = 0.0f;
-            onceki_ = 0;
+            // 🔴 FAZ VE SINIR ORNEGI SAKLANIYOR — eskiden sifirlaniyordu.
+            //
+            // Eski gerekce: "kalan atildi, sureklilik zaten koptu."
+            // 13.09.2026'da GECERSIZ OLDU: cagiran taraf artik kalani
+            // atmiyor, kaldigi yerden veriyor (pati_sohbet.cpp) ve
+            // hoparlor yazmasi da tamamlanana kadar israr ediyor
+            // (pati_ses.cpp). Yani sureklilik KOPMUYOR.
+            //
+            // Sifirlamanin bedeli kullanicinin kulagiyla bulundu ve
+            // ADIMA BAGLIYDI, iste tesbitin anahtari buydu:
+            //
+            //   1.00x -> adim 0,50: faz zaten yalnizca {0 , 0,5}
+            //            arasinda gidip geliyor. Sifira donmek dogal
+            //            dongunun icinde — neredeyse duyulmuyor.
+            //   1.30x -> adim 0,65: faz her ornekte baska bir kesirde.
+            //            Sifirlamak ORNEKLEME IZGARASINI KAYDIRIYOR,
+            //            ustune `onceki_ = 0` sessizlikten sinyale
+            //            sicrama ekliyor. Kulakta "cit".
+            //
+            // Kullanici 1.00x'e cekince catirti tamamen kayboldu,
+            // 1.30x'te geri geldi. Asimetri tam olarak bu satirdan
+            // geliyordu.
+            //
+            // ⚠️ 1.30x PAZARLIKSIZ (Pati'nin sesi, CLAUDE.md). Duzeltmesi
+            // gereken sey carpan degil, carpanin uygulanisiydi.
+            //
+            // Kaydedilen degerler normal yolun aynisi: bir sonraki
+            // cagrinin v[0]'i, bu cagrinin son TUKETILEN ornegi.
+            if (i > 0) onceki_ = kaynak[i - 1];
+            faz_ = f;
             return (i < N) ? i : N;
         }
 

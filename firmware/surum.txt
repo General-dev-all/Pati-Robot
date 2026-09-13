@@ -1,2 +1,2 @@
-3.5.41
-Pati konusurken duyulan minik catirtilarin sebebi bulundu: hoparlore sigmayan ses bekletilmek yerine atiliyordu ve her atilan parca sesin icinde bir sicrama birakiyordu. Artik hicbir parca atilmiyor, sirasi gelene kadar bekliyor.
+3.5.45
+Pati konusurken duyulan citirtilar icin yeni bir ayar: Ses > "Sesi puruzsuz cal". Acik geliyor. Internetten gelen ses duzensiz aktigi icin hoparlorun deposu cevabin basinda kuruyor ve arada cok kisa kesilmeler oluyordu; Pati artik konusmaya baslamadan once kucuk bir yedek biriktiriyor. Cevap fark edilmeyecek kadar geciyor. Citirti duymuyorsaniz ve cevabi daha hizli isterseniz kapatabilirsiniz.

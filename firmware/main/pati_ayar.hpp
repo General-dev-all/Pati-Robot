@@ -59,6 +59,26 @@ bool ayar_soz_kesme();
 int ayar_vad_ms();          // 0 = Google varsayilani
 bool ayar_yuz_araci();
 
+// 🔴 CEVAP BASINDA SES ON-BELLEGI. Varsayilan ACIK.
+//
+// 13.09.2026'da olculdu: Gemini sesi duzensiz gonderiyor — parcalar
+// arasi boslugun en uzunu 372 ms iken hoparlorun deposu 342 ms. Cevabin
+// BASINDA, depo daha dolmamisken bir bosluk gelirse depo kuruyor,
+// donanim sessizlik basiyor ve dalga sifira dusup geri donuyor:
+// kulakta "cit" diye duyuluyor.
+//
+// Ayni veriyle benzetildi: 250 ms'lik bir on-bellek uc turda da butun
+// kurumalari sifirladi.
+//
+// ⚠️ GECIKMESI SANILDIGINDAN KUCUK. Ses gercek zamandan ~3,6 kat
+// hizli geliyor, yani 250 ms'lik ses ~70 ms'de birikiyor. Cevabin
+// baslamasi o kadar geciyor.
+//
+// Panelden kapatilabiliyor — sebebi teknik degil: cihaz cocuga
+// verildikten sonra yeniden yuklenemeyecek, yani ters bir sey olursa
+// tek cikis yolu bu anahtar.
+bool ayar_ses_on_bellek();
+
 // Bedenin surus hizi tavani (10-100). Panel degil FIRMWARE uyguluyor:
 // sinir cihazda dursun, panel gonderse bile asilamasin.
 int ayar_beden_hiz();
@@ -129,6 +149,7 @@ void ayar_ses_seviye_yaz(float seviye);
 void ayar_soz_kesme_yaz(bool acik);
 void ayar_vad_yaz(int ms);
 void ayar_yuz_yaz(bool acik);
+void ayar_ses_on_bellek_yaz(bool acik);
 void ayar_beden_hiz_yaz(int yuzde);
 // ---------------------------------------------------------------------------
 // 🔴 KOL ARALIKLARI — FABRIKA AYARLARINDAN KURTULUYOR

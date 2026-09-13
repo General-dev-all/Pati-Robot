@@ -436,6 +436,8 @@ esp_err_t ayar_isle(httpd_req_t* r)
         ayar_ses_adi_yaz(json_dize(k, "deger"));
     } else if (alan == "uyku") {
         ayar_uyku_yaz(static_cast<int>(json_sayi(k, "deger", 4)));
+    } else if (alan == "on_bellek") {
+        ayar_ses_on_bellek_yaz(json_sayi(k, "deger", 1) != 0);
     } else if (alan == "parlaklik") {
         ayar_parlaklik_yaz(static_cast<int>(json_sayi(k, "deger", 25)));
     } else if (alan == "kol_ters") {

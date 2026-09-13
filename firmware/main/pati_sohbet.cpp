@@ -11,6 +11,7 @@
 #include <span>
 
 #include <cJSON.h>
+#include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
@@ -57,6 +58,108 @@ QueueHandle_t g_kuyruk = nullptr;
 
 volatile bool g_calisiyor = false;
 volatile bool g_konusuyor = false;    // robot su an konusuyor mu
+
+// ---------------------------------------------------------------------------
+// 🔴 CEVAP BASINDA SES ON-BELLEGI
+// ---------------------------------------------------------------------------
+//
+// 13.09.2026, olculdu: Gemini sesi DUZENSIZ gonderiyor. Uc turda
+// parcalar arasi bosluklarin en uzunu 191 / 230 / 372 ms iken
+// hoparlorun deposu 342 ms.
+//
+// Kuruma CEVABIN BASINDA oluyor: ilk parca geldigi an calma basliyor ve
+// depoda daha yalnizca ~100 ms ses var. O anda 372 ms'lik bir bosluk
+// gelirse depo kuruyor, donanim sessizlik basiyor, dalga sifira dusup
+// geri donuyor — kulakta "cit". Kullanicinin tarifi: "patlak hoparlor
+// gibi, bir cumlede minik minik bes alti tane."
+//
+// Ayni gercek veriyle benzetildi: 250 ms'lik on-bellek uc turda da
+// butun kurumalari SIFIRLADI (gereken en fazla 150 ms'ti; ustune pay).
+//
+// ⚠️ GECIKMESI SANILDIGINDAN COK KUCUK. Ses gercek zamandan ~3,6 kat
+// hizli akiyor, yani 250 ms'lik ses ~70 ms'de birikiyor.
+//
+// 🔴 PSRAM'DE. Dahili RAM'e DOKUNMUYOR ve bu pazarlik konusu degil:
+// ayni gun I2S tamponunu buyutme denemesi dahili RAM'i 243 bayta
+// dusurup TLS'i coketti, Pati tamamen sagir kaldi. Yer bulunamazsa
+// on-bellek kendini kapatiyor ve ses eskisi gibi dogrudan akiyor.
+constexpr std::size_t ON_BELLEK_MS = 250;
+constexpr std::size_t ON_BELLEK_ORNEK =
+    ON_BELLEK_MS * PATI_GEMINI_CIKIS_HZ / 1000;
+
+std::int16_t* g_on_bellek = nullptr;
+std::size_t   g_on_bellek_n = 0;     // icindeki ornek
+bool          g_on_bellek_akiyor = false;  // doldu, artik dogrudan caliniyor
+
+// Bir parcayi TAMAMI calinana kadar hoparlore yazar.
+//
+// hoparlor_yaz TUKETTIGI ornek sayisini donduruyor; donus degerini yok
+// saymak, sigmayan sesi atmak demek ve atilan her ornek dalga formunda
+// bir basamak birakiyor.
+void sesi_cal(std::span<const std::int16_t> ses)
+{
+    std::span<const std::int16_t> kalan = ses;
+    int kisir_tur = 0;
+    while (!kalan.empty()) {
+        const std::size_t t = hoparlor_yaz(kalan);
+        if (t == 0) {
+            if (++kisir_tur >= 5) {
+                ESP_LOGW(ETIKET, "hoparlor %u ornegi kabul etmedi",
+                         static_cast<unsigned>(kalan.size()));
+                return;
+            }
+            continue;
+        }
+        kisir_tur = 0;
+        kalan = kalan.subspan(t);
+    }
+}
+
+// Gelen parcayi on-bellege koyar. Doner: HEMEN calinacak kalan.
+// Bos donerse henuz dolmadi, calma baslamadi.
+std::span<const std::int16_t> on_bellege_koy(std::span<const std::int16_t> gelen)
+{
+    if (g_on_bellek == nullptr) {
+        g_on_bellek = static_cast<std::int16_t*>(heap_caps_malloc(
+            ON_BELLEK_ORNEK * sizeof(std::int16_t), MALLOC_CAP_SPIRAM));
+        if (g_on_bellek == nullptr) {
+            ESP_LOGW(ETIKET, "on-bellek icin PSRAM yok — ses dogrudan caliniyor");
+            g_on_bellek_akiyor = true;
+            return gelen;
+        }
+    }
+    const std::size_t yer = ON_BELLEK_ORNEK - g_on_bellek_n;
+    const std::size_t al = (gelen.size() < yer) ? gelen.size() : yer;
+    for (std::size_t i = 0; i < al; ++i) {
+        g_on_bellek[g_on_bellek_n + i] = gelen[i];
+    }
+    g_on_bellek_n += al;
+    if (g_on_bellek_n < ON_BELLEK_ORNEK) {
+        return {};                       // daha dolmadi, calma yok
+    }
+    g_on_bellek_akiyor = true;
+    sesi_cal(std::span<const std::int16_t>(g_on_bellek, g_on_bellek_n));
+    g_on_bellek_n = 0;
+    return gelen.subspan(al);
+}
+
+// Tur bitti. Yarim kalan on-bellek CALINIYOR: cevap 250 ms'den kisaysa
+// hic dolmuyor ve atilsaydi Pati'nin kisa cevaplari hic duyulmazdi.
+void on_bellek_bitir()
+{
+    if (g_on_bellek != nullptr && g_on_bellek_n > 0 && !g_on_bellek_akiyor) {
+        sesi_cal(std::span<const std::int16_t>(g_on_bellek, g_on_bellek_n));
+    }
+    g_on_bellek_n = 0;
+    g_on_bellek_akiyor = false;
+}
+
+// Sozu kesildi ya da baglanti koptu: biriken ses BAYAT, atiliyor.
+void on_bellek_at()
+{
+    g_on_bellek_n = 0;
+    g_on_bellek_akiyor = false;
+}
 volatile bool g_goaway = false;       // kapanma uyarisi geldi, yenileme bekliyor
 volatile bool g_yenileniyor = false;  // yenileme SURUYOR -> ses gonderme
 
@@ -824,6 +927,7 @@ void olayi_isle(const ConversationEvent& olay)
                                  "sunucuya iletilemedi");
             }
             hoparlor_temizle();
+            on_bellek_at();
             g_konusuyor = false;
             beden_konusma_bildir(false);
         }
@@ -870,28 +974,19 @@ void olayi_isle(const ConversationEvent& olay)
         // yapilacak baska bir sey yok. Yarim dupleks acikken (varsayilan)
         // Pati konusurken mikrofon zaten gonderilmiyor, yani burada
         // beklemek baska bir isi geciktirmiyor.
-        {
-            std::span<const std::int16_t> kalan(olay.audio->data(),
-                                                olay.audio->size());
-            int kisir_tur = 0;
-            while (!kalan.empty()) {
-                const std::size_t t = hoparlor_yaz(kalan);
-                if (t == 0) {
-                    // Hic ilerleme yok: donanim gercekten kabul etmiyor.
-                    // Sonsuz donguye girmemek icin sayili deneme, sonra
-                    // GORUNUR sekilde birak.
-                    if (++kisir_tur >= 5) {
-                        ESP_LOGW(ETIKET, "hoparlor %u ornegi kabul etmedi — "
-                                         "ses atlayacak",
-                                 static_cast<unsigned>(kalan.size()));
-                        break;
-                    }
-                    continue;
-                }
-                kisir_tur = 0;
-                kalan = kalan.subspan(t);
+        std::span<const std::int16_t> calinacak(olay.audio->data(),
+                                               olay.audio->size());
+
+        // Cevabin basinda yedek biriktir (gerekcesi ON_BELLEK_MS'in
+        // yaninda). Panelden kapatilabiliyor; kapaliyken bu blok
+        // hicbir sey yapmiyor ve ses eskisi gibi dogrudan akiyor.
+        if (!g_on_bellek_akiyor && ayar_ses_on_bellek()) {
+            calinacak = on_bellege_koy(calinacak);
+            if (calinacak.empty()) {
+                break;                   // henuz dolmadi
             }
         }
+        sesi_cal(calinacak);
         // Yazma DONDUKTEN SONRA damgaliyoruz: i2s_channel_write, veri
         // DMA'ya kopyalanana kadar bekliyor. Yani bu an, sesin gercekten
         // donanima teslim edildigi an.
@@ -927,6 +1022,9 @@ void olayi_isle(const ConversationEvent& olay)
             tur_ozeti_yaz();
             ++g_tur;
         }
+        // Cevap 250 ms'den kisaysa on-bellek hic dolmamis olabilir;
+        // icindekini simdi cal, yoksa kisa cevaplar hic duyulmaz.
+        on_bellek_bitir();
         g_konusuyor = false;
         beden_konusma_bildir(false);
         gozler_bos();
