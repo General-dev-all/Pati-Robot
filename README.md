@@ -115,6 +115,49 @@ flashed by cable has nothing to roll back to.
 
 ---
 
+## Body
+
+Pati works on its own. The body is optional: it adds two driven wheels
+and two servo arms, and it prints on a home 3D printer. Files, parts
+list and assembly notes are in [`enclosure/`](enclosure/).
+
+🔴 **Pati turns in place. It never drives itself anywhere.** There is no
+cliff sensor, so a robot that could travel on its own would eventually
+walk off a table. The whole gesture system is built around one
+guarantee: the two wheels always turn in opposite directions, so net
+displacement is zero. Driving across a table is possible only from the
+panel, under a child's finger, behind a 600 ms dead-man timer.
+
+🔴 **Motor and servo power never reaches the StickS3.** Every one of the
+eight wires from the body to the Stick is either ground or the Stick's
+own output; the 6 V rail stays inside the body. This is not a caution
+note — it is the reason the pins were chosen that way. With the rule set
+up like this, the worst outcome of a wire slipping onto the wrong pin is
+"a motor runs continuously", not a dead board.
+
+### Wiring
+
+Wire colors in both diagrams match the real assembly. Same diagram, two
+languages — the parts and pin numbers are identical.
+
+![Wiring diagram, English](enclosure/images/wiring-diagram-en.png)
+
+![Kablolama diyagramı, Türkçe](enclosure/images/wiring-diagram-tr.png)
+
+There is a third, different document:
+[`firmware/Pati_Tek_Bakis_Kablolama_Diyagrami.png`](firmware/Pati_Tek_Bakis_Kablolama_Diyagrami.png)
+(Turkish) is not another copy of these — it is the step-by-step pin
+table: which way to hold the connector, the L9110 pin map, the power
+junctions, and the first-power-up checklist. Use the diagrams above to
+see *where the wires go*, and that one to check *each pin before
+switching on*.
+
+Pin assignments, commissioning measurements and the numbers still
+waiting to be measured: [`firmware/BEDEN.md`](firmware/BEDEN.md)
+(Turkish).
+
+---
+
 ## Build
 
 Requires ESP-IDF v5.5. On Windows use PowerShell — `idf_tools.py`

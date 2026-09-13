@@ -402,8 +402,18 @@ takacak kişi için tek sayfalık şema: **`firmware/Pati_Tek_Bakis_Kablolama_Di
 
 🔴 **Gövdenin 3B baskı dosyaları `enclosure/`'da** (13.09.2026'da
 eklendi): `print/` dilimleyiciye hazır STL'ler, `cad/` düzenlenebilir
-kaynak (STEP / Parasolid / SpaceClaim), `images/` gerçek fotoğraf ve
-CAD görüntüsü — ikisi kök README'de de gösteriliyor.
+kaynak (STEP / Parasolid / SpaceClaim), `images/` fotoğraf, CAD
+görüntüsü ve kablolama diyagramları — hepsi kök README'de gösteriliyor.
+
+⚠️ **İKİ FARKLI KABLOLAMA BELGESİ VAR, adları da benziyor:**
+
+| Dosya | Ne |
+|---|---|
+| `enclosure/images/wiring-diagram-{tr,en}.png` | **Şema** — kablo nereden nereye, gerçek renklerle. Yatay. TR ve EN aynı şema |
+| `firmware/Pati_Tek_Bakis_Kablolama_Diyagrami.png` | **Pin tablosu** — soket yönü, L9110 haritası, ilk çalıştırma listesi. Dikey, yalnızca TR |
+
+Biri diğerinin kopyası değil ve yerine geçmiyor. Birine bakıp "pini
+doğruladım" demek, diğerine bakmamış olmak demek.
 ⚠️ `enclosure/README.md` uzun süre *"gövde yok ve gerekmiyor"* diyordu;
 o cümle gövde yapıldıktan sonra aylarca yanlış kaldı. Donanım
 değişince ona bakan belgeler de değişmeli.

@@ -80,9 +80,28 @@ hattı gövdenin içinde kalıyor. Bu bir uyarı değil, **pin seçiminin
 sebebi**: kural böyle kurulunca yanlış pine kayan bir kablonun en kötü
 sonucu "motor sürekli dönüyor" oluyor, yanmış bir kart değil.
 
-Kablo şeması ve pin tablosu:
-[`../firmware/BEDEN.md`](../firmware/BEDEN.md) ·
+### Kablolama
+
+Her iki diyagramdaki kablo renkleri **gerçek montajla aynı**. Aynı
+şema, iki dil — parçalar ve pin numaraları birebir.
+
+![Kablolama diyagramı, Türkçe](images/wiring-diagram-tr.png)
+
+![Wiring diagram, English](images/wiring-diagram-en.png)
+
+⚠️ **Üçüncü bir belge daha var ve o bunların kopyası DEĞİL:**
 [`../firmware/Pati_Tek_Bakis_Kablolama_Diyagrami.png`](../firmware/Pati_Tek_Bakis_Kablolama_Diyagrami.png)
+adım adım **pin tablosu** — soketin hangi yönde tutulacağı, L9110 pin
+haritası, ortak güç birleşimleri ve ilk çalıştırma kontrol listesi.
+
+**Hangisi ne zaman:** yukarıdaki şemalar *kablo nereye gidiyor* diye
+bakarken, pin tablosu *açmadan önce her pini tek tek doğrularken*.
+
+⚠️ İkisinin dosya adı benziyor ama içerikleri farklı. Birini
+diğerinin yerine kullanmak, doğruladığını sanıp doğrulamamak olur.
+
+Pin atamaları ve devreye alma ölçümleri:
+[`../firmware/BEDEN.md`](../firmware/BEDEN.md)
 
 ---
 
