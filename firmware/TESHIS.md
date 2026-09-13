@@ -11,6 +11,60 @@ teşhis yapıldı. Yanlış teşhisler de yazılı: aynı tuzağa tekrar düşü
 
 
 
+
+## 🔴 13.09.2026 — "bir gözü kısık, saatlerce öyle bakıyor": BEKÇİ KİLİTLENMESİ
+
+**Belirti (kullanıcının sözü):** *"Bir gözü kısık saatlerce hiçbir şey
+demeden o yüz ifadesinde kaldı. Bir şey diyorum öyle bakıyor. Bazen iki
+gözü kısık yukarı doğru, onda takılı kalıyor."* Fişi çekmeden düzelmiyor.
+
+Panelde ölçüldü: `ifade` **74 saniye** boyunca `afacan`'da dondu. Model
+cevap vermişti — ifadeyi o değiştirdi — ama **sesi hiç gelmedi.**
+
+### Sebep: bekçinin kurtaracağı durum, bekçiyi kapatıyor
+
+Üç şey birbirini besliyor:
+
+1. `g_konusuyor` takılı kalır — sunucu `ResponseDone`/`AudioDone`
+   göndermeden susarsa (yarı açık TCP'de olay **hiç** gelmiyor).
+2. Yarım dupleks yüzünden **mikrofon gönderilmez olur**
+   (`if (!ayar_soz_kesme() && g_konusuyor) continue;`).
+3. Mikrofon gitmediği için `g_son_ses_us` **güncellenmez** — o satır da
+   `!g_konusuyor` istiyor.
+4. Bekçi ilk kontrolünde `g_son_ses_us <= g_son_sunucu_us` görüp
+   **erken çıkar.** Sonsuza kadar.
+
+Sonuç: Pati sağır, göz donuk, 25 saniyelik bekçi hiç ateşlenmiyor.
+Tek çıkış fişi çekmek.
+
+### ⚠️ Neden yanlış yerlerde arandı
+
+Belirti "Gemini cevap vermiyor" gibi görünüyor. Elenenler (hepsi ölçümle):
+
+| Şüpheli | Ölçüm |
+|---|---|
+| Gemini / kota | Bilgisayardan **180 sn tek oturum, kesintisiz 16 kHz ses**, 8 tur → 8'i de cevaplandı, ilk ses 0,62–1,12 sn. ⚠️ Kısa metin turu bunu sınamıyor; kota dakikayla işliyor, cihazın yaptığı şey taklit edilmeli |
+| Wifi güç tasarrufu | `ag.tasarruf: 0` — kapalıydı, belirti sürüyordu |
+| Sinyal | 36 örnek, −54 dBm, salınım 7 dB |
+| Gövde / kol seyirmesi | Kullanıcı gövdeyi çıkardı, belirti aynı |
+| Pil / brownout | USB'ye takıldı, belirti aynı |
+| Yeniden başlama | 150 sn izleme, 0 kez |
+
+**Ders: bir bekçi, kurtaracağı durumdan ETKİLENEN bir ölçüte
+bakmamalı.** Bu depoda aynı sınıftan üçüncü hata — "AP'im açık mı" ile
+"durumum ne" ayrımı ve panelin iki yerde tutulan ses tavanı da aynı
+aileden: *doğru soruyu yanlış kaynağa sormak.*
+
+### Çözüm (3.5.35)
+
+`sessiz_sunucu_bekcisi()`'nin başına, mikrofon yolundan **tamamen
+bağımsız** bir çıkış: `g_konusuyor` doğruyken sunucudan 15 saniyedir
+hiçbir şey gelmediyse oturum ölü sayılıyor.
+
+15 saniye: gerçek konuşmada ses parçaları 200–280 ms arayla geliyor,
+yani eşik elli katı. Normal çalışmada ulaşılamıyor.
+
+
 ## 🔴 13.09.2026 — "cevap vermiyor, sesi kesiliyor" — wifi güç tasarrufu GERİ AÇILMIŞTI
 
 **Belirti (kullanıcının sözü):** *"Pati cevap vermiyor, verirse de çok

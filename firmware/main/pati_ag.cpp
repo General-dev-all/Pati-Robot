@@ -61,6 +61,10 @@ constexpr int KOPMA_SINIRI = 10;
 // geri geldikten sonra cocuk bosuna beklerdi.
 constexpr int KURULUM_YOKLAMA_MS = 3 * 60 * 1000;
 
+// Guc tasarrufu bekcisinin turu. Kisa olmasinin bir anlami yok: bir
+// kip degisimi ile bir sonraki ses paketi arasinda saniyeler var.
+constexpr int PS_BEKCI_MS = 5000;
+
 constexpr int BAGLI_BIT = BIT0;
 constexpr int BASARISIZ_BIT = BIT1;
 
@@ -161,6 +165,33 @@ int cubuk(int rssi)
 // tutmadiysa loga UYARI dusuyor — "ESP_OK dondu, demek ki oldu"
 // diye gecistirilmiyor. Bu depoda tam bu tuzak daha once yasandi
 // (kodek kazanci; pati_ses.cpp).
+// Bekcinin kac kez tasarrufu KENDILIGINDEN acilmis bulup geri kapattigi.
+// Panelde gorunuyor (api/durum -> ag.ps_duzeltme).
+//
+// 🔴 BU SAYAC BIR OLCUM ARACI, sus degil. 13.09.2026'da
+// "tasarruf bir sekilde geri aciliyor" dendi ama HANGI OLAYIN actigi
+// bilinmiyordu — seri log yoktu, cihaz pildeydi. Sayac sifirdan
+// buyukse tahmin bitiyor: gercekten aciliyor. Sifir kalirsa da
+// bilgi: sorun baska yerde.
+std::atomic<std::uint32_t> g_ps_duzeltme{0};
+
+// Her turda tasarrufun HALA kapali oldugunu dogrular; acilmissa geri
+// kapatir ve sayar. Ucuz: esp_wifi_get_ps surucunun icindeki bir
+// degiskeni okuyor, I2C ya da kilit yok.
+void tasarruf_bekcisi()
+{
+    wifi_ps_type_t su = WIFI_PS_NONE;
+    if (esp_wifi_get_ps(&su) != ESP_OK) return;
+    if (su == WIFI_PS_NONE) return;
+
+    g_ps_duzeltme.fetch_add(1, std::memory_order_relaxed);
+    ESP_LOGW(ETIKET, "guc tasarrufu KENDILIGINDEN acilmis (kip %d) — "
+                     "geri kapatiliyor (%u. kez)",
+             static_cast<int>(su),
+             static_cast<unsigned>(g_ps_duzeltme.load(std::memory_order_relaxed)));
+    esp_wifi_set_ps(WIFI_PS_NONE);
+}
+
 void tasarrufu_kapat(const char* neden)
 {
     const esp_err_t h = esp_wifi_set_ps(WIFI_PS_NONE);
@@ -388,9 +419,22 @@ void ag_gorevi(void*)
         // tek yonlu bir kapiya donusuyordu: bitleri ancak ebeveyn
         // telefonla gelip sifre girerse birisi kaldirabiliyordu.
         // Gerekcesi ve olculen olay KURULUM_YOKLAMA_MS'in yaninda.
+        // 🔴 BAGLIYKEN DE UYANIYORUZ — eskiden portMAX_DELAY'di.
+        //
+        // Tek sebebi guc tasarrufu bekcisi: kod "kapat" diyor ama
+        // surucu bir kip degisiminden sonra kendi varsayilanina
+        // (MIN_MODEM) donebiliyor ve o zaman ses tamponu kuruyor.
+        // Kullanicinin sozu (13.09.2026): "bu cihaz hicbir durumda bir
+        // daha wifi tasarruf moduna gecmesin."
+        //
+        // ⚠️ Bes saniye bir sicak dongu DEGIL: uyanma basina yapilan
+        // is tek bir surucu degiskeni okumak. Bu depoda sicak dongu
+        // tuzagi yasandi (goz gorevi 50 ms'de kilit aliyordu) ve ders
+        // "cagri ucuz mu" degil, "saniyede kac kez" idi — burada
+        // saniyede 0,2 kez.
         const TickType_t bekleme = g_kurulum_modu.load()
                                        ? pdMS_TO_TICKS(KURULUM_YOKLAMA_MS)
-                                       : portMAX_DELAY;
+                                       : pdMS_TO_TICKS(PS_BEKCI_MS);
 
         const EventBits_t b = xEventGroupWaitBits(
             g_olaylar, BAGLI_BIT | BASARISIZ_BIT, pdTRUE, pdFALSE, bekleme);
@@ -415,6 +459,15 @@ void ag_gorevi(void*)
                 tasarrufu_kapat("kurulumdan cikis");
                 g_kurulum_modu.store(false);
             }
+            continue;
+        }
+
+        // 🔴 KURULUM MODUNDA DEGILSEK bu uyanma yalnizca bekci
+        // turudur. Asagisi kurulum yoklamasi ve oraya DUSMEMELI —
+        // eskiden bagliyken bu noktaya hic gelinmiyordu (sonsuz
+        // bekleme) ve alttaki kod o varsayimla yazildi.
+        if (!g_kurulum_modu.load()) {
+            tasarruf_bekcisi();
             continue;
         }
 
@@ -513,6 +566,7 @@ AgRadyo ag_radyo()
     if (esp_wifi_get_max_tx_power(&tx) == ESP_OK) r.tx_ceyrek_dbm = tx;
     wifi_ps_type_t ps;
     if (esp_wifi_get_ps(&ps) == ESP_OK) r.tasarruf = static_cast<int>(ps);
+    r.ps_duzeltme = g_ps_duzeltme.load(std::memory_order_relaxed);
     return r;
 }
 

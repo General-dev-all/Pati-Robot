@@ -128,6 +128,35 @@ constexpr int GERI_CEKILME_EN_COK_MS = 30000;
 // bilerek comert.
 constexpr std::int64_t SESSIZ_SUNUCU_US = 25 * 1000000LL;
 
+// 🔴 "KONUSUYOR" HALINDE SUNUCU SUSARSA — BEKCININ KENDI TUZAGINDAN
+// CIKIS YOLU.
+//
+// 13.09.2026, kullanicinin bildirdigi hal: "bir gozu kisik saatlerce
+// hicbir sey demeden o yuz ifadesinde kaldi, bir sey diyorum oyle
+// bakiyor." Fisi cekmeden duzelmiyor.
+//
+// Sebebi bir KILITLENME ve ucu de birbirini besliyor:
+//
+//   1. `g_konusuyor` takili kalir (sunucu ResponseDone/AudioDone
+//      gondermeden susarsa; yari acik TCP'de olay HIC gelmiyor).
+//   2. Yarim dupleks yuzunden mikrofon GONDERILMEZ olur
+//      (asagida: `if (!ayar_soz_kesme() && g_konusuyor) continue;`).
+//   3. Mikrofon gitmedigi icin `g_son_ses_us` GUNCELLENMEZ — o satir
+//      da `!g_konusuyor` istiyor.
+//   4. Bekci ilk kontrolunde `g_son_ses_us <= g_son_sunucu_us` gorup
+//      ERKEN CIKAR. Yani kurtarmasi gereken hal, bekciyi kapatiyor.
+//
+// ⚠️ DERS: bir bekci, kurtaracagi durumdan ETKILENEN bir olcute
+// bakmamali. Buradaki cikis yalnizca `g_son_sunucu_us`'e bakiyor ve o,
+// mikrofon yolundan tamamen bagimsiz — sunucudan bir sey gelince
+// guncelleniyor, gelmeyince guncellenmiyor.
+//
+// 15 SANIYE NEDEN: gercek konusmada ses parcalari 200-280 ms arayla
+// geliyor (olculdu, pati_ses.cpp). 15 saniye onun elli katindan fazla
+// ve Pati'nin en uzun cumlesi birkac saniye. Bu esige normal
+// calismada ULASILAMIYOR; ulasildiysa oturum gercekten olmustur.
+constexpr std::int64_t KONUSURKEN_SESSIZ_US = 15 * 1000000LL;
+
 // 🔴 YANKI KUYRUGU — bekcinin en kolay yanlis anlamasi.
 //
 // Hoparlor tamponu 341 ms (pati_ses.cpp) ve mikrofon hoparlorun yani
@@ -545,6 +574,24 @@ void yenileme_gerekirse()
 void sessiz_sunucu_bekcisi()
 {
     if (!g_calisiyor || g_uykuda || g_yenileniyor || g_koptu) return;
+
+    // 🔴 ONCE KILITLENME KONTROLU — asagidaki olcut bu halde CALISMIYOR.
+    // Gerekcesi KONUSURKEN_SESSIZ_US'un yaninda.
+    if (g_konusuyor) {
+        const std::int64_t bos_us = esp_timer_get_time() - g_son_sunucu_us;
+        if (bos_us > KONUSURKEN_SESSIZ_US) {
+            ++g_bekci_sayisi;
+            ++g_kopma_sayisi;
+            g_koptu = true;
+            gozler_baglanti_bildir(BaglantiUyarisi::Baglaniyor);
+            ESP_LOGW(ETIKET, "KONUSUYOR halinde sunucudan %lld sn'dir hicbir "
+                             "sey gelmedi — oturum olu sayiliyor. Bu hal "
+                             "mikrofonu da susturuyordu (bekci %u. kez)",
+                     bos_us / 1000000,
+                     static_cast<unsigned>(g_bekci_sayisi));
+        }
+        return;
+    }
 
     // Sunucu, cocugun son konusmasindan SONRA bir sey soylediyse saglam.
     // Karsilastirma sart — tek basina "sunucu N saniyedir susuyor" olcutu

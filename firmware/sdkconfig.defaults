@@ -298,3 +298,19 @@ CONFIG_LWIP_MAX_SOCKETS=16
 # Asama 2'nin tek isi olcum; olculen sayilar seri porttan okunacak.
 CONFIG_LOG_DEFAULT_LEVEL_INFO=y
 CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y
+
+# ---------------------------------------------------------------------------
+# 🔴 WIFI GUC TASARRUFU HER YERDE KAPALI
+# ---------------------------------------------------------------------------
+#
+# Kullanicinin acik istegi (13.09.2026): "bu cihaz hicbir durumda bir
+# daha wifi tasarruf moduna gecmesin."
+#
+# Calisma anindaki kip zaten WIFI_PS_NONE'a zorlanip bekciyle
+# dogrulaniyor (pati_ag.cpp). Bu satir ONUN KAPSAMADIGI tek yeri
+# kapatiyor: STA baglantisi KOPUKKEN yongannin modem-sleep'e girmesi.
+#
+# ⚠️ Bedeli kopukken biraz daha fazla akim. Kabul edildi cunku Pati
+# kopukken zaten konusamiyor; kazanci ise "tasarruf" diye bir sey
+# kalmamasi — aranacak yer sayisi azaliyor.
+CONFIG_ESP_WIFI_STA_DISCONNECTED_PM_ENABLE=n

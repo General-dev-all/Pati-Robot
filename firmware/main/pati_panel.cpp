@@ -239,6 +239,7 @@ esp_err_t durum_isle(httpd_req_t* r)
     cJSON_AddNumberToObject(a, "rssi_dbm", radyo.rssi_dbm);
     cJSON_AddNumberToObject(a, "tx_ceyrek_dbm", radyo.tx_ceyrek_dbm);
     cJSON_AddNumberToObject(a, "tasarruf", radyo.tasarruf);
+    cJSON_AddNumberToObject(a, "ps_duzeltme", radyo.ps_duzeltme);
     cJSON_AddBoolToObject(a, "bagli", d == AgDurumu::Bagli);
     // AgDurumu DEGIL, AP'nin kendisi: ikisi ayrisabiliyor
     // (pati_ag.hpp · ag_kurulum_agi_acik).
